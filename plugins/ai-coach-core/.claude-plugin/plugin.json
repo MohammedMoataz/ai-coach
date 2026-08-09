@@ -1,0 +1,56 @@
+{
+  "name": "ai-coach-core",
+  "displayName": "AI Coach Core",
+  "version": "0.1.0",
+  "description": "The engine every AI Coach plugin runs on. Owns the session brief, the memory database, the secrets guard, and every hook — so the coach plugins above it ship skills and nothing else.",
+  "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
+  "homepage": "https://github.com/MohammedMoataz/ai-coach",
+  "license": "MIT",
+  "keywords": ["harness", "memory", "hooks", "engine", "coach"],
+  "userConfig": {
+    "brief_chars": {
+      "type": "number",
+      "title": "Session brief size (chars)",
+      "description": "Ceiling on the memory injected at session start. Storage is unbounded and ranking happens before the cap, so raising this surfaces more, it does not change what wins.",
+      "default": 4000,
+      "min": 500,
+      "max": 16000
+    },
+    "coach": {
+      "type": "boolean",
+      "title": "Coaching",
+      "description": "The coach line in the session brief, and one-line hints on vague prompts. Shown to you only — nothing is injected into the model's context.",
+      "default": true
+    },
+    "learn": {
+      "type": "boolean",
+      "title": "Session-end learning",
+      "description": "One Haiku call per session distils a summary and 0-3 durable learnings. Stored marked as distilled, never passed off as something you wrote. Requires `claude` on PATH.",
+      "default": true
+    },
+    "plan_review": {
+      "type": "boolean",
+      "title": "Plan-mode prompt review",
+      "description": "In plan mode only: one Haiku call scores the prompt and suggests a rewrite. Backs off for an hour after a failure.",
+      "default": true
+    },
+    "guard": {
+      "type": "boolean",
+      "title": "Secrets guard",
+      "description": "Blocks tool calls carrying real credentials and asks before secret-ish payloads or credential-file reads. Fails open, always logged.",
+      "default": true
+    },
+    "seed_auto": {
+      "type": "boolean",
+      "title": "Keep the team seed current",
+      "description": "Refresh .ai-coach/team-seed.jsonl on /compact, /clear and after each commit. Only ever touches a seed that already exists; never stages or commits.",
+      "default": true
+    },
+    "default_trust": {
+      "type": "string",
+      "title": "Trust for teammates you have not rated",
+      "description": "full: imported memories rank like your own. workspace: held privately with capped confidence until you raise them. Per-teammate trust stays on this machine.",
+      "default": "full"
+    }
+  }
+}

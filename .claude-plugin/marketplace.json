@@ -1,0 +1,28 @@
+{
+  "name": "ai-coach",
+  "owner": { "name": "Moataz", "url": "https://github.com/MohammedMoataz" },
+  "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
+  "plugins": [
+    {
+      "name": "ai-coach-core",
+      "source": "./plugins/ai-coach-core",
+      "description": "The engine every AI Coach plugin runs on: session memory, hooks, secrets guard, and the coached session brief.",
+      "category": "productivity",
+      "tags": ["harness", "memory", "hooks", "engine"]
+    },
+    {
+      "name": "memory-coach",
+      "source": "./plugins/memory-coach",
+      "description": "Memory you can search, hand to a teammate, and trust: /recall, /handoff, /team, /project.",
+      "category": "productivity",
+      "tags": ["memory", "team", "knowledge-sharing"]
+    },
+    {
+      "name": "ai-coach",
+      "source": "./plugins/ai-coach",
+      "description": "Install this one. Pulls in the engine and every coach released so far.",
+      "category": "productivity",
+      "tags": ["bundle", "harness"]
+    }
+  ]
+}

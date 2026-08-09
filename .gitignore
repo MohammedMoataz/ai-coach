@@ -1,0 +1,8 @@
+node_modules/
+*.db
+*.db-wal
+*.db-shm
+.ai-coach/seed.key
+*.log
+.DS_Store
+Thumbs.db
