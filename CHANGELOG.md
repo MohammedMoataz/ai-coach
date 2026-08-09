@@ -52,3 +52,18 @@ effects runs when you say so. `/doctor` reports and never repairs.
 `disable-model-invocation` saves nothing (a 662-character description costs ~200 tokens with the flag
 set; a short one costs under 20). Multiple plugins' `SessionStart` hooks all fire and nothing is
 deduplicated, so the brief is capped and stays silent when it has nothing to say.
+
+## ai-coach-core v0.1.1 — CLI read the wrong database (2026-08-09)
+
+`useProject(cwdFlag || a[a.indexOf('--dir') + 1] || process.cwd())` read a flag's value without
+checking the flag was present. `indexOf` returns `-1` when it is absent, and `a[-1 + 1]` is `a[0]` —
+the first *positional* argument. So `engine.js search round` resolved the project as `"round"`,
+opened an empty tenant database, and reported `no matches` against knowledge that was really there;
+`corrections --open` resolved the project as `"--open"`. `brief` escaped it only because it
+re-resolves the project internally, which is why the brief showed memories the CLI swore did not
+exist.
+
+Fixed by reading a flag's value only when the flag is present. Covered by a regression test that
+drives the real CLI from a project directory and fails on the old line.
+
+Inherited from keka, where the same line is live at `hooks/engine.js:733`.

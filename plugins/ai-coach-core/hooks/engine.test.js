@@ -448,4 +448,32 @@ assert.ok(capped.includes('more ranked below the cap'), 'truncation marker prese
 assert.ok(capped.length < 900, 'the cap is respected (marker reserve included): ' + capped.length);
 assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no marker when everything fits');
 
+// regression: a CLI command with a positional argument and no --dir must still resolve the
+// project from the working directory. `a.indexOf('--dir')` returns -1 when the flag is absent,
+// and a[-1 + 1] is a[0] — so `search <term>` used to resolve the project as the search term
+// itself, open an empty tenant, and report "no matches" against knowledge that was there.
+{
+  const { spawnSync } = require('node:child_process');
+  const cliProj = path.join(tmp, 'cliproj');
+  fs.mkdirSync(cliProj, { recursive: true });
+  e.useProject(cliProj);
+  e.add('learning', 'cli positional args must not be read as a directory', 0.9, cliProj);
+  e.sessionStart('cli-1', cliProj);
+  e.correction('cli-1', 'the build failed here');
+
+  const cli = (...args) => spawnSync('node', [path.join(__dirname, 'engine.js'), ...args],
+    { encoding: 'utf8', cwd: cliProj, timeout: 20000, env: { ...process.env } });
+
+  const found = cli('search', 'positional');
+  assert.ok(found.stdout.includes('must not be read as a directory'),
+    'search resolves the project from cwd, not from its own query: ' + found.stdout);
+  const open = cli('corrections', '--open');
+  assert.ok(open.stdout.includes('failed'),
+    'a flag-only command resolves cwd too, not the flag as a path: ' + open.stdout);
+  // and the explicit flag still wins over cwd
+  const elsewhere = cli('search', 'positional', '--dir', tmp);
+  assert.ok(!elsewhere.stdout.includes('must not be read as a directory'),
+    '--dir still redirects to another project: ' + elsewhere.stdout);
+}
+
 console.log('engine.test.js: ALL PASS');

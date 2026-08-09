@@ -788,9 +788,17 @@ function autoSeed(cwd) {
 function cli() {
   const [cmd, ...a] = process.argv.slice(2);
   // every CLI invocation serves one project; resolve it before touching a database
-  const cwdFlag = a.indexOf('--project') >= 0 && a[a.indexOf('--project') + 1] && !a[a.indexOf('--project') + 1].startsWith('--')
-    ? a[a.indexOf('--project') + 1] : null;
-  useProject(cwdFlag || a[a.indexOf('--dir') + 1] || process.cwd());
+  // Read a flag's value only when the flag is actually present. indexOf returns -1 when it is
+  // not, and a[-1 + 1] is a[0] — the first POSITIONAL argument — so `search round` used to
+  // resolve the project as "round" and open an empty database. Everything downstream then
+  // reported "no matches" against knowledge that was really there.
+  const flagValue = (name) => {
+    const i = a.indexOf(name);
+    if (i < 0) return null;
+    const v = a[i + 1];
+    return v && !v.startsWith('--') ? v : null;
+  };
+  useProject(flagValue('--project') || flagValue('--dir') || process.cwd());
   switch (cmd) {
     case 'init': db(); console.log('project db ready:', path.join(tenantDir(active().project), 'coach.db')); break;
     case 'add': {
