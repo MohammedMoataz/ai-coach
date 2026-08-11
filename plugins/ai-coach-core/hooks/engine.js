@@ -541,9 +541,13 @@ function coachLine(p, t) {
     const st = promptStats({ days: 30 });
     const worst = st.signals.find((s) => s.count >= 5 && s.lift != null && s.lift >= 1.5);
     if (worst) {
-      const pct = Math.round((worst.lift - 1) * 100);
+      // "700% more" is arithmetically fine and reads as noise; past a doubling, a multiple is
+      // what people actually parse.
+      const size = worst.lift >= 2
+        ? `${worst.lift.toFixed(1)}× the corrections`
+        : `${Math.round((worst.lift - 1) * 100)}% more corrections`;
       return `your prompts flagged "${worst.id}" ${worst.count} times in 30 days, and those sessions `
-        + `hit ${pct}% more corrections than your clean ones — /prompt-coach:prompt-stats for the detail.`;
+        + `hit ${size} of your clean ones — /prompt-coach:prompt-stats for the detail.`;
     }
   } catch (err) { log('coachLine', err); }
   return null;

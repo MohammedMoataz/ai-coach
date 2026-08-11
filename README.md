@@ -40,6 +40,9 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **prompt-coach** | Skills only: `/prompt`, `/prompt-stats`. |
 | **ai-coach** | The bundle. Install this one. |
 
+Measured with `claude plugin details`, not estimated: **~412 always-on tokens** for the whole
+product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114.
+
 ## What happens on its own
 
 - **A session brief**, capped and ranked, with the reason each line is there — `branch`, `global`,
