@@ -3,7 +3,7 @@
 </p>
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
-One focus per release. This one is memory.</p>
+One focus per release. So far: memory, then prompts.</p>
 
 ---
 
@@ -14,7 +14,8 @@ whatever a teammate already worked out on the branch you just checked out. Worse
 went wrong — the one worth remembering — is the moment nothing records.
 
 AI Coach keeps what a session learned, puts it in front of you next time, and notices when you hit
-the same wall twice without writing it down.
+the same wall twice without writing it down. It also watches how you ask — and, unusually, checks
+whether that actually cost you anything before offering an opinion about it.
 
 ## Install
 
