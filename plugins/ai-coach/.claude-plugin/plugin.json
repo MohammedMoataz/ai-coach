@@ -1,14 +1,31 @@
 {
   "name": "ai-coach",
   "displayName": "AI Coach",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Install this one. Pulls in the engine and every coach released so far. Ships no components of its own, so it costs nothing at session start.",
-  "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
+  "author": {
+    "name": "Moataz",
+    "email": "m.moataz@ignteq.org"
+  },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",
-  "keywords": ["bundle", "harness", "coach"],
+  "keywords": [
+    "bundle",
+    "harness",
+    "coach"
+  ],
   "dependencies": [
-    { "name": "ai-coach-core", "version": "~0.1.0" },
-    { "name": "memory-coach", "version": "~0.1.0" }
+    {
+      "name": "ai-coach-core",
+      "version": "~0.2.0"
+    },
+    {
+      "name": "memory-coach",
+      "version": "~0.1.0"
+    },
+    {
+      "name": "prompt-coach",
+      "version": "~0.1.0"
+    }
   ]
 }

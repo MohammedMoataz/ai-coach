@@ -476,4 +476,115 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
     '--dir still redirects to another project: ' + elsewhere.stdout);
 }
 
+// ---------- v0.2.0: prompt signals ----------
+
+// The fixture corpus. This is the honest version of a "golden dataset": it regression-tests the
+// DETECTORS on every rule change. It does not pretend to measure the model, and it never will —
+// a judged score has no ground truth here, but "does this regex fire on this string" does.
+{
+  const cases = [
+    // [prompt, expected signal id present, expected absent]
+    ['fix the login bug please', 'action-no-ref', null],
+    ['fix the rounding in @src/total.ts, it rounds half-even', null, 'action-no-ref'],
+    ['update this file to use the new client', 'deictic-no-path', null],
+    ['update @src/api.ts to use the new client', null, 'deictic-no-path'],
+    ['build a CSV export for the orders page', 'no-done-criteria', null],
+    ['build a CSV export for the orders page; done when the e2e test passes', null, 'no-done-criteria'],
+    ['can you take a look at the auth flow and maybe tidy it up', 'hedged-opener', null],
+    ['Refactor @src/auth.ts to drop the callback style. CRITICAL: keep the API. '
+      + 'IMPORTANT: no new deps. YOU MUST not rename exports. ALWAYS run the tests.', 'caps-emphasis', null],
+    ["don't use the legacy client and never touch the config", 'negative-only', null],
+  ];
+  for (const [text, want, notWant] of cases) {
+    const v = e.evaluatePrompt(text);
+    assert.ok(!v.exempt, 'action prompt is not exempt: ' + text);
+    if (want) assert.ok(v.flags.includes(want), `expected ${want} on "${text}" — got [${v.flags}]`);
+    if (notWant) assert.ok(!v.flags.includes(notWant), `expected NO ${notWant} on "${text}" — got [${v.flags}]`);
+  }
+
+  // Exploratory prompts are blessed usage and must never be coached. This is the rule that keeps
+  // the coach from being switched off.
+  for (const q of [
+    'what would you improve in this file?',
+    'How does the session brief get assembled?',
+    'why is the rounding half-even here',
+    'explain the trust model to me',
+  ]) {
+    const v = e.evaluatePrompt(q);
+    assert.ok(v.exempt, 'exploratory prompt exempt: ' + q);
+    assert.strictEqual(v.hints.length, 0, 'exempt prompts get no hints: ' + q);
+  }
+  // ...but an imperative ending in a question mark is still work, not exploration
+  assert.ok(!e.evaluatePrompt('fix the flaky test, can you?').exempt, 'imperative with ? is not exploration');
+
+  // never more than the cap, always highest-weight first
+  const many = e.evaluatePrompt(('can you fix this file and also update that component and then '
+    + 'add a helper and also clean the config and then make the tests nicer and also '
+    + 'refactor the router. ').repeat(6));
+  assert.ok(many.flags.length > 2, 'fixture trips several rules: ' + many.flags);
+  assert.strictEqual(many.hints.length, 2, 'hints are capped at two');
+  assert.strictEqual(e.evaluatePrompt('fix the login bug', 1).hints.length, 1, 'cap is configurable');
+
+  // a clean prompt is silent
+  const clean = e.evaluatePrompt('In @src/orders/total.ts switch rounding to half-up. '
+    + 'Existing tests must stay green; do not touch the tax code.');
+  assert.deepStrictEqual(clean.flags, [], 'a good prompt trips nothing: ' + clean.flags);
+}
+
+// storage records flags, never text; stats join signals to real outcomes
+{
+  const pp = path.join(tmp, 'promptproj');
+  e.useProject(pp);
+  const bad = ['ps-bad-1', 'ps-bad-2', 'ps-bad-3', 'ps-bad-4', 'ps-bad-5'];
+  for (const id of bad) {
+    e.sessionStart(id, pp);
+    e.promptSignal(id, 40, ['action-no-ref'], 1);
+    e.correction(id, 'the build failed');       // these sessions went badly
+    e.correction(id, 'that was wrong');
+  }
+  for (const id of ['ps-ok-1', 'ps-ok-2', 'ps-ok-3']) {
+    e.sessionStart(id, pp);
+    e.promptSignal(id, 180, [], 0);             // clean prompts, no corrections
+  }
+  const st = e.promptStats({ days: 30 });
+  assert.strictEqual(st.total, 8, 'every evaluation recorded');
+  assert.strictEqual(st.clean, 3, 'clean prompts counted separately');
+  assert.strictEqual(st.cleanRate, 0, 'clean sessions had no corrections');
+  const sig = st.signals.find((s) => s.id === 'action-no-ref');
+  assert.strictEqual(sig.count, 5, 'signal counted');
+  assert.strictEqual(sig.rate, 2, 'two corrections per flagged session');
+  assert.strictEqual(sig.lift, null, 'lift is null, not Infinity, when the clean baseline is zero');
+
+  // with a non-zero baseline the lift is a real ratio
+  e.correction('ps-ok-1', 'something failed');
+  const st2 = e.promptStats({ days: 30 });
+  assert.ok(Math.abs(st2.signals.find((s) => s.id === 'action-no-ref').lift - 6) < 0.01,
+    'lift = 2.0 flagged / 0.333 clean = 6×');
+
+  // unrecorded corrections outrank prompt advice — the thing you already hit and did not write
+  // down beats a note about phrasing. Verify that ordering, then clear it.
+  assert.ok(/coach: \d+ failures? surfaced/.test(e.brief(4000, pp)),
+    'corrections keep priority over prompt advice');
+  e.markCorrectionsRecorded(e.corrections({ unrecordedOnly: true, limit: 99 }).map((c) => c.id));
+
+  // the prompt line then fires — but only with volume AND correlation behind it
+  const line = e.brief(4000, pp);
+  assert.ok(/coach:.*action-no-ref/.test(line), 'evidence-backed prompt advice reaches the brief: ' + line);
+
+  // and stays silent when the evidence is thin
+  const thin = path.join(tmp, 'thinproj');
+  e.useProject(thin);
+  e.sessionStart('thin-1', thin);
+  e.promptSignal('thin-1', 40, ['action-no-ref'], 1);
+  assert.ok(!/action-no-ref/.test(e.brief(4000, thin)),
+    'one occurrence is not evidence — no advice');
+
+  // signals expire with observations, on the same clock and for the same reason.
+  // -1 (a window ending tomorrow) rather than 0: datetime('now') is second-granular, so a row
+  // written in the same second as the prune survives a 0-day cutoff and the test flakes.
+  e.useProject(pp);
+  e.pruneObservations(-1);
+  assert.strictEqual(e.promptStats({ days: 30 }).total, 0, 'prune clears prompt signals too');
+}
+
 console.log('engine.test.js: ALL PASS');

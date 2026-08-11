@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 'use strict';
-// UserPromptSubmit: session bookkeeping (resumed sessions get no SessionStart, so the
-// row is ensured here + first prompt recorded) and the prompt coach — free regex hints
-// always, one Haiku review in plan mode only.
-// Hints go to systemMessage ONLY (user-facing). The model must not receive a critique
-// of the prompt alongside the prompt, or answers drift into meta-commentary.
+// UserPromptSubmit: session bookkeeping (resumed sessions get no SessionStart, so the row is
+// ensured here + first prompt recorded), and the prompt coach.
+//
+// Two things happen to every prompt, and they must not be confused:
+//   1. It is EVALUATED by deterministic detectors that live in the engine, and the result — the
+//      signal ids only, never the text — is RECORDED. That record is what later lets the coach
+//      say "prompts shaped like this one cost you time", instead of just asserting it.
+//   2. At most two hints are SHOWN, and only to the human, via `systemMessage`. The model must
+//      never receive a critique of the prompt alongside the prompt, or answers drift into
+//      meta-commentary about the question instead of answering it.
+//
+// A question or an exploratory prompt is exempt from (1)'s hints entirely — the official guidance
+// blesses "what would you improve in this file?" as a legitimate way to work. Coaching that is how
+// a coach earns being switched off.
 if (process.env.AICOACH_INNER) process.exit(0);
 
 const fs = require('node:fs');
@@ -25,7 +34,19 @@ process.stdin.on('end', () => {
     if (!engine.optOn('coach', 'on')) process.exit(0);
     if (prompt.length < 25 || prompt.startsWith('/') || prompt.startsWith('!')) process.exit(0);
 
-    const notes = hints(prompt);
+    const verdict = engine.evaluatePrompt(prompt, 2);
+
+    // Record before deciding whether to speak. An exempt prompt and a clean prompt are both
+    // useful data: without them there is no baseline to measure a weak prompt against.
+    try {
+      engine.promptSignal(data.session_id, prompt.length,
+        verdict.exempt ? ['exempt'] : verdict.flags,
+        verdict.hints.length ? 1 : 0);
+    } catch (err) { engine.log('prompt.signal', err); }
+
+    if (verdict.exempt) process.exit(0);
+
+    const notes = verdict.hints.slice();
     const planMode = (data.permission_mode || data.permissionMode) === 'plan';
     if (planMode && engine.optOn('plan_review', 'on')) {
       const review = haikuReview(engine, prompt);
@@ -38,34 +59,36 @@ process.stdin.on('end', () => {
   process.exit(0);
 });
 
-function hints(p) {
-  // a "reference" is @path, `code`, or a file-extension token — deliberately NOT any
-  // bare a/b/ fragment, which counts prose like "and/or" as a file reference
-  const hasRef = /@[\w./\\-]|`[^`]+`|\b[\w-]{2,}\.(?:js|ts|tsx|jsx|py|md|json|yml|yaml|css|html|sql|ps1|sh|go|rs|java|rb|php|c|h|cpp|cs|vue|svelte|toml|txt)\b/.test(p);
-  const out = [];
-  if (/\b(this|that) (file|function|component|code)\b/i.test(p) && !p.includes('@'))
-    out.push('"this file" is ambiguous — reference it with @path.');
-  if (/^(fix|improve|update|optimize|clean|refactor|make)\b/i.test(p) && !hasRef)
-    out.push('Name the file/function and the symptom (@path refs help).');
-  if (/^(build|create|implement|add)\b/i.test(p) && !/\b(test|verify|should|so that|acceptance|done when)\b/i.test(p))
-    out.push('State what done looks like — a test, a behavior, an acceptance line.');
-  if (p.length > 600 && (p.match(/\b(and|also|then|plus)\b/gi) || []).length > 6)
-    out.push('Large multi-part ask — consider plan mode.');
-  return out.slice(0, 2);
-}
+// The judge is taught by two contrasting worked examples and a fixed output contract, rather than
+// by a list of rules. A rule list invites the model to recite the rules back; examples show it what
+// a verdict looks like. `hypothesis` is required so a suggestion has to say why it should help —
+// an unfalsifiable "this is better" is not advice.
+const JUDGE = `You review one prompt written for an AI coding agent. Reply with ONLY minified JSON:
+{"score":<1-10>,"reason":"<one sentence>","rewrite":"<improved prompt, or empty if score>=8>","hypothesis":"<why the rewrite should work better, or empty>"}
+
+Example A
+PROMPT: fix the login bug
+{"score":3,"reason":"No file, no symptom, and no way to tell when it is fixed.","rewrite":"@src/auth/login.ts throws 'session undefined' after a password reset. Repro: reset, then sign in. Find the root cause rather than guarding the symptom, and prove it with npm test -- auth.","hypothesis":"Naming the file and the exact error removes the search step, and stating the repro plus the test gives a check both sides can agree on."}
+
+Example B
+PROMPT: In @src/orders/total.ts, rounding is half-even but finance needs half-up. Change it and keep the existing tests green; do not touch the tax code.
+{"score":9,"reason":"Location, expected behaviour, verification and an out-of-scope boundary are all present.","rewrite":"","hypothesis":""}
+
+Now review:
+PROMPT: `;
 
 function haikuReview(engine, prompt) {
   const cooldown = path.join(path.dirname(engine.DB_PATH), 'coach-cooldown');
   try {
     // a wedged CLI must not tax every plan-mode prompt: after one failure, skip for 1h
-    try { if (Date.now() - fs.statSync(cooldown).mtimeMs < 3600000) return null; } catch { /* no cooldown */ }
+    try { if (Date.now() - fs.statSync(cooldown).mtimeMs < 3600000) return null; } catch { /* none */ }
+    // strip anything the user marked private before it leaves for another process
+    const safe = prompt.replace(/<private>[\s\S]*?<\/private>/gi, '[private]').slice(0, 2000);
     const { spawnSync } = require('node:child_process');
     const r = spawnSync(process.env.AICOACH_CLAUDE_BIN || 'claude', ['-p', '--model', 'claude-haiku-4-5'], {
-      input: 'Review this prompt written for an AI coding agent. Reply in at most 700 characters: '
-        + 'a score out of 10, what is missing, and — only if the score is below 8 — a better rewrite.\n\nPrompt:\n'
-        + prompt.slice(0, 2000),
+      input: JUDGE + safe,
       encoding: 'utf8',
-      timeout: 12000, // inside the hook's 20s budget, unlike a 15s spawn in a 25s hook with no margin
+      timeout: 12000, // inside the hook's 20s budget, with margin
       shell: true,
       env: { ...process.env, AICOACH_INNER: '1' },
     });
@@ -74,10 +97,26 @@ function haikuReview(engine, prompt) {
       engine.log('coach.haiku', 'claude -p failed: status=' + r.status + ' stderr=' + String(r.stderr || '').slice(0, 300));
       return null;
     }
-    return r.stdout.trim().slice(0, 700);
+    return format(r.stdout);
   } catch (err) {
     try { fs.writeFileSync(cooldown, new Date().toISOString()); } catch { /* best effort */ }
     engine.log('coach.haiku', err);
     return null;
+  }
+}
+
+// A judge that returns prose instead of JSON is still useful — show it rather than dropping it.
+function format(stdout) {
+  const text = String(stdout).trim();
+  try {
+    const m = text.match(/\{[\s\S]*\}/);
+    const j = JSON.parse(m ? m[0] : text);
+    if (!j || typeof j.score === 'undefined') return text.slice(0, 700);
+    let out = `prompt ${j.score}/10 — ${j.reason || ''}`.trim();
+    if (j.rewrite) out += `\ntry: ${j.rewrite}`;
+    if (j.hypothesis) out += `\nwhy: ${j.hypothesis}`;
+    return out.slice(0, 900);
+  } catch {
+    return text.slice(0, 700);
   }
 }

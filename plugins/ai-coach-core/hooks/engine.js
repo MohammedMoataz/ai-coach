@@ -535,6 +535,16 @@ function coachLine(p, t) {
         return `this branch was worked by ${others.slice(0, 2).join(' and ')} — you are picking up their work, not starting fresh.`;
       }
     }
+    // Prompt-shaped advice comes last and only with evidence behind it. A signal that merely
+    // fires often proves nothing; it has to fire often AND correlate with sessions that actually
+    // went wrong. Below the thresholds this stays silent rather than moralising about style.
+    const st = promptStats({ days: 30 });
+    const worst = st.signals.find((s) => s.count >= 5 && s.lift != null && s.lift >= 1.5);
+    if (worst) {
+      const pct = Math.round((worst.lift - 1) * 100);
+      return `your prompts flagged "${worst.id}" ${worst.count} times in 30 days, and those sessions `
+        + `hit ${pct}% more corrections than your clean ones — /prompt-coach:prompt-stats for the detail.`;
+    }
   } catch (err) { log('coachLine', err); }
   return null;
 }
@@ -643,9 +653,157 @@ function sessionActivity(id, maxRows) {
     .all(id, maxRows || 40).reverse();
   return { session: s, observations: obs };
 }
+// ---------- prompt signals ----------
+// Deterministic detectors over the prompt string. They live here rather than in the hook so the
+// hook, the stats query and the tests all read one table, and so a rule can be unit-tested without
+// spawning a process. Order in the array is only cosmetic; `weight` decides which hints surface.
+//
+// Every rule is a bet on a weakness of the current models, and bets go stale — each carries the
+// date and source it came from, so a later release can retire one instead of accreting forever.
+
+// Exploratory prompts are BLESSED usage, not sloppiness: code.claude.com/docs/en/best-practices
+// says "A prompt like 'what would you improve in this file?' can surface things you wouldn't have
+// thought to ask about." Coaching those is how a coach gets switched off. Detect and stay silent.
+const QUESTION_OPENER = /^\s*(what|how|why|where|which|who|when|is|are|does|do|did|can you (tell|explain|describe)|explain|describe|tell me|any thoughts|thoughts on)\b/i;
+const VERBS = 'add|build|create|implement|write|fix|change|update|refactor|remove|delete|rename|move|extract|migrate|convert|replace|switch|optimi[sz]e|clean|make|set|wire|hook|install|configure|generate|run|test|document|keep|use';
+const IMPERATIVE = new RegExp('^\\s*(?:please\\s+)?(' + VERBS + ')\\b', 'i');
+// Anywhere in the text, not just at the start. "In @src/total.ts switch rounding to half-up.
+// … do not touch the tax code." carries a perfectly good positive instruction — it just does not
+// open with one. Judging that on the first word flagged an out-of-scope clause, which is exactly
+// the habit the coach is meant to encourage.
+const IMPERATIVE_ANY = new RegExp('\\b(' + VERBS + ')\\b', 'i');
+const NEGATION = /\b(?:don'?t|do not|never|avoid|no longer|stop)\b/i;
+const HAS_REF = /@[\w./\\-]|`[^`]+`|\b[\w-]{2,}\.(?:js|mjs|cjs|ts|tsx|jsx|py|md|json|yml|yaml|css|scss|html|sql|ps1|sh|go|rs|java|rb|php|c|h|cpp|cs|vue|svelte|toml|txt)\b/;
+// Note the absence of a bare `build`: "build a CSV export" is the ASK, not the criterion, and
+// listing it here made the rule cancel itself on every prompt that opened with that verb.
+// "the build passes" is caught by `passes` instead.
+const DONE_CRITERIA = /\b(test|tests|verify|verifies|should|so that|acceptance|done when|passes|passing|green|expect|assert|screenshot|lint)\b/i;
+const SCOPE_CLAUSE = /\b(only|out of scope|don'?t touch|do not touch|leave .* alone|without changing|no new (deps|dependencies))\b/i;
+
+const PROMPT_RULES = [
+  { id: 'deictic-no-path', weight: 5, // 2026-08 · keka baseline #1
+    hint: '"this file" is ambiguous — reference it with @path.',
+    test: (p) => /\b(this|that|the) (file|function|component|class|module|method|test)\b/i.test(p) && !p.includes('@') },
+
+  { id: 'action-no-ref', weight: 5, // 2026-08 · keka baseline #2
+    hint: 'Name the file and the symptom (@path refs help).',
+    test: (p) => /^\s*(?:please\s+)?(fix|improve|update|optimi[sz]e|clean|refactor|make)\b/i.test(p) && !HAS_REF.test(p) },
+
+  { id: 'no-done-criteria', weight: 5, // 2026-08 · keka baseline #3
+    hint: 'State what done looks like — a test, a behavior, an acceptance line.',
+    test: (p) => /^\s*(?:please\s+)?(build|create|implement|add|write|generate)\b/i.test(p) && !DONE_CRITERIA.test(p) },
+
+  { id: 'multi-ask', weight: 4, // 2026-08 · keka baseline #4
+    hint: 'Large multi-part ask — consider plan mode, or split it.',
+    test: (p) => p.length > 600 && (p.match(/\b(and|also|then|plus)\b/gi) || []).length > 6 },
+
+  { id: 'hedged-opener', weight: 4, // 2026-08 · platform.claude.com "Tool usage"
+    hint: '"Can you…" invites a suggestion. Say "Change X" if you want the edit made.',
+    test: (p) => /^\s*(can you|could you|would you|might you|do you think you could|what if you|should we|shall we)\b/i.test(p) },
+
+  { id: 'negative-only', weight: 3, // 2026-08 · platform.claude.com "Control the format of responses"
+    hint: 'Say what to do, not only what to avoid — positive instructions land better.',
+    // Fires only when the prompt is negation and nothing else. The negated clauses are removed
+    // first, because the verb inside "don't USE the legacy client" is not a positive instruction —
+    // matching it would silence the rule on precisely the prompts it exists for.
+    test: (p) => {
+      if (!NEGATION.test(p)) return false;
+      const positive = p.replace(new RegExp(NEGATION.source + '[^.;\\n]*', 'gi'), '');
+      return !IMPERATIVE_ANY.test(positive);
+    } },
+
+  { id: 'paste-after-ask', weight: 3, // 2026-08 · platform.claude.com "Long context prompting"
+    hint: 'Put the long input first and the ask last — it measurably improves long prompts.',
+    test: (p) => {
+      if (p.length < 1200) return false;
+      const head = p.slice(0, Math.floor(p.length * 0.3));
+      const tail = p.slice(Math.floor(p.length * 0.7));
+      const lines = (s) => s.split('\n').length;
+      return lines(tail) > lines(head) * 2; // the bulk arrived after the request
+    } },
+
+  { id: 'caps-emphasis', weight: 2, // 2026-08 · platform.claude.com: emphasis now OVERtriggers
+    hint: 'Heavy CRITICAL/MUST emphasis now overtriggers — one clear instruction reads better.',
+    test: (p) => (p.match(/\b(CRITICAL|IMPORTANT|YOU MUST|MUST NOT|NEVER EVER|ALWAYS)\b/g) || []).length >= 3 },
+
+  { id: 'no-scope-clause', weight: 2, // 2026-08 · platform.claude.com "Overeagerness"
+    hint: 'Say what is out of scope, or expect more changed than you asked for.',
+    test: (p) => p.length > 200 && /^\s*(?:please\s+)?(build|create|implement|add|refactor|migrate)\b/i.test(p) && !SCOPE_CLAUSE.test(p) },
+];
+
+// Returns { exempt, flags[], hints[] }. `exempt` means the prompt is a question or exploration —
+// legitimate usage that must never be coached.
+function evaluatePrompt(text, maxHints) {
+  const p = String(text || '');
+  const out = { exempt: false, flags: [], hints: [] };
+  if (QUESTION_OPENER.test(p) || (/\?\s*$/.test(p.trim()) && !IMPERATIVE.test(p))) {
+    out.exempt = true;
+    return out;
+  }
+  const fired = PROMPT_RULES.filter((r) => { try { return r.test(p); } catch { return false; } });
+  out.flags = fired.map((r) => r.id);
+  out.hints = fired.slice().sort((a, b) => b.weight - a.weight)
+    .slice(0, maxHints == null ? 2 : maxHints).map((r) => r.hint);
+  return out;
+}
+
+function promptSignal(sessionId, len, flags, hinted) {
+  db().prepare('INSERT INTO prompt_signals(session_id, len, flags, hinted) VALUES(?,?,?,?)')
+    .run(sessionId || null, Number(len) || 0,
+      Array.isArray(flags) ? flags.join(',') : String(flags || ''), hinted ? 1 : 0);
+}
+
+// Does a weak prompt actually cost you anything? Joins signals against the outcomes v0.1.0 already
+// records — corrections raised, and tool failures. Computed live from the rows; never a stored
+// constant. `lift` is a ratio against sessions where the signal did NOT fire, so a signal that
+// fires everywhere cannot look damning by volume alone.
+function promptStats(opts) {
+  const { days = 30 } = opts || {};
+  const since = `-${Number(days) || 30} days`;
+  const rows = db().prepare(
+    `SELECT ps.session_id AS sid, ps.flags AS flags,
+            (SELECT COUNT(*) FROM corrections c WHERE c.session_id = ps.session_id) AS corr,
+            (SELECT COUNT(*) FROM observations o WHERE o.session_id = ps.session_id
+               AND o.digest LIKE 'FAIL %') AS fails
+       FROM prompt_signals ps
+      WHERE ps.created >= datetime('now', ?)`
+  ).all(since);
+
+  const total = rows.length;
+  const per = new Map();
+  let cleanCount = 0, cleanBad = 0;
+  for (const r of rows) {
+    const bad = (r.corr || 0) + (r.fails || 0);
+    const ids = String(r.flags || '').split(',').filter(Boolean);
+    if (!ids.length) { cleanCount++; cleanBad += bad; continue; }
+    for (const id of ids) {
+      const e = per.get(id) || { id, count: 0, bad: 0 };
+      e.count++; e.bad += bad;
+      per.set(id, e);
+    }
+  }
+  const cleanRate = cleanCount ? cleanBad / cleanCount : 0;
+  const signals = [...per.values()].map((e) => {
+    const rate = e.bad / e.count;
+    return { ...e, rate, lift: cleanRate > 0 ? rate / cleanRate : null };
+  }).sort((a, b) => b.count - a.count);
+  return { total, clean: cleanCount, cleanRate, days: Number(days) || 30, signals };
+}
+
 function pruneObservations(days) { // observations are session fuel, not knowledge — they expire
-  return db().prepare("DELETE FROM observations WHERE created < datetime('now', ?)")
-    .run('-' + (Number(days) || 30) + ' days').changes;
+  // `days || 30` would turn an explicit 0 into 30, because 0 is falsy — so "prune everything"
+  // silently became "prune nothing recent". Check for absence, not for falsiness.
+  const keep = days == null || Number.isNaN(Number(days)) ? 30 : Number(days);
+  // Sign has to be built, not string-concatenated: '-' + -1 yields '--1 days', which SQLite
+  // ignores silently, and the prune then deletes nothing while reporting success. A negative
+  // window means "everything, including rows written this second" — which is also the only
+  // way to prune deterministically, since datetime('now') has one-second granularity.
+  const cutoff = (keep < 0 ? '+' : '-') + Math.abs(keep) + ' days';
+  const n = db().prepare("DELETE FROM observations WHERE created < datetime('now', ?)")
+    .run(cutoff).changes;
+  // prompt signals expire on the same clock and for the same reason
+  db().prepare("DELETE FROM prompt_signals WHERE created < datetime('now', ?)").run(cutoff);
+  return n;
 }
 
 // ---------- team seed (git is the transport) ----------
@@ -848,6 +1006,30 @@ function cli() {
       break;
     }
     case 'correction-done': console.log('marked ' + markCorrectionsRecorded(a.map(Number)) + ' recorded'); break;
+    case 'prompt-stats': {
+      const days = Number(a.find((x) => /^\d+$/.test(x))) || 30;
+      const st = promptStats({ days });
+      if (!st.total) { console.log(`no prompts recorded in the last ${st.days} days`); break; }
+      console.log(`${st.total} prompts in ${st.days} days · ${st.clean} clean `
+        + `(${(st.cleanRate).toFixed(2)} corrections+failures per clean session)`);
+      if (!st.signals.length) { console.log('no signals fired — nothing to coach'); break; }
+      console.log('signal              fired  rate  lift');
+      for (const s of st.signals) {
+        console.log(s.id.padEnd(20) + String(s.count).padStart(5)
+          + '  ' + s.rate.toFixed(2).padStart(4)
+          + '  ' + (s.lift == null ? '   —' : (s.lift.toFixed(1) + '×').padStart(4)));
+      }
+      console.log('\nlift = outcome rate vs your prompts that fired no signal. '
+        + 'Correlation across your own sessions, not proof.');
+      break;
+    }
+    case 'prompt-check': { // deterministic evaluation of one prompt; no model call, no write
+      const r = evaluatePrompt(a.join(' '));
+      console.log(r.exempt ? 'exempt (question or exploration — not coached)'
+        : (r.flags.length ? 'flags: ' + r.flags.join(', ') + '\n' + r.hints.map((h) => '- ' + h).join('\n')
+          : 'clean'));
+      break;
+    }
     case 'session-start': sessionStart(a[0], a[1]); break;
     case 'session-end': sessionEnd(a[0], a.slice(1).join(' ')); break;
     case 'observe': observe(a[0], a[1], a[2], a.slice(3).join(' ')); break;
@@ -964,7 +1146,7 @@ function cli() {
     }, null, 2)); break;
     default:
       console.log('usage: engine.js <init|add|forget|search|brief|session-start|session-end|name|observe|prune|'
-        + 'seed-export|seed-import|auto-seed|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|export>');
+        + 'seed-export|seed-import|auto-seed|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|prompt-stats|prompt-check|export>');
   }
 }
 
@@ -972,6 +1154,7 @@ module.exports = {
   db, userDb, openTenant, useProject, active, log, bootstrap, BIN_DIR, add, forget, hasText, norm, search, brief,
   sessionStart, firstPrompt, observe, sessionEnd, sessionActivity, pruneObservations,
   correction, corrections, correctionSignal, markCorrectionsRecorded,
+  evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,
   seedExport, seedImport, autoSeed, project, repo, projectDecl, projectFile, registerRepo,
   repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn,
   DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, author, username,

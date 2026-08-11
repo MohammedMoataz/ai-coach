@@ -2,6 +2,54 @@
 
 Releases are git tags, one line per plugin: `{plugin}--v{version}`.
 
+## v0.2.0 — Prompt coach (2026-08-12)
+
+The second focus. v0.1.0 remembered what happened; this release notices how you ask.
+
+**The baseline evaluated every prompt and threw the evaluation away.** Four regexes fired a hint
+and forgot. Now every prompt is scored by deterministic detectors and the result is recorded — the
+signal names only, never the text — so the coach can eventually say *"prompts shaped like this one
+cost you time"* instead of asserting it.
+
+**Nine detectors, up from four**, each carrying the date and source it came from because a
+prompting rule is a bet on how current models behave and bets go stale. New: `hedged-opener`
+("Can you…" invites a suggestion, not an edit), `negative-only`, `paste-after-ask` (long input
+belongs above the ask), `caps-emphasis` (stacked CRITICAL/MUST now *over*triggers), and
+`no-scope-clause`. They live in the engine, not the hook, so they are unit-testable without
+spawning a process.
+
+**Exploratory prompts are exempt.** The official guidance blesses *"what would you improve in this
+file?"* as a legitimate way to work. Coaching that is how a coach earns being switched off, so
+question-form prompts are recorded and never hinted at.
+
+**`prompt_signals`** — a new table holding length, which signals fired, and whether a hint showed.
+There is no column to read your prompts out of. `promptStats()` joins it against `corrections` and
+FAIL observations to compute lift against your own clean prompts, live, never as a stored constant.
+
+**The brief gained one prompt-facing coach line**, ranked below the corrections line and gated on
+evidence: it needs five or more occurrences *and* a 1.5× lift before it says anything.
+
+**The plan-mode judge was reshaped** after promptfoo's grading prompts: a fixed
+`{score, reason, rewrite, hypothesis}` contract taught by two contrasting worked examples instead
+of a rule list, and every suggestion must state why it should help. One rewrite, never a menu.
+`<private>` spans are stripped before the prompt leaves for the judge process.
+
+**New plugin `prompt-coach`** — skills only, zero hooks, mirroring memory-coach exactly.
+`/prompt` (templates pre-filled from context, draft review, 12 rules with a 22-rule reference) and
+`/prompt-stats`. Both user-invoked only.
+
+### Fixes in ai-coach-core 0.2.0
+
+- `pruneObservations(0)` silently meant *30 days*, because `Number(0) || 30` is 30. Explicit zero
+  now means zero, and a negative window prunes everything — the sign is built rather than
+  concatenated, since `'-' + -1` produced `'--1 days'`, which SQLite ignores while reporting
+  success.
+- Two detector bugs found by the fixture corpus before shipping: `no-done-criteria` cancelled
+  itself on every prompt opening with "build" (the verb was in its own criteria list), and
+  `negative-only` fired on *"do not touch the tax code"* — the out-of-scope clause the coach exists
+  to encourage.
+
+
 ## v0.1.0 — Memory (2026-08-09)
 
 The first release. Memory that compounds across sessions and travels across the team, plus the one

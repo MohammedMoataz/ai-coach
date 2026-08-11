@@ -75,6 +75,20 @@ CREATE TABLE IF NOT EXISTS corrections (
   created        TEXT DEFAULT (datetime('now'))
 );
 
+-- What the prompt coach saw, and nothing more. Flags only: which deterministic signals fired,
+-- how long the prompt was, whether a hint was shown. **The prompt text is never stored** — it can
+-- carry credentials and pasted customer data, and none of that is needed to answer the only
+-- question worth asking: do prompts with a given weakness lead to worse sessions?
+-- Joined against `corrections` and FAIL observations by session_id. Pruned with observations.
+CREATE TABLE IF NOT EXISTS prompt_signals (
+  id         INTEGER PRIMARY KEY,
+  session_id TEXT,
+  len        INTEGER,                  -- prompt length in characters
+  flags      TEXT,                     -- csv of signal ids; empty string = a clean prompt
+  hinted     INTEGER DEFAULT 0,        -- 1 if a hint was actually surfaced to the user
+  created    TEXT DEFAULT (datetime('now'))
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
   text, content='memories', content_rowid='id'
 );
@@ -96,3 +110,5 @@ CREATE INDEX IF NOT EXISTS idx_obs_session       ON observations(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_project  ON sessions(project, created);
 CREATE INDEX IF NOT EXISTS idx_sessions_branch   ON sessions(project, task, created);
 CREATE INDEX IF NOT EXISTS idx_corrections_sess  ON corrections(session_id, created);
+CREATE INDEX IF NOT EXISTS idx_psignals_sess      ON prompt_signals(session_id, created);
+CREATE INDEX IF NOT EXISTS idx_psignals_created   ON prompt_signals(created);

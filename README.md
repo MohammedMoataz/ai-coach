@@ -35,8 +35,9 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 
 | Plugin | What it is |
 |---|---|
-| **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief. Everything else depends on it. |
+| **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors. Everything else depends on it. |
 | **memory-coach** | Skills only: `/recall`, `/handoff`, `/team`, `/project`, `/name`, `/doctor`. |
+| **prompt-coach** | Skills only: `/prompt`, `/prompt-stats`. |
 | **ai-coach** | The bundle. Install this one. |
 
 ## What happens on its own
@@ -49,15 +50,40 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 - **Observations**: every Edit, Write and Bash becomes a one-line record; failures marked `FAIL`.
   `<private>…</private>` is stripped at the boundary, before anything reaches disk.
 - **Session-end distillation**: one Haiku call turns the session into a summary and 0–3 learnings.
+- **Prompt hints**: at most two, shown to you and never to the model. Nine deterministic detectors,
+  no model call. **Exploratory questions are exempt** — "what would you improve in this file?" is a
+  legitimate way to work, and a coach that nags at it deserves to be switched off.
 - **A secrets guard**: real credentials are blocked outright; secret-*ish* payloads and
   credential-file reads ask first. Fails open, always logged.
 
 ## What you drive
 
 `/memory-coach:recall` · `/memory-coach:handoff` · `/memory-coach:team` · `/memory-coach:project` ·
-`/memory-coach:name` · `/memory-coach:doctor`
+`/memory-coach:name` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
+`/prompt-coach:prompt-stats`
 
-Five of the six never fire on their own. A skill with side effects should run when you say so.
+Only `recall` fires on its own — Claude should reach for memory unprompted when a question matches
+prior work. Everything else waits for you. A skill with side effects should run when you say so.
+
+## Coaching from evidence, not etiquette
+
+Most prompt advice is somebody's taste, asserted. AI Coach records which detectors fired on each
+prompt — **the signal names only, never the prompt text** — and joins that to what those sessions
+actually cost in corrections and failed tool calls.
+
+```
+$ engine prompt-stats
+41 prompts in 30 days · 22 clean (0.41 corrections+failures per clean session)
+signal              fired  rate  lift
+action-no-ref          11  1.27  3.1×
+no-done-criteria        7  0.86  2.1×
+hedged-opener           3  0.33     —
+```
+
+`/prompt-coach:prompt-stats` names the one habit worth changing, and says plainly that this is
+correlation across your own sessions rather than proof. Under five occurrences it reports the count
+and nothing else. When nothing clears the bar it says so in one line — "nothing worth changing" is
+a real result, and the most likely one for a careful person.
 
 ## Design notes
 

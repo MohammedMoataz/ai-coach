@@ -232,4 +232,84 @@ assert.ok(!digests.includes('hunter2'), 'the private span never reached the data
 assert.ok(digests.includes('[private]'), 'it was replaced, not silently dropped: ' + digests);
 assert.ok(digests.includes('deploy'), 'the rest of the command is still recorded: ' + digests);
 
+// ---------- prompt.js v2: coach hints, recording, and the exemption gate ----------
+
+const pProj = path.join(tmp, 'promptproj');
+fs.mkdirSync(pProj, { recursive: true });
+const signalsFor = () => {
+  const q = spawnSync('node', ['-e',
+    "const e=require(process.argv[1]);e.useProject(process.argv[2]);"
+    + "console.log(JSON.stringify(e.db().prepare('SELECT session_id,len,flags,hinted FROM prompt_signals ORDER BY id').all()))",
+    path.join(__dirname, 'engine.js'), pProj], { encoding: 'utf8', env, timeout: 20000 });
+  return JSON.parse(String(q.stdout).trim() || '[]');
+};
+
+// a weak action prompt: hints shown to the USER only, and the evaluation recorded
+r = run('prompt.js', { session_id: 'pc1', cwd: pProj, prompt: 'fix the login bug it keeps breaking' });
+assert.strictEqual(r.status, 0, 'prompt exit 0: ' + r.stderr);
+const out1 = JSON.parse(r.stdout.trim() || '{}');
+assert.ok(out1.systemMessage && out1.systemMessage.startsWith('[coach]'), 'hint surfaced: ' + r.stdout);
+assert.ok(!('hookSpecificOutput' in out1) && !('additionalContext' in out1),
+  'the model never receives a critique of the prompt: ' + r.stdout);
+assert.ok(out1.systemMessage.split('|').length <= 2, 'at most two hints: ' + out1.systemMessage);
+
+// an exploratory question is blessed usage: recorded, never coached
+r = run('prompt.js', { session_id: 'pc2', cwd: pProj, prompt: 'what would you improve in this file?' });
+assert.strictEqual(r.status, 0, 'question exit 0');
+assert.strictEqual(r.stdout.trim(), '', 'exploratory prompts are never coached: ' + r.stdout);
+
+// a well-formed prompt is silent too
+r = run('prompt.js', { session_id: 'pc3', cwd: pProj,
+  prompt: 'In @src/orders/total.ts switch rounding to half-up. Existing tests must stay green; do not touch the tax code.' });
+assert.strictEqual(r.stdout.trim(), '', 'a good prompt gets no hints: ' + r.stdout);
+
+const sig = signalsFor();
+assert.strictEqual(sig.length, 3, 'every prompt evaluated is recorded, not only the weak ones');
+assert.ok(sig[0].flags.includes('action-no-ref') && sig[0].hinted === 1, 'weak prompt flagged: ' + JSON.stringify(sig[0]));
+assert.strictEqual(sig[1].flags, 'exempt', 'exploration recorded as exempt: ' + JSON.stringify(sig[1]));
+assert.strictEqual(sig[2].flags, '', 'clean prompt recorded with no flags: ' + JSON.stringify(sig[2]));
+assert.ok(sig.every((s) => !('text' in s)), 'no prompt text column exists at all');
+
+// coach off = fully silent, and nothing recorded
+r = run('prompt.js', { session_id: 'pc4', cwd: pProj, prompt: 'fix that thing in the code' }, { AICOACH_COACH: 'off' });
+assert.strictEqual(r.stdout.trim(), '', 'coach:off is silent');
+assert.strictEqual(signalsFor().length, 3, 'coach:off records nothing');
+
+// short prompts and slash commands are skipped entirely
+run('prompt.js', { session_id: 'pc5', cwd: pProj, prompt: 'yes' });
+run('prompt.js', { session_id: 'pc5', cwd: pProj, prompt: '/memory-coach:recall rounding half up' });
+assert.strictEqual(signalsFor().length, 3, 'trivia and slash commands are not evaluated');
+
+// plan mode spawns the judge — and <private> must never reach it.
+// An earlier case in this file deliberately trips the cooldown; clear it, or the spawn under test
+// is correctly skipped and the assertions below pass against a judge that never ran.
+const cooldownFile = path.join(tmp, 'coach-cooldown');
+fs.rmSync(cooldownFile, { force: true });
+const fake = path.join(tmp, 'fake-claude.js');
+const seen = path.join(tmp, 'judge-input.txt');
+fs.writeFileSync(fake, `const fs=require('fs');let s='';process.stdin.on('data',d=>s+=d)
+  .on('end',()=>{fs.writeFileSync(${JSON.stringify(seen)},s);
+  process.stdout.write('{"score":4,"reason":"no file named","rewrite":"@src/auth.ts throws X","hypothesis":"naming the file removes the search step"}');});`);
+r = run('prompt.js', {
+  session_id: 'pc6', cwd: pProj, permission_mode: 'plan',
+  prompt: 'fix the auth bug with token <private>sk-ant-do-not-leak</private> in the header',
+}, { AICOACH_CLAUDE_BIN: 'node "' + fake + '"' });
+assert.strictEqual(r.status, 0, 'plan-mode review exit 0: ' + r.stderr);
+const judged = fs.readFileSync(seen, 'utf8');
+assert.ok(!judged.includes('sk-ant-do-not-leak'), 'the private span never reached the judge');
+assert.ok(judged.includes('[private]'), 'it was replaced, not dropped: ' + judged.slice(-120));
+assert.ok(r.stdout.includes('prompt 4/10') && r.stdout.includes('why:'),
+  'judge JSON rendered with its hypothesis: ' + r.stdout);
+
+// a judge that fails opens the cooldown instead of taxing every later prompt
+fs.rmSync(cooldownFile, { force: true }); // start from no cooldown so the assertion means something
+const broken = path.join(tmp, 'broken-claude.js');
+fs.writeFileSync(broken, 'process.exit(3);');
+r = run('prompt.js', { session_id: 'pc7', cwd: pProj, permission_mode: 'plan', prompt: 'fix the thing in the code' },
+  { AICOACH_CLAUDE_BIN: 'node "' + broken + '"' });
+assert.strictEqual(r.status, 0, 'a broken judge never breaks the turn');
+assert.ok(r.stdout.includes('[coach]') && !r.stdout.includes('/10'),
+  'the deterministic hints still land when the judge dies: ' + r.stdout);
+assert.ok(fs.existsSync(cooldownFile), 'cooldown written after a judge failure');
+
 console.log('hooks.test.js: ALL PASS');
