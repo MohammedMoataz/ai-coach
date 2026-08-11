@@ -579,6 +579,57 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   assert.ok(!/action-no-ref/.test(e.brief(4000, thin)),
     'one occurrence is not evidence — no advice');
 
+  // --team: a teammate's signals only exist here because they travelled in a handoff, and the
+  // default view must not silently include them.
+  {
+    const mate = 'omar@example.com';
+    e.sessionStart('ps-mate-1', pp);
+    e.db().prepare('UPDATE sessions SET author = ? WHERE id = ?').run(mate, 'ps-mate-1');
+    e.promptSignal('ps-mate-1', 30, ['hedged-opener'], 1);
+    e.correction('ps-mate-1', 'that failed');
+
+    const mine = e.promptStats({ days: 30 });
+    assert.ok(!mine.signals.some((s) => s.id === 'hedged-opener'),
+      'the default view is yours alone: ' + JSON.stringify(mine.signals.map((s) => s.id)));
+    assert.strictEqual(mine.team, false, 'default is not the team view');
+
+    const pooled = e.promptStats({ days: 30, team: true });
+    assert.ok(pooled.signals.some((s) => s.id === 'hedged-opener'), 'the team view includes them');
+    assert.ok(pooled.total > mine.total, 'the pool is larger than your own slice');
+    assert.strictEqual(pooled.authors, 2, 'pool size is reported');
+    assert.ok(!('who' in pooled.signals[0]) && !pooled.signals.some((s) => s.author),
+      'no per-author breakdown is ever produced — the pool size is the only identity number');
+  }
+
+  // signals travel in a handoff — flags only, and re-importing must not inflate the counts
+  {
+    const seedFile = path.join(tmp, 'sig-seed.jsonl');
+    e.sessionEnd('ps-mate-1', 'omar looked at the exporter'); // only summarised sessions travel
+    const exp = e.seedExport(seedFile);
+    assert.ok(exp.signals > 0, 'signals ride along with their sessions: ' + JSON.stringify(exp));
+    const body = fs.readFileSync(seedFile, 'utf8');
+    assert.ok(body.includes('"kind":"psignal"'), 'psignal rows are in the seed');
+    assert.ok(!/"text":"[^"]*hedged/.test(body), 'no prompt text travels — there is none to travel');
+
+    const mateProj = path.join(tmp, 'mateproj'); // a colleague importing into their own project
+    e.useProject(mateProj);
+    const i1 = e.seedImport(seedFile, mateProj);
+    assert.ok(i1.signals > 0, 'signals imported: ' + JSON.stringify(i1));
+
+    // A teammate's failures never travel — the messages carry text. Their COUNT does, or their
+    // weak prompts would show a perfect outcome rate here purely because the evidence stayed home.
+    const pooledMate = e.promptStats({ days: 30, team: true });
+    const hedged = pooledMate.signals.find((s) => s.id === 'hedged-opener');
+    assert.ok(hedged && hedged.rate > 0,
+      "an imported session's outcome count survives the trip: " + JSON.stringify(hedged));
+    const after1 = e.promptStats({ days: 30, team: true }).total;
+    const i2 = e.seedImport(seedFile, mateProj);
+    assert.strictEqual(i2.signals, 0, 're-import adds nothing');
+    assert.strictEqual(e.promptStats({ days: 30, team: true }).total, after1,
+      'a second import does not inflate anyone counts');
+    e.useProject(pp);
+  }
+
   // signals expire with observations, on the same clock and for the same reason.
   // -1 (a window ending tomorrow) rather than 0: datetime('now') is second-granular, so a row
   // written in the same second as the prune survives a 0-day cutoff and the test flakes.

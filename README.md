@@ -84,6 +84,11 @@ no-done-criteria        7  0.86  2.1×
 hedged-opener           3  0.33     —
 ```
 
+`--team` pools everyone whose sessions reached the project through a handoff — signals travel in the
+seed, prompt text does not, and a teammate's outcome count travels as a number so the pooled view is
+not quietly flattered by evidence that stayed on their machine. **Never per-person**: the engine
+returns a pool size and nothing else identifying.
+
 `/prompt-coach:prompt-stats` names the one habit worth changing, and says plainly that this is
 correlation across your own sessions rather than proof. Under five occurrences it reports the count
 and nothing else. When nothing clears the bar it says so in one line — "nothing worth changing" is

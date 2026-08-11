@@ -2,6 +2,31 @@
 
 Releases are git tags, one line per plugin: `{plugin}--v{version}`.
 
+## v0.2.1 — `--team` for prompt-stats (2026-08-12)
+
+`/prompt-coach:prompt-stats --team` was documented in v0.2.0 but had no engine behind it. It does now
+— and building it exposed two things worth stating plainly.
+
+**The default was never actually self-only.** `promptStats()` counted every signal in the database,
+including any that had arrived through a handoff. It now scopes by the session's author, so seeing
+your own habits does not require opting out of seeing everyone's.
+
+**Signals travel; text still does not.** `prompt_signals` rows ride inside
+`.ai-coach/team-seed.jsonl` alongside the sessions they belong to — flags and a length, never a word
+anyone typed, which is exactly what makes them safe to commit. Re-importing a seed adds nothing.
+
+**A teammate's failures had to travel as a number, or the pooled view would have lied.**
+`corrections` and `observations` carry message text and so stay local — which meant an imported
+session looked *perfect*, and a colleague's weakest habit showed a 0.00 outcome rate purely because
+the evidence stayed on their machine. Sessions now carry an `outcomes` integer, computed at export
+time: corrections plus failed tool calls, as a count. Live rows are used for your own sessions and
+the carried number for imported ones, never both.
+
+**Still never per-person.** The engine returns a pool size and nothing else identifying; there is no
+flag that breaks the pooled view down by author, because a report that ranks colleagues gets the
+plugin uninstalled.
+
+
 ## v0.2.0 — Prompt coach (2026-08-12)
 
 The second focus. v0.1.0 remembered what happened; this release notices how you ask.

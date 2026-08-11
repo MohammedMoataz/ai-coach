@@ -42,9 +42,21 @@ shown. There is no column to read your prompts out of, by design.
 
 ## `--team`
 
-Aggregates across everyone who has handed off memory into this project: signal, total occurrences,
-pooled lift. **Never per-person.** The point is finding which habit the team should discuss, not
-who to point at, and a report that ranks colleagues will simply get the plugin uninstalled.
+`ENGINE prompt-stats [days] --team` pools everyone whose sessions have reached this project through
+a handoff: signal, total occurrences, pooled lift, and the number of people in the pool.
+
+**Never per-person, and there is no flag that makes it per-person.** The engine returns a pool size
+and nothing else identifying; the breakdown does not exist to be printed. The point is finding the
+habit worth discussing at a standup, not who to point at — and a report that ranks colleagues gets
+the plugin uninstalled, which helps nobody.
+
+If asked to break it down by person, say plainly that it deliberately cannot, and offer the pooled
+view instead.
+
+**Where the data comes from:** signals travel inside `.ai-coach/team-seed.jsonl` alongside the
+sessions they belong to — flags and a length, never a word anyone typed, which is exactly why they
+are safe to put in a file that lives in git. Empty team view usually means nobody has run
+`/memory-coach:handoff` yet, not that the team writes perfect prompts.
 
 ## Rules
 

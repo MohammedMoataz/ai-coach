@@ -20,6 +20,8 @@ request before it reaches anyone's database.
      deserves the whole picture. Narrow with `--repo` or `--task "<branch>"`.
    - Your global memories never travel: they are yours, not the product's.
    - Session history travels too — who worked which branch, and what they concluded.
+   - So do prompt signals: which detectors fired, and how long the prompt was. **No prompt text**,
+     which is why they can sit in git. They are what makes `/prompt-coach:prompt-stats --team` work.
 2. Report the counts exactly as printed, and tell the user to commit the file.
 3. First handoff in this repo? Say that from now on the seed keeps itself current — on `/compact`,
    on `/clear`, and after each commit.

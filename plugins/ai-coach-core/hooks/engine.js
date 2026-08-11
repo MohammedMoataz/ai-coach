@@ -42,6 +42,7 @@ function migrate(d, tables) {
     add('sessions', 'role', 'TEXT');
     add('sessions', 'name', 'TEXT');
     add('sessions', 'repo', 'TEXT');
+    add('sessions', 'outcomes', 'INTEGER');
   }
 }
 
@@ -762,22 +763,34 @@ function promptSignal(sessionId, len, flags, hinted) {
 // constant. `lift` is a ratio against sessions where the signal did NOT fire, so a signal that
 // fires everywhere cannot look damning by volume alone.
 function promptStats(opts) {
-  const { days = 30 } = opts || {};
+  const { days = 30, team = false } = opts || {};
   const since = `-${Number(days) || 30} days`;
+  // Scope by the session's author, not by the signal row: prompt_signals carries no identity of
+  // its own, deliberately. Locally-written sessions are stamped with your email; teammates' arrive
+  // through a handoff. Default is you only — seeing your own habits should not require opting out
+  // of seeing everyone's.
+  const me = String(author() || '').toLowerCase();
+  const scope = team ? '' : " AND (s.author IS NULL OR lower(s.author) = ?)";
+  const params = [since];
+  if (!team) params.push(me);
   const rows = db().prepare(
-    `SELECT ps.session_id AS sid, ps.flags AS flags,
-            (SELECT COUNT(*) FROM corrections c WHERE c.session_id = ps.session_id) AS corr,
-            (SELECT COUNT(*) FROM observations o WHERE o.session_id = ps.session_id
-               AND o.digest LIKE 'FAIL %') AS fails
+    // Outcomes come from the live rows for your own sessions, and from the carried count for an
+    // imported one — never both, or a teammate's failures would be counted twice.
+    `SELECT ps.session_id AS sid, ps.flags AS flags, lower(COALESCE(s.author,'')) AS who,
+            COALESCE(s.outcomes,
+              (SELECT COUNT(*) FROM corrections c WHERE c.session_id = ps.session_id)
+              + (SELECT COUNT(*) FROM observations o WHERE o.session_id = ps.session_id
+                   AND o.digest LIKE 'FAIL %')) AS bad
        FROM prompt_signals ps
-      WHERE ps.created >= datetime('now', ?)`
-  ).all(since);
+       LEFT JOIN sessions s ON s.id = ps.session_id
+      WHERE ps.created >= datetime('now', ?)${scope}`
+  ).all(...params);
 
   const total = rows.length;
   const per = new Map();
   let cleanCount = 0, cleanBad = 0;
   for (const r of rows) {
-    const bad = (r.corr || 0) + (r.fails || 0);
+    const bad = Number(r.bad) || 0;
     const ids = String(r.flags || '').split(',').filter(Boolean);
     if (!ids.length) { cleanCount++; cleanBad += bad; continue; }
     for (const id of ids) {
@@ -791,7 +804,11 @@ function promptStats(opts) {
     const rate = e.bad / e.count;
     return { ...e, rate, lift: cleanRate > 0 ? rate / cleanRate : null };
   }).sort((a, b) => b.count - a.count);
-  return { total, clean: cleanCount, cleanRate, days: Number(days) || 30, signals };
+  // How many people are in the pool — the only per-author number this ever produces. A team
+  // report that can be broken down by person becomes a ranking of colleagues, and a tool that
+  // ranks colleagues gets uninstalled. Pool size is context for the reader; names are not.
+  const authors = new Set(rows.map((r) => r.who).filter(Boolean)).size;
+  return { total, clean: cleanCount, cleanRate, days: Number(days) || 30, team: !!team, authors, signals };
 }
 
 function pruneObservations(days) { // observations are session fuel, not knowledge — they expire
@@ -861,8 +878,16 @@ function seedExport(file, opts) {
   // session rows carry who did what on which branch. Tagged with `kind`; they have no
   // `text`, and every importer skips rows without one, so older AI Coach versions ignore them.
   let sessions = [];
+  let signals = 0;
   if (o.sessions !== false) {
-    let ssql = `SELECT id, name, username, author, role, repo, task, summary, created FROM sessions
+    // `outcomes` is computed at export time rather than shipped raw: the corrections and failed
+    // tool calls behind the number carry message text, and only counts are allowed to travel.
+    let ssql = `SELECT id, name, username, author, role, repo, task, summary, created,
+        COALESCE(outcomes, 0)
+        + (SELECT COUNT(*) FROM corrections c WHERE c.session_id = sessions.id)
+        + (SELECT COUNT(*) FROM observations o WHERE o.session_id = sessions.id
+             AND o.digest LIKE 'FAIL %') AS outcomes
+       FROM sessions
        WHERE summary IS NOT NULL`;
     const sp = [];
     if (o.task) { ssql += ' AND task = ?'; sp.push(o.task); }
@@ -870,13 +895,29 @@ function seedExport(file, opts) {
     ssql += ' ORDER BY created DESC, rowid DESC'; // a handoff carries the whole history
     sessions = db().prepare(ssql).all(...sp);
     for (const s of sessions) lines.push(JSON.stringify({ kind: 'session', ...s }));
+
+    // Prompt signals ride along with the sessions they belong to — flags and a length, never a
+    // word of what anyone typed. That is what makes them safe to put in a file that lives in git:
+    // there is no prompt text to leak, so the team view costs nobody their privacy.
+    // Only signals whose session is also travelling are exported; without the session row the
+    // receiving side has no author to attribute them to, and an unattributable signal is noise.
+    if (sessions.length) {
+      const ids = sessions.map((s) => s.id);
+      const holes = ids.map(() => '?').join(',');
+      const sig = db().prepare(
+        `SELECT session_id, len, flags, hinted, created FROM prompt_signals
+          WHERE session_id IN (${holes}) ORDER BY id`
+      ).all(...ids);
+      for (const g of sig) lines.push(JSON.stringify({ kind: 'psignal', ...g }));
+      signals = sig.length;
+    }
   }
 
   const body = lines.join('\n') + (lines.length ? '\n' : '');
   const pass = o.encrypt ? seedKey(o.dir || process.cwd()) : null;
   if (o.encrypt && !pass) throw new Error('encryption requested but no key: set AICOACH_SEED_KEY or create .ai-coach/seed.key');
   fs.writeFileSync(file, pass ? seal(body, pass) : body);
-  return { memories: rows.length, sessions: sessions.length, encrypted: !!pass };
+  return { memories: rows.length, sessions: sessions.length, signals, encrypted: !!pass };
 }
 
 function seedImport(file, dir) {
@@ -893,16 +934,31 @@ function seedImport(file, dir) {
   const lines = raw.split('\n').filter((l) => l.trim());
   const find = db().prepare('SELECT id, author, workspace FROM memories WHERE text_key = ? LIMIT 1');
   const findSession = db().prepare('SELECT id FROM sessions WHERE id = ?');
-  let added = 0, dup = 0, workspace = 0, promoted = 0, sessions = 0;
+  let added = 0, dup = 0, workspace = 0, promoted = 0, sessions = 0, signals = 0;
   for (const line of lines) {
     let r; try { r = JSON.parse(line); } catch { continue; }
 
     if (r.kind === 'session') { // teammate session history: identity only, never a memory
       if (!r.id || findSession.get(r.id)) continue;
-      db().prepare('INSERT INTO sessions(id, project, repo, author, username, role, name, task, summary, created) VALUES(?,?,?,?,?,?,?,?,?,?)')
+      db().prepare('INSERT INTO sessions(id, project, repo, author, username, role, name, task, summary, outcomes, created) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
         .run(r.id, here, r.repo || null, r.author || null, r.username || null, r.role || null,
-          r.name || null, r.task || null, r.summary || null, r.created || new Date().toISOString().slice(0, 19).replace('T', ' '));
+          r.name || null, r.task || null, r.summary || null,
+          r.outcomes == null ? null : Number(r.outcomes),
+          r.created || new Date().toISOString().slice(0, 19).replace('T', ' '));
       sessions++;
+      continue;
+    }
+
+    if (r.kind === 'psignal') { // flags only; there is no text here to trust or distrust
+      if (!r.session_id) continue;
+      const seen = db().prepare(
+        'SELECT 1 FROM prompt_signals WHERE session_id = ? AND created = ? AND flags = ? LIMIT 1'
+      ).get(r.session_id, r.created || '', String(r.flags || ''));
+      if (seen) continue; // re-importing a seed must not inflate anyone's counts
+      db().prepare('INSERT INTO prompt_signals(session_id, len, flags, hinted, created) VALUES(?,?,?,?,?)')
+        .run(r.session_id, Number(r.len) || 0, String(r.flags || ''), r.hinted ? 1 : 0,
+          r.created || new Date().toISOString().slice(0, 19).replace('T', ' '));
+      signals++;
       continue;
     }
 
@@ -928,7 +984,7 @@ function seedImport(file, dir) {
         role: r.role || null, task: r.task || null, workspace: w });
     added++; if (w) workspace++;
   }
-  return { added, dup, workspace, promoted, sessions, encrypted };
+  return { added, dup, workspace, promoted, sessions, signals, encrypted };
 }
 
 // Keeps an existing seed current on /compact, /clear and after a commit. Never creates the
@@ -1012,10 +1068,16 @@ function cli() {
     case 'correction-done': console.log('marked ' + markCorrectionsRecorded(a.map(Number)) + ' recorded'); break;
     case 'prompt-stats': {
       const days = Number(a.find((x) => /^\d+$/.test(x))) || 30;
-      const st = promptStats({ days });
-      if (!st.total) { console.log(`no prompts recorded in the last ${st.days} days`); break; }
+      const team = a.includes('--team');
+      const st = promptStats({ days, team });
+      if (!st.total) {
+        console.log(`no prompts recorded in the last ${st.days} days`
+          + (team ? ' for this project — has anyone run /handoff yet?' : ''));
+        break;
+      }
       console.log(`${st.total} prompts in ${st.days} days · ${st.clean} clean `
-        + `(${(st.cleanRate).toFixed(2)} corrections+failures per clean session)`);
+        + `(${(st.cleanRate).toFixed(2)} corrections+failures per clean session)`
+        + (team ? ` · pooled across ${st.authors || 1} ${st.authors === 1 ? 'person' : 'people'}` : ''));
       if (!st.signals.length) { console.log('no signals fired — nothing to coach'); break; }
       console.log('signal              fired  rate  lift');
       for (const s of st.signals) {
@@ -1023,8 +1085,11 @@ function cli() {
           + '  ' + s.rate.toFixed(2).padStart(4)
           + '  ' + (s.lift == null ? '   —' : (s.lift.toFixed(1) + '×').padStart(4)));
       }
-      console.log('\nlift = outcome rate vs your prompts that fired no signal. '
-        + 'Correlation across your own sessions, not proof.');
+      console.log(team
+        ? '\nlift = outcome rate vs prompts that fired no signal. Pooled, never per-person: '
+          + 'this finds the habit worth discussing, not who to point at.'
+        : '\nlift = outcome rate vs your prompts that fired no signal. '
+          + 'Correlation across your own sessions, not proof.');
       break;
     }
     case 'prompt-check': { // deterministic evaluation of one prompt; no model call, no write
@@ -1050,6 +1115,7 @@ function cli() {
       }
       const r = seedExport(rest[0] || 'seed.jsonl', { task: t, repo: rp, dir: dir || proj, encrypt });
       console.log(`exported ${r.memories} memories / ${r.sessions} sessions`
+        + (r.signals ? ` / ${r.signals} prompt signals` : '')
         + (r.encrypted ? ' (encrypted)' : '')
         + ` (project: ${active().project}${rp ? `, repo: ${rp}` : ''}${t ? `, task: ${t}` : ''})`);
       break;
@@ -1063,6 +1129,7 @@ function cli() {
       const r = seedImport(rest[0] || 'seed.jsonl', dir || process.cwd());
       console.log(`imported ${r.added} new / ${r.dup} dup`
         + (r.sessions ? ` / ${r.sessions} sessions` : '')
+        + (r.signals ? ` / ${r.signals} prompt signals` : '')
         + (r.workspace ? ` / ${r.workspace} to workspace` : '')
         + (r.promoted ? ` / ${r.promoted} promoted` : '')
         + (r.encrypted ? ' (decrypted)' : ''));

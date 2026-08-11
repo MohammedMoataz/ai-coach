@@ -49,6 +49,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   task         TEXT,
   first_prompt TEXT,
   summary      TEXT,
+  -- How badly this session went: corrections raised plus failed tool calls, as a single number.
+  -- Locally this is computed live from the rows and stays NULL. It is filled only on a session
+  -- imported from a teammate, because `corrections` and `observations` do not travel — they carry
+  -- message text, and the privacy rule is flags and counts only. Without this, a teammate's weak
+  -- prompts would show a perfect outcome rate in the pooled view purely because their failures
+  -- stayed on their machine.
+  outcomes     INTEGER,
   created      TEXT DEFAULT (datetime('now')),
   ended        TEXT
 );
