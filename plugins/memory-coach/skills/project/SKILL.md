@@ -2,6 +2,8 @@
 description: Show or declare which product this repository belongs to, so sibling repos share one memory. Use for "/project", "group these repos", "which project is this".
 argument-hint: "[declare <name> | register [<repo>] | list]"
 disable-model-invocation: true
+model: haiku
+effort: low
 ---
 
 # /project — one product, however many repositories

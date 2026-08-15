@@ -2,6 +2,8 @@
 description: Label this session so the people reading the history later can tell what it was. Use for "/name", "rename this session".
 argument-hint: <label>
 disable-model-invocation: true
+model: haiku
+effort: low
 ---
 
 # /name — label this session

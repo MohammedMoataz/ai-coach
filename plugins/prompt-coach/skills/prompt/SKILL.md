@@ -2,6 +2,8 @@
 description: Templates and a review for prompts you are about to send. Use for "/prompt", "help me write this prompt", "review my prompt".
 argument-hint: <bugfix|feature|refactor|research|review|rules> [draft to review]
 disable-model-invocation: true
+model: haiku
+effort: low
 ---
 
 # /prompt — write prompts that land

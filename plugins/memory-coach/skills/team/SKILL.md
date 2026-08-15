@@ -2,6 +2,8 @@
 description: The project's team directory, and your private trust settings. Use for "/team", "add me to the team", "trust this teammate".
 argument-hint: "[register | trust <email> <full|workspace> [note] | sync]"
 disable-model-invocation: true
+model: haiku
+effort: low
 ---
 
 # /team — who is here, and whom you trust

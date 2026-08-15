@@ -2,6 +2,8 @@
 description: Package this project's memory for a teammate, or load theirs. Use for "hand this off", "share what I learned", "/handoff import".
 argument-hint: "[import] [--task <t>] [--repo <r>] [--encrypt]"
 disable-model-invocation: true
+model: haiku
+effort: low
 ---
 
 # /handoff — pass memory between teammates

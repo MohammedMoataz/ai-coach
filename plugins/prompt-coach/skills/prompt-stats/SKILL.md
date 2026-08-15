@@ -2,6 +2,8 @@
 description: Which of your prompt habits actually correlate with sessions going wrong. Use for "/prompt-stats", "how are my prompts".
 argument-hint: "[days] [--team]"
 disable-model-invocation: true
+model: haiku
+effort: low
 ---
 
 # /prompt-stats — your habits, against your outcomes

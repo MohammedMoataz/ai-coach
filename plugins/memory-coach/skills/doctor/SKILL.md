@@ -2,6 +2,8 @@
 description: Check this project's memory for duplicates, stale entries and unclosed corrections. Reports only. Use for "/doctor", "check my memory".
 argument-hint: "[--verbose]"
 disable-model-invocation: true
+model: haiku
+effort: low
 ---
 
 # /doctor — inspect the memory, change nothing
