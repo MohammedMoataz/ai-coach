@@ -3,7 +3,8 @@
 </p>
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
-One focus per release. So far: memory, prompts, security, your toolbox, then onboarding.</p>
+One focus per release. So far: memory, prompts, security, your toolbox, onboarding, then the
+world outside the repo.</p>
 
 ---
 
@@ -42,11 +43,12 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **security-coach** | Skills only: `/scan`, `/audit`, `/triage`. |
 | **harness-coach** | Skills only: `/partners` — the tools worth having next to the coach. |
 | **investigation-coach** | Skills only: `/onboard`, `/map`, `/study` — onboard anyone onto the project. |
+| **atlas-coach** | `/research`, `/ingest`, `/analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
 | **ai-coach** | The bundle. Install this one. |
 
-Measured with `claude plugin details`, not estimated: **~910 always-on tokens** for the whole
+Measured with `claude plugin details`, not estimated: **~1,317 always-on tokens** for the whole
 product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114, security-coach ~201,
-harness-coach ~72, investigation-coach ~225.
+harness-coach ~72, investigation-coach ~225, atlas-coach ~407 (three skills plus two agents).
 
 ## What happens on its own
 
@@ -81,17 +83,19 @@ harness-coach ~72, investigation-coach ~225.
 `/memory-coach:name` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
 `/prompt-coach:prompt-stats` · `/security-coach:scan` · `/security-coach:audit` ·
 `/security-coach:triage` · `/harness-coach:partners` · `/investigation-coach:onboard` ·
-`/investigation-coach:map` · `/investigation-coach:study`
+`/investigation-coach:map` · `/investigation-coach:study` · `/atlas-coach:research` ·
+`/atlas-coach:ingest` · `/atlas-coach:analyze`
 
 Only `recall` fires on its own — Claude should reach for memory unprompted when a question matches
 prior work. Everything else waits for you. A skill with side effects should run when you say so.
 
 Every CLI-and-format skill is pinned to Haiku at low effort — that work should never bill at
-frontier rates. Two kinds stay on the session model, deliberately: `recall`, because it runs
-inside a real answer, and investigation-coach's three, because reading a codebase and
-synthesizing docs is real analysis — pinned down, the output reads like a file listing. Those
-three say up front that they cost real tokens, and take `--feature` to bound the spend. The
-hooks' own LLM calls (plan-mode review, session-end distillation) are hardcoded to Haiku too.
+frontier rates (`ingest` joins that tier: routing and refinement are mechanical). The rest stay
+on the session model, deliberately: `recall` runs inside a real answer; investigation-coach's
+three and atlas-coach's `research`/`analyze` are real analysis — pinned down, the output reads
+like a file listing. Each of those says up front that it costs real tokens and takes a scoping
+flag to bound the spend. The hooks' own LLM calls (plan-mode review, session-end distillation)
+are hardcoded to Haiku too.
 
 ## Coaching from evidence, not etiquette
 

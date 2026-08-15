@@ -2,6 +2,56 @@
 
 Releases are git tags, one line per plugin: `{plugin}--v{version}`.
 
+## v0.6.0 — Atlas coach (2026-08-16)
+
+The sixth focus: everything outside the repo. Web pages, PDFs, a security advisory, a teammate's
+Notion export — sources the project consumes but does not control.
+
+**atlas-coach v0.1.0** — three skills and, for the first time in this marketplace, two agents:
+`researcher` (pathfinder loop: seed from memory and the ingested corpus, expand docs > source >
+issues > blogs, prune dead paths out loud, return a ≤600-word cited brief — no source means
+`UNVERIFIED`, never laundered into fact) and `verifier` (wrong-until-proven; CONFIRMED /
+PLAUSIBLE / REFUTED, every verdict citing command output, file:line, or URL + quote; uncertain
+defaults to PLAUSIBLE). Both are reusable from any session via the Agent tool. Their models are
+split on purpose: the researcher is pinned to Sonnet — it is the fan-out, 3–7 run in parallel,
+and scoped read-and-cite is default-tier work — while the verifier inherits the session model,
+so the judge is never weaker than the session trusting its verdicts. Cheap many, strong judge.
+
+**`/research` is a claim gate, not a fan-out.** Parallel researchers per non-overlapping
+sub-question (3/5/7 by complexity, eight agents ceiling), then every non-obvious claim is
+attacked by the verifier: REFUTED claims are dropped *and the drop is reported*, PLAUSIBLE ones
+carry `(unverified)` inline. The survey that shaped this found OSS research agents share one
+gap — none adversarially verify their own findings. Output: `./research/<slug>.md` with
+provenance frontmatter, plus 1–3 conclusions stored to memory at source-tier confidence
+(0.9 docs / 0.7 blog / 0.5 forum). Security is inherited, not reinvented: core's spotlight
+already scans every fetch; downloaded files go through `/security-coach:scan` before trust.
+
+**`/ingest` — documents in, markdown out** — ported from keka's tested engine and upgraded.
+Deterministic script does routing, conversion, sha256-of-source idempotency (a renamed file is
+still already ingested), collision refusal, provenance frontmatter, and the human index; the
+model does only what needs judgment. New here: the `plan` output names who actually converts
+each input **on this machine** (pandoc / markitdown / defuddle, detected never installed), and
+every written doc feeds a **paragraph-level FTS5 index** (`.atlas-index.db`, `node:sqlite`,
+gitignored, rebuilt anywhere by `reindex`) — ask a question, get the exact paragraph with its
+heading trail. Embeddings are deliberately deferred until keyword search measurably misses.
+Team-doc routes documented: Notion markdown export rides the copy route, Confluence HTML export
+rides pandoc, MCP connectors are used when detected. Also fixed from the ancestor: the pandoc
+spawn no longer passes an unquoted path through a shell — a filename with `&` or spaces
+converts fine, and the test proves it.
+
+**`/analyze` — the on-demand pieces**: `verify` (one verifier run against a claim, URL, or
+file), `translate` (doc-to-code: a stub in *this project's* idiom — conventions from
+investigation-coach's stack/patterns when present — citing the doc section it derives from and
+shipping with its runnable check; upstream test cases port the same way, each mapped to its
+origin), and `stats` (what the corpus knows, what has gone stale).
+
+Zero core changes, zero hook changes — nothing else bumped. atlas-coach depends on
+security-coach explicitly: the scan-before-trust step is part of the design, not a suggestion.
+Deferred with reasons in the plan: semantic embeddings (until FTS misses are recorded),
+internal-docs gap analysis (v0.7, builds on the index), n8n and all external automation
+(Routines and Workflows already cover it).
+
+
 ## v0.5.0 — Investigation coach (2026-08-15)
 
 The fifth focus: onboarding people, not sessions. A new teammate's first week is spent asking
