@@ -3,7 +3,7 @@
 </p>
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
-One focus per release. So far: memory, then prompts.</p>
+One focus per release. So far: memory, prompts, then security.</p>
 
 ---
 
