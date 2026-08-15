@@ -69,6 +69,10 @@ product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114.
 Only `recall` fires on its own — Claude should reach for memory unprompted when a question matches
 prior work. Everything else waits for you. A skill with side effects should run when you say so.
 
+Every skill except `recall` is pinned to Haiku at low effort — CLI-and-format work should never
+bill at frontier rates. `recall` stays on the session model because it runs inside a real answer.
+The hooks' own LLM calls (plan-mode review, session-end distillation) are hardcoded to Haiku too.
+
 ## Coaching from evidence, not etiquette
 
 Most prompt advice is somebody's taste, asserted. AI Coach records which detectors fired on each
