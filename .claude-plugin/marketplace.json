@@ -53,6 +53,18 @@
       ]
     },
     {
+      "name": "harness-coach",
+      "source": "./plugins/harness-coach",
+      "description": "The toolbox next to the coach: detect, pick, and install the partner tools that pair well with Claude Code — /partners.",
+      "category": "productivity",
+      "tags": [
+        "tools",
+        "setup",
+        "partners",
+        "onboarding"
+      ]
+    },
+    {
       "name": "ai-coach",
       "source": "./plugins/ai-coach",
       "description": "Install this one. Pulls in the engine and every coach released so far.",

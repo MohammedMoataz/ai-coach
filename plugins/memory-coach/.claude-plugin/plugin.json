@@ -1,13 +1,13 @@
 {
   "name": "memory-coach",
   "displayName": "Memory Coach",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Memory you can search, hand to a teammate, and trust. Ships skills only — every hook and the engine itself belong to ai-coach-core.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",
   "keywords": ["memory", "team", "knowledge-sharing", "handoff"],
   "dependencies": [
-    { "name": "ai-coach-core", "version": "~0.3.0" }
+    { "name": "ai-coach-core", "version": "~0.4.0" }
   ]
 }

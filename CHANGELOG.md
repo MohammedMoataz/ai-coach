@@ -2,6 +2,37 @@
 
 Releases are git tags, one line per plugin: `{plugin}--v{version}`.
 
+## v0.4.0 — Partners (2026-08-15)
+
+The fourth focus: the tools standing next to the coach. AI Coach keeps shipping coaching and
+nothing else — `/harness-coach:partners` is how it points at everything it deliberately did not
+absorb.
+
+**harness-coach v0.1.0** — one skill, ~72 measured always-on tokens. A curated catalog of seven
+partners: gh CLI, chrome-devtools, figma, obsidian, ast-grep, gsd-browser, spec-kit. The skill
+detects what is installed in one batched sweep, briefs you with one verdict line per tool — the
+caveat attached, because the caveat is the useful part — and installs only what you pick.
+Picking nothing is a fine outcome.
+
+**Every verdict carries its honest limit.** An MCP server added with `claude mcp add` does not
+load into the running session — the skill says "restart Claude Code", never "ready to use",
+because pretending otherwise wastes the next ten minutes of the user's life. Official plugins
+(chrome-devtools, figma) do load mid-session via `/reload-plugins`, and the catalog says which is
+which. chrome-devtools ships with its context cost stated (~30–60 tools while enabled). obsidian
+opens with the cheaper truth: if the vault is markdown files, pointing Claude at the folder needs
+no install at all. gsd-browser is marked never-automate — interactive setup, and on Windows it
+runs natively from PowerShell or the daemon dies.
+
+**No auto-install mode, deliberately.** keka shipped ask/auto/off; Anthropic's own marketplace
+precedent is detect-and-point — their LSP table tells you to install binaries yourself. Consent
+per pick is the product. Verified installs (re-checked, not assumed) are written back as a
+`reference` memory, so the next session's brief already knows the tool exists.
+
+**Core 0.4.0** adds the one-time nudge: a single session-start line pointing at the skill, gone
+forever once `engine partners-seen` writes its marker on the first run. Off switch:
+`AICOACH_PARTNERS=off` or the `partners` plugin setting.
+
+
 ## v0.3.0 — Security coach (2026-08-15)
 
 The third focus. Three thin pillars, each honest about its limits.

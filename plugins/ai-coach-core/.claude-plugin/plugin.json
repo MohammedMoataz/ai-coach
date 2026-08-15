@@ -1,7 +1,7 @@
 {
   "name": "ai-coach-core",
   "displayName": "AI Coach Core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The engine every AI Coach plugin runs on. Owns the session brief, the memory database, the secrets guard, and every hook — so the coach plugins above it ship skills and nothing else.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
@@ -44,6 +44,12 @@
       "type": "boolean",
       "title": "Injection check on fetched content",
       "description": "Scans WebFetch/WebSearch results and out-of-repo file reads for prompt-injection markers, and reminds the model to treat matches as data. Warn-only, zero LLM calls, fails open.",
+      "default": true
+    },
+    "partners": {
+      "type": "boolean",
+      "title": "Partner tools note",
+      "description": "A one-time session note suggesting /harness-coach:partners — a curated list of tools that pair well with Claude Code. Disappears after the first run; nothing ever installs without your pick.",
       "default": true
     },
     "seed_auto": {

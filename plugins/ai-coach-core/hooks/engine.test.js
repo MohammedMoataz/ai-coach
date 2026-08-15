@@ -753,4 +753,20 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   assert.ok(!/security finding/.test(e.brief(4000, secProj)), 'no findings line once retested');
 }
 
+// --- v0.4.0: partners-seen marker -------------------------------------------
+// existence is the whole contract: the nudge checks nothing but "is the file there"
+{
+  const { spawnSync } = require('node:child_process');
+  assert.ok(!fs.existsSync(e.PARTNERS_SEEN), 'fresh tree has no marker');
+  let r = spawnSync('node', [path.join(__dirname, 'engine.js'), 'partners-seen'],
+    { encoding: 'utf8', env: process.env, timeout: 20000 });
+  assert.strictEqual(r.status, 0, 'partners-seen exit 0: ' + r.stderr);
+  assert.ok(fs.existsSync(e.PARTNERS_SEEN), 'marker written');
+  const first = fs.readFileSync(e.PARTNERS_SEEN, 'utf8');
+  assert.ok(/^\d{4}-\d{2}-\d{2}T/.test(first), 'content is a timestamp, for humans only');
+  r = spawnSync('node', [path.join(__dirname, 'engine.js'), 'partners-seen'],
+    { encoding: 'utf8', env: process.env, timeout: 20000 });
+  assert.strictEqual(r.status, 0, 'second run is a harmless overwrite, not an error');
+}
+
 console.log('engine.test.js: ALL PASS');

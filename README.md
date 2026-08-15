@@ -3,7 +3,7 @@
 </p>
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
-One focus per release. So far: memory, prompts, then security.</p>
+One focus per release. So far: memory, prompts, security, then your toolbox.</p>
 
 ---
 
@@ -40,10 +40,12 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **memory-coach** | Skills only: `/recall`, `/handoff`, `/team`, `/project`, `/name`, `/doctor`. |
 | **prompt-coach** | Skills only: `/prompt`, `/prompt-stats`. |
 | **security-coach** | Skills only: `/scan`, `/audit`, `/triage`. |
+| **harness-coach** | Skills only: `/partners` — the tools worth having next to the coach. |
 | **ai-coach** | The bundle. Install this one. |
 
-Measured with `claude plugin details`, not estimated: **~613 always-on tokens** for the whole
-product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114, security-coach ~201.
+Measured with `claude plugin details`, not estimated: **~685 always-on tokens** for the whole
+product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114, security-coach ~201,
+harness-coach ~72.
 
 ## What happens on its own
 
@@ -69,13 +71,15 @@ product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114, sec
   off its own alarm.
 - **Guarded reads of repo files**: everything the engine reads from `.ai-coach/` goes through a
   symlink-refusing, size-capped read — a planted link to `~/.ssh/id_rsa` cannot flow into context.
+- **One partners note, once**: a single session-start line pointing at `/harness-coach:partners`,
+  gone forever after the first run. Nothing ever installs without your pick.
 
 ## What you drive
 
 `/memory-coach:recall` · `/memory-coach:handoff` · `/memory-coach:team` · `/memory-coach:project` ·
 `/memory-coach:name` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
 `/prompt-coach:prompt-stats` · `/security-coach:scan` · `/security-coach:audit` ·
-`/security-coach:triage`
+`/security-coach:triage` · `/harness-coach:partners`
 
 Only `recall` fires on its own — Claude should reach for memory unprompted when a question matches
 prior work. Everything else waits for you. A skill with side effects should run when you say so.
@@ -137,7 +141,7 @@ the databases at a path that never moves.
 
 Plugin settings on `ai-coach-core`, or `AICOACH_*` env vars to override:
 `brief_chars` (4000) · `coach` (on) · `learn` (on) · `plan_review` (on) · `guard` (on) ·
-`spotlight` (on) · `seed_auto` (on) · `default_trust` (`full`).
+`spotlight` (on) · `partners` (on) · `seed_auto` (on) · `default_trust` (`full`).
 
 ## Tests
 

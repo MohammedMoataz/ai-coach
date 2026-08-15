@@ -16,6 +16,7 @@ const PROJECTS_DIR = path.join(ROOT, 'projects');
 const SCHEMA_PATH = path.join(__dirname, '..', 'memory', 'schema.sql');
 const USER_SCHEMA_PATH = path.join(__dirname, '..', 'memory', 'user-schema.sql');
 const LOG_PATH = process.env.AICOACH_LOG || path.join(HOME, 'log.jsonl');
+const PARTNERS_SEEN = path.join(ROOT, 'partners-seen'); // marker: /partners ran once, stop nudging
 
 // failures append here instead of vanishing — "AI Coach just stopped working" must be diagnosable
 function log(where, err) {
@@ -1249,6 +1250,11 @@ function cli() {
     case 'session-end': sessionEnd(a[0], a.slice(1).join(' ')); break;
     case 'observe': observe(a[0], a[1], a[2], a.slice(3).join(' ')); break;
     case 'prune': console.log('pruned', pruneObservations(a[0]), 'observations'); break;
+    case 'partners-seen': // existence is the signal; the timestamp is only for a human reading the file
+      fs.mkdirSync(path.dirname(PARTNERS_SEEN), { recursive: true });
+      fs.writeFileSync(PARTNERS_SEEN, new Date().toISOString() + '\n');
+      console.log('partners nudge dismissed');
+      break;
     case 'seed-export': {
       const rest = []; let t = null, proj = null, encrypt = false, dir = null, rp = null;
       for (let i = 0; i < a.length; i++) {
@@ -1364,7 +1370,7 @@ function cli() {
     default:
       console.log('usage: engine.js <init|add|forget|search|brief|session-start|session-end|name|observe|prune|'
         + 'seed-export|seed-import|auto-seed|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|'
-        + 'prompt-stats|prompt-check|injection-scan|finding-add|finding-update|findings|export>');
+        + 'prompt-stats|prompt-check|injection-scan|finding-add|finding-update|findings|partners-seen|export>');
   }
 }
 
@@ -1376,7 +1382,7 @@ module.exports = {
   safeRead, strings, injectionScan, INJECTION_MARKERS, findingAdd, findingUpdate, findingList,
   seedExport, seedImport, autoSeed, project, repo, projectDecl, projectFile, registerRepo,
   repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn,
-  DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, author, username,
+  DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, PARTNERS_SEEN, author, username,
   task, taskSlug, roster, roleOf, setTrust, trustList, trustLevel,
   nameSession, sessionLabel, autoName, seal, unseal, isSealed, seedKey,
 };

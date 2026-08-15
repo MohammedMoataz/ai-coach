@@ -56,6 +56,12 @@ process.stdin.on('end', () => {
         out.push(`Team seed present (.ai-coach/team-seed.jsonl, ${n} entries) — run /handoff import to load teammate memories.`);
       }
     } catch { /* nudge is optional */ }
+    // partners: nudge once, until the first /partners run writes the marker (engine partners-seen)
+    try {
+      if (engine.optOn('partners', 'on') && !fs.existsSync(engine.PARTNERS_SEEN)) {
+        out.push('Partner tools worth pairing with this setup — run /harness-coach:partners to review them. (This note disappears after the first run.)');
+      }
+    } catch { /* nudge is optional */ }
     if (out.length || label) {
       console.log(JSON.stringify({
         hookSpecificOutput: {

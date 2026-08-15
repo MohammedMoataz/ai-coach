@@ -376,4 +376,22 @@ assert.strictEqual(r.stdout.trim(), '', 'spotlight:off silences it');
 r = spawnSync('node', [path.join(__dirname, 'spotlight.js')], { input: '{{{', encoding: 'utf8', env, timeout: 20000 });
 assert.strictEqual(r.status, 0, 'garbage stdin fails open');
 
+// --- v0.4.0: partners nudge -------------------------------------------------
+// nudges once, in the model-facing channel like its sibling nudges, until the
+// first /partners run writes the marker — then never again
+
+r = run('session-start.js', { session_id: 'pn1', cwd: '/demo/proj' });
+const pn = JSON.parse(r.stdout.trim());
+assert.ok(pn.hookSpecificOutput.additionalContext.includes('/harness-coach:partners'),
+  'fresh install gets the partners nudge: ' + r.stdout);
+assert.ok(!('systemMessage' in pn), 'nudge rides additionalContext only');
+
+r = run('session-start.js', { session_id: 'pn2', cwd: '/demo/proj' }, { AICOACH_PARTNERS: 'off' });
+assert.ok(!r.stdout.includes('/harness-coach:partners'), 'partners:off silences the nudge');
+
+r = spawnSync('node', [path.join(__dirname, 'engine.js'), 'partners-seen'], { encoding: 'utf8', env, timeout: 20000 });
+assert.ok(r.stdout.includes('partners nudge dismissed'), 'partners-seen confirms: ' + r.stdout);
+r = run('session-start.js', { session_id: 'pn3', cwd: '/demo/proj' });
+assert.ok(!r.stdout.includes('/harness-coach:partners'), 'marker kills the nudge for good');
+
 console.log('hooks.test.js: ALL PASS');
