@@ -8,6 +8,9 @@ const os = require('node:os');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-coach-test-'));
 process.env.AICOACH_DB = path.join(tmp, 'test.db');
+// a host shell exporting FORCE_COLOR would colorize console.log(number) in spawned CLI children,
+// breaking Number() parses — pin colors off so the suite is host-independent
+process.env.FORCE_COLOR = '0';
 process.env.AICOACH_LOG = path.join(tmp, 'log.jsonl');
 process.env.AICOACH_AUTHOR = 'tester@example.com'; // deterministic identity (no git dependence)
 const e = require('./engine.js');

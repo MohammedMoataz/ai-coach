@@ -3,7 +3,7 @@
 </p>
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
-One focus per release. So far: memory, prompts, security, then your toolbox.</p>
+One focus per release. So far: memory, prompts, security, your toolbox, then onboarding.</p>
 
 ---
 
@@ -41,11 +41,12 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **prompt-coach** | Skills only: `/prompt`, `/prompt-stats`. |
 | **security-coach** | Skills only: `/scan`, `/audit`, `/triage`. |
 | **harness-coach** | Skills only: `/partners` — the tools worth having next to the coach. |
+| **investigation-coach** | Skills only: `/onboard`, `/map`, `/study` — onboard anyone onto the project. |
 | **ai-coach** | The bundle. Install this one. |
 
-Measured with `claude plugin details`, not estimated: **~685 always-on tokens** for the whole
+Measured with `claude plugin details`, not estimated: **~910 always-on tokens** for the whole
 product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114, security-coach ~201,
-harness-coach ~72.
+harness-coach ~72, investigation-coach ~225.
 
 ## What happens on its own
 
@@ -79,14 +80,18 @@ harness-coach ~72.
 `/memory-coach:recall` · `/memory-coach:handoff` · `/memory-coach:team` · `/memory-coach:project` ·
 `/memory-coach:name` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
 `/prompt-coach:prompt-stats` · `/security-coach:scan` · `/security-coach:audit` ·
-`/security-coach:triage` · `/harness-coach:partners`
+`/security-coach:triage` · `/harness-coach:partners` · `/investigation-coach:onboard` ·
+`/investigation-coach:map` · `/investigation-coach:study`
 
 Only `recall` fires on its own — Claude should reach for memory unprompted when a question matches
 prior work. Everything else waits for you. A skill with side effects should run when you say so.
 
-Every skill except `recall` is pinned to Haiku at low effort — CLI-and-format work should never
-bill at frontier rates. `recall` stays on the session model because it runs inside a real answer.
-The hooks' own LLM calls (plan-mode review, session-end distillation) are hardcoded to Haiku too.
+Every CLI-and-format skill is pinned to Haiku at low effort — that work should never bill at
+frontier rates. Two kinds stay on the session model, deliberately: `recall`, because it runs
+inside a real answer, and investigation-coach's three, because reading a codebase and
+synthesizing docs is real analysis — pinned down, the output reads like a file listing. Those
+three say up front that they cost real tokens, and take `--feature` to bound the spend. The
+hooks' own LLM calls (plan-mode review, session-end distillation) are hardcoded to Haiku too.
 
 ## Coaching from evidence, not etiquette
 

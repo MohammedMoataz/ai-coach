@@ -15,6 +15,9 @@ const env = {
   AICOACH_LOG: path.join(tmp, 'log.jsonl'),
   AICOACH_LEARN: 'off',
   AICOACH_AUTHOR: 'tester@example.com',
+  // a host shell exporting FORCE_COLOR makes node colorize console.log(number) in the spawned
+  // children, and Number('\x1b[33m1\x1b[39m') is NaN — pin colors off so the suite is host-independent
+  FORCE_COLOR: '0',
 };
 const run = (file, input, extraEnv) => spawnSync('node', [path.join(__dirname, file)], {
   input: JSON.stringify(input), encoding: 'utf8', env: { ...env, ...extraEnv }, timeout: 20000,

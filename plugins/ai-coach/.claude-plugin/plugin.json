@@ -1,7 +1,7 @@
 {
   "name": "ai-coach",
   "displayName": "AI Coach",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Install this one. Pulls in the engine and every coach released so far. Ships no components of its own, so it costs nothing at session start.",
   "author": {
     "name": "Moataz",
@@ -33,6 +33,10 @@
     },
     {
       "name": "harness-coach",
+      "version": "~0.1.0"
+    },
+    {
+      "name": "investigation-coach",
       "version": "~0.1.0"
     }
   ]

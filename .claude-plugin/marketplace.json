@@ -65,6 +65,18 @@
       ]
     },
     {
+      "name": "investigation-coach",
+      "source": "./plugins/investigation-coach",
+      "description": "Onboard anyone onto the project: generated docs, an architecture map you can open in Obsidian, and study material — /onboard, /map, /study.",
+      "category": "productivity",
+      "tags": [
+        "onboarding",
+        "architecture",
+        "documentation",
+        "study"
+      ]
+    },
+    {
       "name": "ai-coach",
       "source": "./plugins/ai-coach",
       "description": "Install this one. Pulls in the engine and every coach released so far.",
