@@ -1,7 +1,7 @@
 {
   "name": "ai-coach-core",
   "displayName": "AI Coach Core",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "The engine every AI Coach plugin runs on. Owns the session brief, the memory database, the secrets guard, and every hook — so the coach plugins above it ship skills and nothing else.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
@@ -38,6 +38,12 @@
       "type": "boolean",
       "title": "Secrets guard",
       "description": "Blocks tool calls carrying real credentials and asks before secret-ish payloads or credential-file reads. Fails open, always logged.",
+      "default": true
+    },
+    "spotlight": {
+      "type": "boolean",
+      "title": "Injection check on fetched content",
+      "description": "Scans WebFetch/WebSearch results and out-of-repo file reads for prompt-injection markers, and reminds the model to treat matches as data. Warn-only, zero LLM calls, fails open.",
       "default": true
     },
     "seed_auto": {

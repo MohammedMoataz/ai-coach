@@ -39,10 +39,11 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors. Everything else depends on it. |
 | **memory-coach** | Skills only: `/recall`, `/handoff`, `/team`, `/project`, `/name`, `/doctor`. |
 | **prompt-coach** | Skills only: `/prompt`, `/prompt-stats`. |
+| **security-coach** | Skills only: `/scan`, `/audit`, `/triage`. |
 | **ai-coach** | The bundle. Install this one. |
 
-Measured with `claude plugin details`, not estimated: **~412 always-on tokens** for the whole
-product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114.
+Measured with `claude plugin details`, not estimated: **~613 always-on tokens** for the whole
+product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114, security-coach ~201.
 
 ## What happens on its own
 
@@ -59,12 +60,22 @@ product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114.
   legitimate way to work, and a coach that nags at it deserves to be switched off.
 - **A secrets guard**: real credentials are blocked outright; secret-*ish* payloads and
   credential-file reads ask first. Fails open, always logged.
+- **An injection check on what comes back**: WebFetch/WebSearch results and file reads from
+  outside the repo are scanned for prompt-injection markers — invisible Unicode, "ignore previous
+  instructions" phrasing, forged tool syntax, hidden HTML. A hit warns you and reminds the model
+  to treat the content as data. **Warn-only and honest about it**: deterministic scanning is a
+  pre-filter attackers can evade, not a gate, and it never pretends to cover images. Zero LLM
+  calls. In-repo reads are never scanned — a repo whose tests quote attack strings must not set
+  off its own alarm.
+- **Guarded reads of repo files**: everything the engine reads from `.ai-coach/` goes through a
+  symlink-refusing, size-capped read — a planted link to `~/.ssh/id_rsa` cannot flow into context.
 
 ## What you drive
 
 `/memory-coach:recall` · `/memory-coach:handoff` · `/memory-coach:team` · `/memory-coach:project` ·
 `/memory-coach:name` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
-`/prompt-coach:prompt-stats`
+`/prompt-coach:prompt-stats` · `/security-coach:scan` · `/security-coach:audit` ·
+`/security-coach:triage`
 
 Only `recall` fires on its own — Claude should reach for memory unprompted when a question matches
 prior work. Everything else waits for you. A skill with side effects should run when you say so.
@@ -126,7 +137,7 @@ the databases at a path that never moves.
 
 Plugin settings on `ai-coach-core`, or `AICOACH_*` env vars to override:
 `brief_chars` (4000) · `coach` (on) · `learn` (on) · `plan_review` (on) · `guard` (on) ·
-`seed_auto` (on) · `default_trust` (`full`).
+`spotlight` (on) · `seed_auto` (on) · `default_trust` (`full`).
 
 ## Tests
 

@@ -2,6 +2,44 @@
 
 Releases are git tags, one line per plugin: `{plugin}--v{version}`.
 
+## v0.3.0 — Security coach (2026-08-15)
+
+The third focus. Three thin pillars, each honest about its limits.
+
+**Fetched content entered the model unscanned.** The guard checked what left the machine; nothing
+checked what came back. A new PostToolUse hook (`spotlight.js`) scans WebFetch/WebSearch results —
+and file reads from *outside* the repo — for deterministic injection markers: invisible Unicode,
+"ignore previous instructions" phrasing, forged roles and tool syntax, hidden HTML, exfiltration
+links. On a hit it warns both audiences: a one-line `systemMessage` for you, a spotlighting
+reminder for the model. **Warn-only, never a block** — published evasion research puts bypass
+rates against guardrails at 20–72%, and an article quoting an attack is not an attack, so this is
+a pre-filter that says so out loud. In-repo reads are never scanned: a repo whose tests quote
+attack strings must not set off its own alarm. Off switch: `AICOACH_SPOTLIGHT=off`.
+
+**The engine's own reads are now guarded.** Every repo-controlled file the engine consumed
+(`project.md`, `team.md`, `seed.key`, seeds) was a plain `readFileSync` — a planted symlink at
+`.ai-coach/project.md` pointing at `~/.ssh/id_rsa` would have flowed into model context. All of
+them now go through `safeRead()`: symlinks refused, size capped, fail-open preserved. This was the
+known debt from the caveman teardown, closed in the release where it belongs.
+
+**security-coach v0.1.0** — skills only, like its siblings. `/scan` judges files or pasted content
+you are about to trust (and says plainly that images cannot be regex-scanned). `/audit` runs the
+scanners you already have — Opengrep/Semgrep, osv-scanner, gitleaks — never installs, never
+reimplements, and reads results in KEV > EPSS > CVSS order because exploited beats likely beats
+severe-on-paper. `/triage` turns a pentest report into tracked findings with the discipline the
+field keeps writing about: severity recorded as the pentester's claim beside the team's own
+assessment, nothing closed without a retest, risk acceptance only with a named sign-off, fix the
+CWE class not the PoC.
+
+**Findings are local, and provably so.** A new `findings` table holds the canonical rows; the
+human-readable copies live in `.ai-coach/security/`, which the triage skill keeps gitignored — an
+unfixed vulnerability in a committed file is disclosure. Findings never enter the team seed:
+`seedExport` is table-explicit, and a test now locks evidence text out of the seed format. The
+brief gained one findings-aware coach line (count and oldest date, computed live), ranked below an
+unrecorded failure. **No SLA numbers anywhere** — published windows contradict each other, so the
+coach records the team's own numbers or stays quiet.
+
+
 ## v0.2.1 — `--team` for prompt-stats (2026-08-12)
 
 `/prompt-coach:prompt-stats --team` was documented in v0.2.0 but had no engine behind it. It does now

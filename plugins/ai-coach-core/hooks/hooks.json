@@ -14,7 +14,8 @@
     ],
     "PostToolUse": [
       { "matcher": "Edit|Write|Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.js\"", "statusMessage": "Recording observation..." }] },
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/seed-refresh.js\"", "timeout": 15, "statusMessage": "Refreshing team seed..." }] }
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/seed-refresh.js\"", "timeout": 15, "statusMessage": "Refreshing team seed..." }] },
+      { "matcher": "WebFetch|WebSearch|Read", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/spotlight.js\"", "timeout": 10, "statusMessage": "Checking fetched content..." }] }
     ],
     "PostToolUseFailure": [
       { "matcher": "Edit|Write|Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.js\"", "statusMessage": "Recording failure..." }] }

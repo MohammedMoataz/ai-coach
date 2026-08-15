@@ -41,6 +41,18 @@
       ]
     },
     {
+      "name": "security-coach",
+      "source": "./plugins/security-coach",
+      "description": "Injection defense on every fetch, OWASP-grounded audits, and pentest triage: /scan, /audit, /triage.",
+      "category": "productivity",
+      "tags": [
+        "security",
+        "owasp",
+        "prompt-injection",
+        "triage"
+      ]
+    },
+    {
       "name": "ai-coach",
       "source": "./plugins/ai-coach",
       "description": "Install this one. Pulls in the engine and every coach released so far.",

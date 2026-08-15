@@ -26,14 +26,6 @@ const SENSITIVE_PATH = /(?:^|[\\/])(?:\.env(?:\.[\w.-]+)?|credentials(?:\.\w+)?|
 const EXEMPT = /\.(?:example|sample|template|dist)$/i; // .env.example is documentation, not a secret
 const OUTBOUND = new Set(['Bash', 'WebFetch']);
 
-// scan raw string values, not JSON.stringify(tool_input) — serialization escapes let
-// payloads slip past the patterns, and JSON syntax causes false hits
-function strings(v, out) {
-  if (typeof v === 'string') out.push(v);
-  else if (Array.isArray(v)) for (const x of v) strings(x, out);
-  else if (v && typeof v === 'object') for (const k of Object.keys(v)) strings(v[k], out);
-  return out;
-}
 const sensitivePath = (p) => SENSITIVE_PATH.test(p) && !EXEMPT.test(p);
 function ask(reason) {
   console.log(JSON.stringify({ hookSpecificOutput: {
@@ -51,7 +43,9 @@ process.stdin.on('end', () => {
     const data = JSON.parse(raw || '{}');
     const tool = data.tool_name || '';
     const input = data.tool_input || {};
-    const text = strings(input, []).join('\n');
+    // raw string values, not JSON.stringify — serialization escapes let payloads slip past
+    // the patterns, and JSON syntax causes false hits (collector shared with spotlight.js)
+    const text = engine.strings(input).join('\n');
     for (const re of BLOCK) {
       if (re.test(text)) {
         console.error('ai-coach-guard: blocked — payload contains a credential matching ' + re.source.slice(0, 40));

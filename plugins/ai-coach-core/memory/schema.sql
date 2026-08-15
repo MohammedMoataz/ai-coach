@@ -96,6 +96,30 @@ CREATE TABLE IF NOT EXISTS prompt_signals (
   created    TEXT DEFAULT (datetime('now'))
 );
 
+-- Security findings: pentest/audit/scan results being triaged. LOCAL ONLY by design:
+-- seedExport() is table-explicit and this table must never join it — `detail` carries
+-- vulnerability evidence, which must not travel in a committed seed. The human-facing
+-- copies live in gitignored .ai-coach/security/*.md, written by /security-coach:triage.
+-- Both severity columns persist so a downgrade is visible: `severity_reported` is the
+-- report's claim, `severity_assessed` is the team's judgment and stays NULL until made.
+-- No SLA columns and no SLA defaults anywhere — sources conflict; the team owns its numbers.
+CREATE TABLE IF NOT EXISTS findings (
+  id                INTEGER PRIMARY KEY,
+  project           TEXT,
+  repo              TEXT,
+  source            TEXT,                  -- pentest | audit | scan | disclosure
+  title             TEXT NOT NULL,
+  cwe               TEXT,                  -- fix the class, not the PoC
+  severity_reported TEXT,
+  severity_assessed TEXT,
+  status            TEXT DEFAULT 'open',   -- open | fixing | fixed | retested | accepted-risk | false-positive
+  owner             TEXT,
+  detail            TEXT,                  -- evidence / repro / location; never exported
+  created           TEXT DEFAULT (datetime('now')),
+  updated           TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_findings_status ON findings(project, status, created);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
   text, content='memories', content_rowid='id'
 );

@@ -26,6 +26,28 @@ function log(where, err) {
   } catch { /* logging must never throw */ }
 }
 
+// Guarded read for repo-controlled files (.ai-coach/project.md, team.md, seed.key, seeds):
+// a planted symlink (.ai-coach/project.md -> ~/.ssh/id_rsa) must not flow into model context,
+// and a giant file must not blow a hook's budget. lstat sees the link itself, so a symlinked
+// path is refused rather than followed. Callers keep their own try/catch — fail-open stands.
+function safeRead(file, maxBytes) {
+  const cap = maxBytes || 256 * 1024;
+  const st = fs.lstatSync(file);
+  if (!st.isFile()) throw new Error('not a regular file: ' + file);
+  if (st.size > cap) throw new Error('file exceeds ' + cap + ' bytes: ' + file);
+  return fs.readFileSync(file, 'utf8');
+}
+
+// Collect raw string values, not JSON.stringify(payload) — serialization escapes let payloads
+// slip past patterns, and JSON syntax causes false hits. Shared by guard.js and spotlight.js.
+function strings(v, out) {
+  const o = out || [];
+  if (typeof v === 'string') o.push(v);
+  else if (Array.isArray(v)) for (const x of v) strings(x, o);
+  else if (v && typeof v === 'object') for (const k of Object.keys(v)) strings(v[k], o);
+  return o;
+}
+
 // schema.sql is CREATE ... IF NOT EXISTS throughout, so a new COLUMN in it is silently
 // ignored on a database that already exists. Every added column must also land here, or
 // upgrading installs keep the old shape and every insert naming the column throws.
@@ -218,7 +240,7 @@ function projectFile(cwd) {
 function projectDecl(cwd) {
   const out = { name: null, repos: [] };
   try {
-    for (const line of fs.readFileSync(projectFile(cwd), 'utf8').split('\n')) {
+    for (const line of safeRead(projectFile(cwd)).split('\n')) {
       const n = line.match(/^\s*name:\s*(.+?)\s*$/i);
       if (n) { out.name = n[1].toLowerCase(); continue; }
       const r = line.match(/^\s*[-*]\s*(\S+)\s*$/); // members of the `repos:` list
@@ -263,7 +285,7 @@ function teamFile(cwd) {
 function roster(cwd) {
   const map = {};
   try {
-    for (const line of fs.readFileSync(teamFile(cwd), 'utf8').split('\n')) {
+    for (const line of safeRead(teamFile(cwd)).split('\n')) {
       const email = line.match(/[\w.+-]+@[\w.-]+\w/);
       if (!email) continue;
       const name = line.match(/^\s*[-*]\s*([^<(]+?)\s*[<(]/);
@@ -525,6 +547,14 @@ function coachLine(p, t) {
       const n = open.length;
       return `${n} failure${n > 1 ? 's' : ''} surfaced here and nothing was written down — `
         + 'worth one memory before it repeats.';
+    }
+    // Open security findings outrank branch context but not an unrecorded failure. Count and
+    // date are computed live; there is deliberately no age threshold — the team owns its SLAs.
+    const fnd = db().prepare(
+      `SELECT COUNT(*) AS n, MIN(created) AS oldest FROM findings
+        WHERE project = ? AND status IN ('open','fixing')`).get(p);
+    if (fnd && fnd.n) {
+      return `${fnd.n} security finding${fnd.n > 1 ? 's' : ''} open (oldest ${String(fnd.oldest).slice(0, 10)}) — /security-coach:triage status.`;
     }
     if (t) {
       const me = author();
@@ -827,6 +857,79 @@ function pruneObservations(days) { // observations are session fuel, not knowled
   return n;
 }
 
+// ---------- injection markers ----------
+// Deterministic markers associated with indirect prompt injection in fetched/read content
+// (OWASP LLM Top 10 2025, LLM01). This is a LOW-CONFIDENCE PRE-FILTER, never a gate:
+// published evasion research puts guardrail bypass rates at 20-72% (arxiv 2504.11168), and
+// legitimate content trips these too — an article quoting an attack string is not an attack.
+// The consumer warns (Microsoft "spotlighting": mark untrusted content, remind the model to
+// treat it as data); it never blocks. Image-embedded instructions are invisible to regex
+// entirely — nothing here pretends otherwise.
+const INJECTION_MARKERS = [
+  { id: 'zero-width',       re: /[\u200B\u200C\u200D\u2060\uFEFF]/ },               // invisible chars hide text from the human reviewer
+  { id: 'unicode-tags',     re: /[\u{E0000}-\u{E007F}]/u },                        // tag block smuggles ASCII invisibly
+  { id: 'bidi',             re: /[\u202A-\u202E\u2066-\u2069]/ },                   // direction overrides reorder what the eye sees
+  { id: 'override-phrase',  re: /\b(?:ignore|disregard|forget)\s+(?:all\s+|any\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|directives?|rules?)\b/i }, // Rebuff pattern family
+  { id: 'new-instructions', re: /\b(?:new|updated|real|actual|true)\s+(?:system\s+)?(?:instructions?|prompt)\s*:/i },
+  { id: 'fake-role',        re: /(?:^|\n)\s*(?:system|assistant|developer)\s*:\s|<\|im_start\|>|\[\/?(?:INST|SYSTEM)\]/i }, // impersonated chat-transcript roles
+  { id: 'fake-tool',        re: /<(?:\w+:)?(?:invoke|function_calls|tool_call)\b/i }, // forged tool-call syntax
+  { id: 'conceal',          re: /\b(?:do\s+not|don'?t|never)\s+(?:tell|inform|mention|reveal|show)\s+(?:the\s+)?(?:user|human)\b/i }, // instructions that ask to hide from the user
+  { id: 'hidden-html',      re: /<[^>]{0,200}(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0)[^>]*>|<!--[\s\S]{200,}?-->/i }, // text the browser shows nobody
+  { id: 'md-image-exfil',   re: /!\[[^\]]*\]\(\s*https?:\/\/[^)\s]*[?&][^)\s]{8,}\)/i }, // image URL carrying a long query payload
+];
+
+function injectionScan(text) {
+  const t = String(text || '').slice(0, 512 * 1024); // scan cap: a hook has a time budget
+  const flags = [], counts = {};
+  let total = 0;
+  for (const m of INJECTION_MARKERS) {
+    const g = new RegExp(m.re.source, m.re.flags.includes('g') ? m.re.flags : m.re.flags + 'g');
+    const n = (t.match(g) || []).length;
+    if (!n) continue;
+    flags.push(m.id); counts[m.id] = n; total += n;
+  }
+  return { flags, counts, total };
+}
+
+// ---------- security findings ----------
+// A pentest/audit/scan finding being triaged. Local-only: the canonical rows live here, the
+// human-facing copies in gitignored .ai-coach/security/*.md — never in a seed (seedExport is
+// table-explicit and findings are not in it; a test locks that).
+const FINDING_STATUSES = new Set(['open', 'fixing', 'fixed', 'retested', 'accepted-risk', 'false-positive']);
+function findingAdd(f) {
+  const x = f || {};
+  if (!x.title) throw new Error('a finding needs a title');
+  const a = active();
+  db().prepare('INSERT INTO findings(project, repo, source, title, cwe, severity_reported, owner, detail) VALUES(?,?,?,?,?,?,?,?)')
+    .run(a.project, a.repo, x.source || 'pentest', String(x.title), x.cwe || null,
+      x.severity || null, x.owner || null, x.detail || null);
+  return db().prepare('SELECT last_insert_rowid() AS id').get().id;
+}
+function findingUpdate(id, x) {
+  const u = x || {};
+  if (u.status && !FINDING_STATUSES.has(String(u.status))) {
+    throw new Error('unknown status "' + u.status + '" — one of: ' + [...FINDING_STATUSES].join(', '));
+  }
+  const sets = ["updated = datetime('now')"];
+  const params = [];
+  for (const [col, val] of [['status', u.status], ['owner', u.owner], ['severity_assessed', u.severity_assessed]]) {
+    if (val !== undefined && val !== null) { sets.push(col + ' = ?'); params.push(String(val)); }
+  }
+  params.push(Number(id));
+  const n = db().prepare(`UPDATE findings SET ${sets.join(', ')} WHERE id = ?`).run(...params).changes;
+  if (!n) throw new Error('no finding #' + id);
+  return db().prepare('SELECT * FROM findings WHERE id = ?').get(Number(id));
+}
+function findingList(opts) {
+  const { status, open } = opts || {};
+  let sql = 'SELECT * FROM findings WHERE project = ?';
+  const params = [active().project];
+  if (status) { sql += ' AND status = ?'; params.push(String(status)); }
+  else if (open) sql += " AND status IN ('open','fixing')";
+  sql += ' ORDER BY created, id';
+  return db().prepare(sql).all(...params);
+}
+
 // ---------- team seed (git is the transport) ----------
 
 // The seed is committed to a repository, so it is readable by everyone with repo access.
@@ -835,7 +938,7 @@ function pruneObservations(days) { // observations are session fuel, not knowled
 function seedKey(dir) {
   if (process.env.AICOACH_SEED_KEY) return process.env.AICOACH_SEED_KEY;
   try {
-    const k = fs.readFileSync(path.join(String(dir || process.cwd()), '.ai-coach', 'seed.key'), 'utf8').trim();
+    const k = safeRead(path.join(String(dir || process.cwd()), '.ai-coach', 'seed.key')).trim();
     return k || null;
   } catch { return null; }
 }
@@ -921,7 +1024,7 @@ function seedExport(file, opts) {
 }
 
 function seedImport(file, dir) {
-  let raw = fs.readFileSync(file, 'utf8');
+  let raw = safeRead(file, 5 * 1024 * 1024); // a seed is line-JSON; 5 MB is already a huge team history
   let encrypted = false;
   if (isSealed(raw)) {
     const pass = seedKey(dir);
@@ -1092,6 +1195,49 @@ function cli() {
           + 'Correlation across your own sessions, not proof.');
       break;
     }
+    case 'injection-scan': { // deterministic markers only; a clean result is not a safety proof
+      if (!a[0]) { console.log('usage: engine.js injection-scan <file>'); break; }
+      const r = injectionScan(safeRead(a[0], 512 * 1024));
+      if (!r.total) { console.log('clean — no injection markers matched (low-confidence heuristic, not a safety proof)'); break; }
+      for (const id of r.flags) console.log(`${id} x${r.counts[id]}`);
+      break;
+    }
+    case 'finding-add': {
+      const f = {};
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] === '--source') f.source = a[++i];
+        else if (a[i] === '--title') f.title = a[++i];
+        else if (a[i] === '--cwe') f.cwe = a[++i];
+        else if (a[i] === '--severity') f.severity = a[++i];
+        else if (a[i] === '--owner') f.owner = a[++i];
+        else if (a[i] === '--detail') f.detail = a[++i];
+      }
+      if (!f.title) { console.log('usage: engine.js finding-add --title <t> [--source pentest|audit|scan|disclosure] [--cwe CWE-89] [--severity s] [--owner o] [--detail d]'); break; }
+      console.log('#' + findingAdd(f) + ' recorded (local only — findings never enter the team seed)');
+      break;
+    }
+    case 'finding-update': {
+      if (!a[0] || !/^\d+$/.test(a[0])) { console.log('usage: engine.js finding-update <id> [--status s] [--owner o] [--assessed severity]'); break; }
+      const x = {};
+      for (let i = 1; i < a.length; i++) {
+        if (a[i] === '--status') x.status = a[++i];
+        else if (a[i] === '--owner') x.owner = a[++i];
+        else if (a[i] === '--assessed') x.severity_assessed = a[++i];
+      }
+      const f = findingUpdate(a[0], x);
+      console.log(`#${f.id} [${f.status}] ${f.title}` + (f.severity_assessed ? ` · assessed ${f.severity_assessed}` : ''));
+      break;
+    }
+    case 'findings': {
+      const rows = findingList({ open: a.includes('--open'), status: flagValue('--status') });
+      if (a.includes('--json')) { console.log(JSON.stringify(rows, null, 2)); break; }
+      if (!rows.length) { console.log('no findings recorded' + (a.includes('--open') ? ' as open' : '')); break; }
+      for (const f of rows) {
+        console.log(`#${f.id} [${f.status}] ${f.severity_assessed || f.severity_reported || '?'} ${f.title}`
+          + (f.cwe ? ` (${f.cwe})` : '') + (f.owner ? ` -> ${f.owner}` : '') + ` · ${String(f.created).slice(0, 10)}`);
+      }
+      break;
+    }
     case 'prompt-check': { // deterministic evaluation of one prompt; no model call, no write
       const r = evaluatePrompt(a.join(' '));
       console.log(r.exempt ? 'exempt (question or exploration — not coached)'
@@ -1217,7 +1363,8 @@ function cli() {
     }, null, 2)); break;
     default:
       console.log('usage: engine.js <init|add|forget|search|brief|session-start|session-end|name|observe|prune|'
-        + 'seed-export|seed-import|auto-seed|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|prompt-stats|prompt-check|export>');
+        + 'seed-export|seed-import|auto-seed|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|'
+        + 'prompt-stats|prompt-check|injection-scan|finding-add|finding-update|findings|export>');
   }
 }
 
@@ -1226,6 +1373,7 @@ module.exports = {
   sessionStart, firstPrompt, observe, sessionEnd, sessionActivity, pruneObservations,
   correction, corrections, correctionSignal, markCorrectionsRecorded,
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,
+  safeRead, strings, injectionScan, INJECTION_MARKERS, findingAdd, findingUpdate, findingList,
   seedExport, seedImport, autoSeed, project, repo, projectDecl, projectFile, registerRepo,
   repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn,
   DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, author, username,

@@ -3,6 +3,7 @@ node_modules/
 *.db-wal
 *.db-shm
 .ai-coach/seed.key
+.ai-coach/security/
 *.log
 .DS_Store
 Thumbs.db

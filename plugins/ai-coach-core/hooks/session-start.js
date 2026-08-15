@@ -52,7 +52,7 @@ process.stdin.on('end', () => {
     try {
       const seed = require('node:path').join(String(data.cwd || process.cwd()), '.ai-coach', 'team-seed.jsonl');
       if (fs.existsSync(seed)) {
-        const n = fs.readFileSync(seed, 'utf8').split('\n').filter((l) => l.trim()).length;
+        const n = engine.safeRead(seed, 5 * 1024 * 1024).split('\n').filter((l) => l.trim()).length;
         out.push(`Team seed present (.ai-coach/team-seed.jsonl, ${n} entries) — run /handoff import to load teammate memories.`);
       }
     } catch { /* nudge is optional */ }
