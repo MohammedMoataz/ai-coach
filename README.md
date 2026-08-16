@@ -38,17 +38,22 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | Plugin | What it is |
 |---|---|
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors. Everything else depends on it. |
-| **memory-coach** | Skills only: `/recall`, `/handoff`, `/team`, `/project`, `/name`, `/doctor`. |
-| **prompt-coach** | Skills only: `/prompt`, `/prompt-stats`. |
-| **security-coach** | Skills only: `/scan`, `/audit`, `/triage`. |
-| **harness-coach** | Skills only: `/partners` — the tools worth having next to the coach. |
-| **investigation-coach** | Skills only: `/onboard`, `/map`, `/study` — onboard anyone onto the project. |
-| **atlas-coach** | `/research`, `/ingest`, `/analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
+| **memory-coach** | Skills only: `recall`, `handoff`, `team`, `project`, `name`, `doctor`. |
+| **prompt-coach** | Skills only: `prompt`, `prompt-stats`. |
+| **security-coach** | Skills only: `scan`, `audit`, `triage`. |
+| **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
+| **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project. |
+| **atlas-coach** | `research`, `ingest`, `analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
 | **ai-coach** | The bundle. Install this one. |
 
-Measured with `claude plugin details`, not estimated: **~1,317 always-on tokens** for the whole
-product — core and the bundle are 0, memory-coach ~298, prompt-coach ~114, security-coach ~201,
-harness-coach ~72, investigation-coach ~225, atlas-coach ~407 (three skills plus two agents).
+Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
+[What you drive](#what-you-drive).
+
+Measured with `claude plugin details`, not estimated — **~1,317 always-on tokens** for the whole
+product as of v0.6.0: core and the bundle are 0, memory-coach ~298, prompt-coach ~114,
+security-coach ~201, harness-coach ~72, investigation-coach ~225, atlas-coach ~407 (three skills
+plus two agents). Several skill descriptions were rewritten in v1.0.0, so the figure is due a
+re-measure; the shape holds — what is always on is the descriptions, and nothing else.
 
 ## What happens on its own
 
@@ -148,18 +153,36 @@ the databases at a path that never moves.
 
 ## Configuration
 
-Plugin settings on `ai-coach-core`, or `AICOACH_*` env vars to override:
-`brief_chars` (4000) · `coach` (on) · `learn` (on) · `plan_review` (on) · `guard` (on) ·
-`spotlight` (on) · `partners` (on) · `seed_auto` (on) · `default_trust` (`full`).
+Plugin settings on `ai-coach-core`, or the matching `AICOACH_*` env var to override one
+(`coach` → `AICOACH_COACH=off`):
+`brief_chars` (4000) · `coach` (on) · `corrections` (on) · `learn` (on) · `plan_review` (on) ·
+`guard` (on) · `spotlight` (on) · `partners` (on) · `seed_auto` (on) · `default_trust` (`full`).
+
+`coach` controls the coach *line*; `corrections` controls whether failures are recorded at all.
+They are separate on purpose — silencing a display line should not quietly empty the evidence
+`/prompt-coach:prompt-stats` measures against.
+
+## Uninstall
+
+```bash
+claude plugin uninstall ai-coach
+```
+
+Your data outlives the plugin by design: memories, sessions and trust live in `~/.ai-coach/`
+(`%USERPROFILE%\.ai-coach` on Windows), so reinstalling picks up where you left off. Delete that
+directory to remove it. Repo-side, `/handoff` and `/security-coach:triage` write inside
+`.ai-coach/` in the project — the team seed is meant to be committed; `.ai-coach/security/` is
+gitignored and never should be.
 
 ## Tests
 
 ```bash
 node plugins/ai-coach-core/hooks/engine.test.js
 node plugins/ai-coach-core/hooks/hooks.test.js
+node plugins/atlas-coach/tools/ingest.test.js
 ```
 
-No framework, throwaway databases, no network.
+No framework, throwaway databases, no network. CI runs all three on every push.
 
 ## License
 

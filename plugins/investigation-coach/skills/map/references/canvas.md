@@ -35,6 +35,13 @@ Layout: grid the nodes by layer (y per layer, x spread within), ~100px gaps — 
 auto-layout. Comfortable up to ~100 nodes; a surface-layer map should be well under 40. Mark an
 INFERRED edge with `"color": "2"` (orange) and `(inferred)` in its label.
 
+Verify it after writing — a malformed `.canvas` fails silently in Obsidian, which looks exactly
+like an empty diagram. One command, and it also counts the nodes against the ceiling below:
+
+```bash
+node -e "const c=JSON.parse(require('fs').readFileSync('docs/onboarding/architecture.canvas','utf8'));console.log(c.nodes.length+' nodes, '+c.edges.length+' edges')"
+```
+
 ## Mermaid discipline
 
 - Context/container views: `flowchart LR` (or `TB`) with `subgraph` per layer. NOT the `C4Context`

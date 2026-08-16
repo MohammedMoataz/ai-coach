@@ -24,7 +24,7 @@ e.add('learning', 'PowerShell 5.1 has no && chaining', 0.9, null, 'test');
 e.add('note', 'seed files travel in .ai-coach', 0.6);
 const hits = e.search('powershell chaining');
 assert.ok(hits.length >= 1, 'FTS search finds the learning');
-assert.match(hits[0]._display, /#\d+ \[learning\]/, 'short display line');
+assert.match(hits[0]._display, /#g?\d+ \[learning\]/, 'short display line');
 const full = e.search('powershell', { full: true });
 assert.strictEqual(full[0]._display, null, 'full mode: no truncated line');
 
@@ -44,10 +44,20 @@ const zebra = e.search('zebra', { full: true })[0];
 assert.strictEqual(zebra.uses, 1, 'uses bumped by the earlier search');
 assert.strictEqual(zebra.last_used, undefined, 'no last_used column — decay is from created only');
 
-// brief respects cap on ALL lines
+// brief respects cap on ALL lines — including the branch section, which reserves a share OF
+// the cap and must not be allowed to spend it on top. Without a task set this test passed
+// while the branch budget could still overrun, so the task is set here on purpose.
 e.add('note', 'X'.repeat(500), 0.9);
-const b = e.brief(300);
-assert.ok(b.length <= 300, `brief capped (${b.length})`);
+assert.ok(e.brief(300).length <= 300, `brief capped (${e.brief(300).length})`);
+{
+  process.env.AICOACH_TASK = 'cap-branch';
+  e.sessionStart('cap-s1', '/demo/proj');
+  e.sessionEnd('cap-s1', 'Y'.repeat(200));
+  for (let i = 0; i < 6; i++) e.add('note', `branch bulk ${i} ` + 'Z'.repeat(80), 0.9, '/demo/proj', null, { task: 'cap-branch' });
+  const bb = e.brief(300, '/demo/proj');
+  assert.ok(bb.length <= 300, `branch section stays inside the cap (${bb.length})`);
+  delete process.env.AICOACH_TASK;
+}
 
 // sessions + observations
 e.sessionStart('s1', '/demo/proj');
@@ -87,10 +97,34 @@ assert.strictEqual(r1.dup, exported.memories, 'all dups');
 
 // forget echoes what it deleted; FTS stays in sync
 e.add('note', 'wrong fact to delete', 0.9);
-const wrongId = e.search('wrong fact')[0].id;
-assert.strictEqual(e.forget(wrongId), 'wrong fact to delete', 'forget echoes deleted text');
+const wrongId = e.search('wrong fact')[0];
+assert.strictEqual(e.forget(e.memId(wrongId)), 'wrong fact to delete', 'forget echoes deleted text');
 assert.ok(!e.search('wrong fact').some((r) => r.text === 'wrong fact to delete'), 'FTS synced after forget');
 assert.strictEqual(e.forget(99999), null, 'forget missing id -> null');
+
+// ids are per-database, so #7 in this project and #7 in global scope are different memories.
+// Both are shown to the same human, so the printed id has to say which one it is — before
+// this, forgetting a global memory silently deleted whatever tenant row shared its number.
+{
+  const collide = path.join(tmp, 'collide');
+  e.useProject(collide);
+  e.add('note', 'tenantonly quokka survives', 0.9, collide);   // id 1 in the fresh tenant
+  e.add('note', 'globalonly narwhal forgotten', 0.9, null);    // its own id in user scope
+  const tn = e.search('tenantonly', { full: true })[0];
+  const g = e.search('globalonly', { full: true })[0];
+  assert.strictEqual(g._g, true, 'the global hit is tagged as user scope');
+  assert.strictEqual(tn._g, false, 'the tenant hit is not');
+  assert.strictEqual(e.memId(g), '#g' + g.id, 'a global memory prints a scope-qualified id');
+  assert.strictEqual(e.memId(tn), '#' + tn.id, 'a project memory keeps the bare id');
+  assert.strictEqual(e.forget(e.memId(g)), 'globalonly narwhal forgotten', 'the global row is the one deleted');
+  assert.strictEqual(e.search('tenantonly', { full: true }).length, 1,
+    'a tenant row sharing that number is untouched');
+  // the brief prints the same qualified id, so an id copied out of it resolves to the same row
+  e.add('note', 'globalonly axolotl in the brief', 0.95, null);
+  const gid = e.memId(e.search('axolotl', { full: true })[0]);
+  assert.match(gid, /^#g\d+$/, 'global ids stay qualified');
+  assert.ok(e.brief(4000, collide).includes(gid), 'brief prints the scope-qualified id: ' + gid);
+}
 
 // portable project identity
 assert.strictEqual(e.normalizeRemote('git@github.com:Org/Repo.git'), 'github.com/org/repo', 'ssh remote normalized');
@@ -185,9 +219,9 @@ e.useProject(teamProj);
 assert.ok(!e.brief(8000, teamProj).includes('joiner unverified claim'), 'workspace row never in brief');
 delete process.env.AICOACH_TASK;
 
-// legacy shared trust seeded the private table on that first import
+// the trust set above is readable back out of the private table
 assert.strictEqual(e.trustList().find((t) => t.email === 'joiner@example.com').level, 'workspace',
-  'legacy roster trust migrated into the private table');
+  'explicit trust round-trips through trustList');
 
 // promotion: I raise trust locally, re-import lifts the row into the brief with confidence restored
 e.setTrust('joiner@example.com', 'full', 'reviewed their work');
@@ -235,8 +269,8 @@ delete process.env.AICOACH_ROLE;
 
 // trust is private: set locally, never written to the shared file, never exported
 e.setTrust('omar@example.com', 'workspace', 'still onboarding');
-assert.strictEqual(e.trustLevel('omar@example.com', dirProj), 'workspace', 'local trust honored');
-assert.strictEqual(e.trustLevel('sara@example.com', dirProj), 'full', 'unset teammate gets the default');
+assert.strictEqual(e.trustLevel('omar@example.com'), 'workspace', 'local trust honored');
+assert.strictEqual(e.trustLevel('sara@example.com'), 'full', 'unset teammate gets the default');
 assert.ok(!fs.readFileSync(path.join(dirProj, '.ai-coach', 'team.md'), 'utf8').includes('trust'),
   'shared roster never gains a trust field');
 
@@ -392,7 +426,7 @@ assert.strictEqual(bigSeed.sessions, 210, 'every session travels in the handoff'
 e.setTrust('shared@example.com', 'workspace', 'set once');
 for (const p of [apiRepo, quiet, busy]) {
   e.useProject(p);
-  assert.strictEqual(e.trustLevel('shared@example.com', p), 'workspace',
+  assert.strictEqual(e.trustLevel('shared@example.com'), 'workspace',
     'one trust decision holds in every project');
 }
 
@@ -448,7 +482,9 @@ assert.ok(/a teammate wrote this.*· from Sara/.test(tagged), 'authorship is lab
 for (let i = 0; i < 40; i++) e.add('note', `bulk memory number ${i} with enough text to consume budget`, 0.8, provProj);
 const capped = e.brief(600, provProj);
 assert.ok(capped.includes('more ranked below the cap'), 'truncation marker present: ' + capped);
-assert.ok(capped.length < 900, 'the cap is respected (marker reserve included): ' + capped.length);
+// The marker is appended past the reserve deliberately, so the ceiling is cap + one marker —
+// not cap + 50%. A slack allowance here is where a budget overrun hides.
+assert.ok(capped.length <= 600 + 120, 'the cap is respected (marker reserve included): ' + capped.length);
 assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no marker when everything fits');
 
 // regression: a CLI command with a positional argument and no --dir must still resolve the

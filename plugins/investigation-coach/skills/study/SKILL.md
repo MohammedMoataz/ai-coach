@@ -27,10 +27,12 @@ found, not just the core ones. `--project`: span the repos in `.ai-coach/project
 
 1. **Detect** what exists under `study/` (generated-by line = regenerable; without it =
    hand-written, ask first).
-2. **Discover the areas**: read the project structure (roots, manifests, `docs/onboarding/stack.md`
-   if `/onboard` ran) and name the real architectural areas. Then sweep via Explore subagents,
-   one per area: which design patterns and technologies are actually in use, with one proving
-   instance each. A pattern with no instance is not in use — it is not written up.
+2. **Discover the areas**: `docs/onboarding/stack.md` (written by `/investigation-coach:onboard`)
+   already names the roots — when it exists it IS the area list, so spot-check it against the tree
+   rather than re-deriving it. When it does not, read the project structure (roots, manifests) and
+   name the real architectural areas yourself. Then sweep via Explore subagents, one per area:
+   which design patterns and technologies are actually in use, with one proving instance each.
+   A pattern with no instance is not in use — it is not written up.
 3. **Write** (structure and voice in `references/structure.md` — load before writing):
 
 ```
@@ -43,7 +45,8 @@ study/
    `cross-cutting/` is the one constant — every project has spanning concerns. Everything else
    follows the architecture; an area the project doesn't have is never scaffolded, and index.md
    names what was discovered so absence reads as a fact.
-4. **Remember.** After a verified write:
+4. **Remember.** After a verified write — the files exist, and re-reading one shows the content you
+   intended, generated-by line included:
    `ENGINE add reference "study material at study/ (<areas>)" 0.75`.
 
 ## Rules

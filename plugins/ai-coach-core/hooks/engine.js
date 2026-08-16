@@ -22,7 +22,13 @@ const PARTNERS_SEEN = path.join(ROOT, 'partners-seen'); // marker: /partners ran
 function log(where, err) {
   try {
     fs.mkdirSync(path.dirname(LOG_PATH), { recursive: true });
-    try { if (fs.statSync(LOG_PATH).size > 512 * 1024) fs.renameSync(LOG_PATH, LOG_PATH + '.1'); } catch { /* first write */ }
+    // Rotate at 512 KB. On Windows renaming over an open .1 throws, and a swallowed throw here
+    // used to mean the log never rotated again — truncate instead, so the ceiling always holds.
+    try {
+      if (fs.statSync(LOG_PATH).size > 512 * 1024) {
+        try { fs.renameSync(LOG_PATH, LOG_PATH + '.1'); } catch { fs.truncateSync(LOG_PATH, 0); }
+      }
+    } catch { /* first write */ }
     fs.appendFileSync(LOG_PATH, JSON.stringify({ ts: new Date().toISOString(), where, err: String((err && err.stack) || err) }) + '\n');
   } catch { /* logging must never throw */ }
 }
@@ -69,8 +75,25 @@ function migrate(d, tables) {
   }
 }
 
+// Every tenant-owned table, in the order rekey moves them. memories_fts is omitted on purpose:
+// it is a shadow of memories and the triggers rebuild it on insert.
+const REKEY_TABLES = ['repos', 'sessions', 'memories', 'observations', 'corrections', 'prompt_signals', 'findings'];
+
+// node:sqlite landed in Node 22.5 and is the one hard requirement. Without this, an older Node
+// throws inside every hook, every hook swallows it (fail-open is the rule), and the plugin is
+// silently dead forever while the reason sits in a log nobody knows exists. Say it once, loudly.
+function requireSqlite() {
+  try { return require('node:sqlite'); } catch (err) {
+    const msg = `AI Coach needs Node >= 22.5 for node:sqlite — this is ${process.version}. `
+      + 'Upgrade Node, or set AICOACH_OFF=1 to silence this.';
+    if (!process.env.AICOACH_OFF) { try { process.stderr.write(msg + '\n'); } catch { /* no tty */ } }
+    log('node-version', msg);
+    throw err;
+  }
+}
+
 function open(file, schemaPath, kind) {
-  const { DatabaseSync } = require('node:sqlite');
+  const { DatabaseSync } = requireSqlite();
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const d = new DatabaseSync(file);
   d.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
@@ -252,9 +275,12 @@ function projectDecl(cwd) {
 }
 const _projCache = new Map();
 function project(cwd) { // identity of the TENANT: env > .ai-coach/project.md > this repo
+  // env wins over the cache, not just over the file — same ordering as task(). A cached
+  // resolution used to outrank an explicit AICOACH_PROJECT set after the first lookup.
+  if (process.env.AICOACH_PROJECT) return process.env.AICOACH_PROJECT.toLowerCase();
   const key = String(cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd());
   if (_projCache.has(key)) return _projCache.get(key);
-  const p = (process.env.AICOACH_PROJECT || projectDecl(cwd).name || repo(cwd)).toLowerCase();
+  const p = (projectDecl(cwd).name || repo(cwd)).toLowerCase();
   _projCache.set(key, p);
   return p;
 }
@@ -364,11 +390,22 @@ function registerRepoIn(d, r) {
   if (!r) return;
   try { d.prepare('INSERT OR IGNORE INTO repos(repo) VALUES(?)').run(String(r).toLowerCase()); } catch { /* older tenant */ }
 }
-function forget(id) { // ids are per-database, so try the tenant, then user scope
-  for (const d of [db(), userDb()]) {
-    const row = d.prepare('SELECT text FROM memories WHERE id = ?').get(Number(id));
+// Ids are per-database and both databases start at 1, so a bare number is ambiguous the moment
+// the same id exists in each. Every id shown to a human is therefore scope-qualified: `#12` is
+// this project's, `#g12` is global. Bare numbers still resolve tenant-first, so old ids in a
+// terminal history keep working — they just cannot silently delete the wrong scope's memory.
+function memId(r) {
+  return '#' + (r._g ? 'g' : '') + r.id;
+}
+function forget(id) {
+  const raw = String(id).trim().replace(/^#/, '');
+  const global = /^g/i.test(raw);
+  const n = Number(raw.replace(/^g/i, ''));
+  if (!Number.isFinite(n)) return null;
+  for (const d of (global ? [userDb()] : [db(), userDb()])) {
+    const row = d.prepare('SELECT text FROM memories WHERE id = ?').get(n);
     if (!row) continue;
-    d.prepare('DELETE FROM memories WHERE id = ?').run(Number(id));
+    d.prepare('DELETE FROM memories WHERE id = ?').run(n);
     return row.text; // echo what died — terminal history is the trash can
   }
   return null;
@@ -425,11 +462,13 @@ function search(q, opts) {
     let hit = [];
     try { hit = d.prepare(sql).all(...params); } catch (err) { log('search', err); continue; }
     const bump = d.prepare('UPDATE memories SET uses = uses + 1 WHERE id = ?'); // counter only; never ranking
+    const isUser = d === userDb();
     for (const r of hit) {
-      bump.run(r.id);
       const k = r.text_key || norm(r.text);
       if (seen.has(k)) continue; // the same fact known in two scopes is one hit
+      bump.run(r.id); // only rows that survive dedup count as read
       seen.add(k);
+      r._g = isUser; // which database this id belongs to — see memId()/forget()
       rows.push(r);
     }
   }
@@ -438,9 +477,15 @@ function search(q, opts) {
     .map((r) => ({ ...r, _display: full ? null : shortLine(r) }));
 }
 
+// Provenance is printed wherever a memory is printed. The brief tags rows `distilled`/`imported`
+// (see tags()); search used to omit it, so "how much of this memory is guessed" was a question
+// only the brief could answer — and /doctor documented a count nothing could produce.
+function provTag(r) {
+  return r.provenance && r.provenance !== 'human' ? ` [${r.provenance}]` : '';
+}
 function shortLine(r) {
   const t = r.text.length > 100 ? r.text.slice(0, 100) + '...' : r.text;
-  return `#${r.id} [${r.type}]${r.workspace ? ' [workspace]' : ''} ${t} (conf ${Number(r.confidence).toFixed(2)})`;
+  return `${memId(r)} [${r.type}]${r.workspace ? ' [workspace]' : ''}${provTag(r)} ${t} (conf ${Number(r.confidence).toFixed(2)})`;
 }
 
 const BRANCH_SHARE = 0.4; // reserved slice of the cap — general memories must not crowd out
@@ -454,8 +499,12 @@ function brief(maxChars, proj) {
   const t = task(null, proj);
   const out = [];
   let used = 0;
+  // The truncation marker is appended after the budget is spent, so its room is reserved from
+  // every section — not just the last one. Reserving it only in the memories loop meant an
+  // earlier section could spend the whole cap and the marker would then push the brief over it.
+  const room = Math.max(0, cap - MARKER_RESERVE);
   const push = (line, budget) => { // every line counts against the cap, headers included
-    if (used + line.length + 1 > (budget || cap)) return false;
+    if (used + line.length + 1 > (budget || room)) return false;
     out.push(line); used += line.length + 1;
     return true;
   };
@@ -486,7 +535,9 @@ function brief(maxChars, proj) {
        ORDER BY created DESC, id DESC`
     ).all(p, t);
     if (prior.length || branchMem.length) {
-      const budget = used + Math.floor(cap * BRANCH_SHARE);
+      // Clamped: the share is a slice OF the cap, not an allowance on top of it. Unclamped,
+      // a brief that was already 60% full could finish 1.4x over the caller's char budget.
+      const budget = Math.min(room, used + Math.floor(cap * BRANCH_SHARE));
       push(`On this branch (${t}):`, budget);
       for (const s of prior) {
         const who = s.username || s.author || 'unknown';
@@ -506,23 +557,28 @@ function brief(maxChars, proj) {
   // limit on what reaches the session, and it applies after ranking, not before.
   const w = (m) => score(m) * (m.repo === r ? 1.5 : 1) * (t && m.task === t ? 1.5 : 1);
   const window = 'SELECT * FROM memories WHERE workspace IS NOT 1 ORDER BY created DESC, id DESC';
-  const rows = db().prepare(window).all()
-    .concat(userDb().prepare(window).all()) // global memories travel into every project
-    .filter((m) => !shown.has(m.id))
+  // `shown` holds TENANT ids only, so only tenant rows may be filtered by it: ids restart at 1
+  // in every database, and filtering the concatenation dropped global memories that happened
+  // to share an id with a branch memory already printed above.
+  const rows = db().prepare(window).all().filter((m) => !shown.has(m.id))
+    // global memories travel into every project; `_g` keeps their ids distinguishable from
+    // the tenant's, which start at 1 in the same way
+    .concat(userDb().prepare(window).all().map((m) => Object.assign(m, { _g: true })))
     .sort((a, b) => w(b) - w(a));
   if (rows.length) push('Top memories:');
-  // Reserve room for the truncation marker. Silent truncation reads as "that was everything",
-  // which is the one thing a memory brief must never imply.
-  const room = cap - MARKER_RESERVE;
+  // Silent truncation reads as "that was everything", which is the one thing a memory brief
+  // must never imply — the marker's room was reserved from the cap up front (see `room`).
   let dropped = 0;
   for (const m of rows) {
-    if (dropped || !push(`- [${m.type} #${m.id}] ${m.text}${tags(m, r, t, p)}`, room)) dropped++;
+    if (dropped || !push(`- [${m.type} ${memId(m)}] ${m.text}${tags(m, r, t, p)}`)) dropped++;
   }
   if (dropped) out.push(`- … ${dropped} more ranked below the cap — /memory-coach:recall to search, or raise brief_chars.`);
   return out.join('\n');
 }
 
-const MARKER_RESERVE = 90;
+// The marker is 87 characters plus the dropped-row count, so 90 was one digit short of its own
+// reserve past 1000 dropped rows. 100 covers any count a brief can plausibly report.
+const MARKER_RESERVE = 100;
 
 // Say why a line is here. The reader learns the ranking model by reading their own brief,
 // which is cheaper than documenting it and more likely to be believed.
@@ -1020,7 +1076,11 @@ function seedExport(file, opts) {
   const body = lines.join('\n') + (lines.length ? '\n' : '');
   const pass = o.encrypt ? seedKey(o.dir || process.cwd()) : null;
   if (o.encrypt && !pass) throw new Error('encryption requested but no key: set AICOACH_SEED_KEY or create .ai-coach/seed.key');
-  fs.writeFileSync(file, pass ? seal(body, pass) : body);
+  // Write-then-rename: autoSeed fires from PreCompact, post-commit Bash and SessionEnd, which
+  // can overlap. A direct write let `git add` or a teammate's import read a half-written seed.
+  const tmp = file + '.tmp' + process.pid;
+  fs.writeFileSync(tmp, pass ? seal(body, pass) : body);
+  fs.renameSync(tmp, file);
   return { memories: rows.length, sessions: sessions.length, signals, encrypted: !!pass };
 }
 
@@ -1152,7 +1212,7 @@ function cli() {
       const rows = search(rest.join(' '), flags); // --full returns every match
       if (!rows.length) console.log('no matches');
       for (const r of rows) console.log(flags.full
-        ? `#${r.id} [${r.type}]${r.workspace ? ' [workspace]' : ''} (conf ${r.confidence}) ${r.author ? '@' + r.author + ' ' : ''}${r.source ? '<' + r.source + '> ' : ''}${r.text}`
+        ? `${memId(r)} [${r.type}]${r.workspace ? ' [workspace]' : ''}${provTag(r)} (conf ${r.confidence}) ${r.author ? '@' + r.author + ' ' : ''}${r.source ? '<' + r.source + '> ' : ''}${r.text}`
         : r._display);
       break;
     }
@@ -1353,29 +1413,55 @@ function cli() {
       const [from, to] = a;
       if (!from || !to) { console.log('usage: engine.js rekey <old-key> <new-key>'); break; }
       const src = openTenant(from), dst = openTenant(to);
-      const cols = src.prepare('PRAGMA table_info(memories)').all().map((r) => r.name).filter((c) => c !== 'id');
-      const rows = src.prepare(`SELECT ${cols.join(',')} FROM memories`).all();
-      const ins = dst.prepare(`INSERT INTO memories(${cols.join(',')}) VALUES(${cols.map(() => '?').join(',')})`);
-      for (const row of rows) ins.run(...cols.map((c) => (c === 'project' ? to : row[c])));
-      src.prepare('DELETE FROM memories').run();
-      console.log(`moved ${rows.length} memories: ${from} -> ${to}`);
+      // Every table the tenant owns moves, not just memories: a half-moved tenant leaves the
+      // sessions, corrections and findings that explain those memories stranded under a key
+      // nothing resolves to again. Wrapped in a transaction per side so a throw mid-move
+      // cannot delete rows that were never inserted.
+      const moved = {};
+      dst.exec('BEGIN'); src.exec('BEGIN');
+      try {
+        for (const table of REKEY_TABLES) {
+          // An INTEGER PRIMARY KEY is reassigned by the destination; a TEXT one (sessions.id,
+          // repos.repo) is the identity other rows join on and must travel unchanged. OR IGNORE
+          // then makes a re-run idempotent instead of throwing on an already-moved session.
+          const info = src.prepare(`PRAGMA table_info(${table})`).all();
+          const cols = info.filter((c) => !(c.pk && /^INTEGER$/i.test(c.type))).map((c) => c.name);
+          if (!cols.length) continue;
+          const rows = src.prepare(`SELECT ${cols.join(',')} FROM ${table}`).all();
+          if (rows.length) {
+            const ins = dst.prepare(`INSERT OR IGNORE INTO ${table}(${cols.join(',')}) VALUES(${cols.map(() => '?').join(',')})`);
+            for (const row of rows) ins.run(...cols.map((c) => (c === 'project' ? to : row[c])));
+          }
+          src.prepare(`DELETE FROM ${table}`).run();
+          moved[table] = rows.length;
+        }
+        dst.exec('COMMIT'); src.exec('COMMIT');
+      } catch (err) {
+        try { dst.exec('ROLLBACK'); } catch { /* nothing open */ }
+        try { src.exec('ROLLBACK'); } catch { /* nothing open */ }
+        throw err;
+      }
+      console.log(`moved ${from} -> ${to}: `
+        + Object.keys(moved).map((t) => `${moved[t]} ${t}`).join(', '));
       break;
     }
+    case 'stats': { // whole-database counts — search can only report what a query matched
+      const total = db().prepare('SELECT COUNT(*) AS n FROM memories').get().n;
+      const prov = db().prepare(
+        "SELECT COALESCE(provenance, 'human') AS p, COUNT(*) AS n FROM memories GROUP BY p ORDER BY n DESC").all();
+      const open = db().prepare('SELECT COUNT(*) AS n FROM corrections WHERE recorded = 0').get().n;
+      console.log(`${total} memories · ${prov.map((r) => `${r.n} ${r.p}`).join(' / ') || 'none'} · ${open} corrections open`);
       break;
-    case 'export': console.log(JSON.stringify({
-      memories: db().prepare('SELECT * FROM memories').all(),
-      sessions: db().prepare('SELECT * FROM sessions').all(),
-      observations: db().prepare('SELECT * FROM observations').all(),
-    }, null, 2)); break;
+    }
     default:
-      console.log('usage: engine.js <init|add|forget|search|brief|session-start|session-end|name|observe|prune|'
+      console.log('usage: engine.js <init|add|forget|search|brief|stats|session-start|session-end|name|observe|prune|'
         + 'seed-export|seed-import|auto-seed|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|'
-        + 'prompt-stats|prompt-check|injection-scan|finding-add|finding-update|findings|partners-seen|export>');
+        + 'prompt-stats|prompt-check|injection-scan|finding-add|finding-update|findings|partners-seen>');
   }
 }
 
 module.exports = {
-  db, userDb, openTenant, useProject, active, log, bootstrap, BIN_DIR, add, forget, hasText, norm, search, brief,
+  db, userDb, openTenant, useProject, active, log, bootstrap, BIN_DIR, add, forget, memId, hasText, norm, search, brief,
   sessionStart, firstPrompt, observe, sessionEnd, sessionActivity, pruneObservations,
   correction, corrections, correctionSignal, markCorrectionsRecorded,
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,

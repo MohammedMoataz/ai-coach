@@ -1,4 +1,7 @@
 # A Windows-side commit must never ship a CRLF shebang: hooks are executed, not read.
+# The default covers formats added later (.canvas, .jsonl, .yml); the list below is the guarantee.
+* text=auto eol=lf
+
 *.js   text eol=lf
 *.mjs  text eol=lf
 *.cjs  text eol=lf

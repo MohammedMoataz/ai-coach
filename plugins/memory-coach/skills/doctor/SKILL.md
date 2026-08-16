@@ -1,5 +1,5 @@
 ---
-description: Check this project's memory for duplicates, stale entries and unclosed corrections. Reports only. Use for "/doctor", "check my memory".
+description: Health report on this project's memory — unclosed corrections, unverified knowledge, contradictions, low-value bulk. Reports only, changes nothing. Use for "/doctor", "check my memory".
 argument-hint: "[--verbose]"
 disable-model-invocation: true
 model: haiku
@@ -19,21 +19,21 @@ the command *you* would run, and you decide.
 
 1. **Scope** — `ENGINE project`. Report which project and database file this covers.
 2. **Unclosed corrections** — `ENGINE corrections --open`. These are failures the project hit that
-   nobody wrote a memory about; they are also what the coach line in the session brief counts. For
-   each, suggest the memory that would close it, then `ENGINE correction-done <id>`.
-3. **Unverified knowledge** — `ENGINE search "<the project's main topics>" --full` and count rows
-   labelled `distilled`. A model compressed those out of a transcript and nobody confirmed them. If
-   they outnumber the human-written ones, say so plainly: the memory is mostly guesses.
-4. **Contradictions** — scan the top memories for pairs that cannot both be true, and for any that
-   name a file, flag, or command that no longer exists in the repo. Verify before reporting: check
-   the path.
+   nobody wrote a memory about; they are also what the coach line in the session brief counts. List
+   them. Closing one is `/memory-coach:recall`'s two-command procedure — point there, don't restate it.
+3. **Unverified knowledge** — `ENGINE stats`. If the distilled memories outnumber the human-written
+   ones, say so plainly: a model compressed those out of transcripts and nobody confirmed them, so
+   the memory is mostly guesses.
+4. **Contradictions** — scan the top memories (`ENGINE brief`) for pairs that cannot both be true,
+   and for any that name a file, flag, or command that no longer exists. Verify before reporting:
+   Read the path, or `git log -1 -- <path>` if it was deleted. No check, no finding.
 5. **Low-value bulk** — memories that are one-off notes with no reuse, and anything with confidence
    below 0.4 that is months old.
 
 ## Report
 
 One line per finding: what it is, the evidence, and the exact command to fix it. End with the
-counts — total memories, how many distilled, how many corrections still open.
+`ENGINE stats` line verbatim — it is already the counts, and retyping numbers invents them.
 
 ## Rules
 

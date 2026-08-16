@@ -2,8 +2,8 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|clear",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js\"", "statusMessage": "Loading your memory brief..." }]
+        "matcher": "startup|clear|resume|compact",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js\"", "timeout": 20, "statusMessage": "Loading your memory brief..." }]
       }
     ],
     "UserPromptSubmit": [
@@ -13,12 +13,12 @@
       { "matcher": "Bash|WebFetch|Read|Write|Edit|NotebookEdit", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guard.js\"", "timeout": 10, "statusMessage": "Scanning for secrets..." }] }
     ],
     "PostToolUse": [
-      { "matcher": "Edit|Write|Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.js\"", "statusMessage": "Recording observation..." }] },
+      { "matcher": "Edit|Write|Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.js\"", "timeout": 10, "statusMessage": "Recording observation..." }] },
       { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/seed-refresh.js\"", "timeout": 15, "statusMessage": "Refreshing team seed..." }] },
       { "matcher": "WebFetch|WebSearch|Read", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/spotlight.js\"", "timeout": 10, "statusMessage": "Checking fetched content..." }] }
     ],
     "PostToolUseFailure": [
-      { "matcher": "Edit|Write|Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.js\"", "statusMessage": "Recording failure..." }] }
+      { "matcher": "Edit|Write|Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.js\"", "timeout": 10, "statusMessage": "Recording failure..." }] }
     ],
     "Notification": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/notice.js\"", "timeout": 10, "statusMessage": "Noting what went wrong..." }] }

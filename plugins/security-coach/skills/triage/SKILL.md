@@ -31,8 +31,10 @@ contains a `.ai-coach/security/` line and append it if missing.
 2. `ENGINE finding-add --source pentest --title "<one line>" --cwe CWE-nnn --severity <as reported> --detail "<evidence, location, repro>"`
    — the reported severity is recorded as the claim it is; `--assessed` comes later, after the
    team judges likelihood × impact in their own environment.
-3. When all findings are in: regenerate `.ai-coach/security/findings.md` from
-   `ENGINE findings --json` — a table of id, title, CWE, both severities, status, owner, age.
+3. When all findings are in: confirm `.gitignore` carries the `.ai-coach/security/` line (append
+   it first if not — this is the gate, and it is checked here, not assumed from the note above),
+   then regenerate `.ai-coach/security/findings.md` from `ENGINE findings --json` — a table of id,
+   title, CWE, both severities, status, owner, age.
 
 **`status`** — `ENGINE findings --open`, grouped by status then owner, oldest first. The oldest
 open finding is the headline, not the newest.

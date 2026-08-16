@@ -12,9 +12,9 @@ brief — the caller never sees your raw reading, only your conclusions.
 
 1. **Seed**: check what is already known —
    `node "$HOME/.ai-coach/bin/engine.js" search "<topic>"` (PowerShell:
-   `node "$env:USERPROFILE\.ai-coach\bin\engine.js"`), and if `./docs` exists,
-   `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js" search "<topic>"` — the ingested corpus often
-   already holds the paragraph. Prior findings shape (never replace) your search.
+   `node "$env:USERPROFILE\.ai-coach\bin\engine.js"`). When the caller's prompt gives you an
+   INGEST command, run `<that command> search "<topic>"` too — the ingested corpus often already
+   holds the paragraph. Prior findings shape (never replace) your search.
 2. **Expand**: follow the strongest leads across sources — official docs > source code > issue
    threads > blog posts > marketing. Fan wide first, then deep on the 2-3 richest paths.
 3. **Prune**: a path that stops yielding new facts after two hops is dead — drop it and say you
