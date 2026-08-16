@@ -47,7 +47,13 @@ function clamp(c) { const n = Number(c); return Number.isFinite(n) ? Math.min(0.
 
 function haikuCompress(engine, firstPrompt, obsLines) {
   const none = { summary: null, learnings: [] };
+  // Same cooldown file and rule as prompt.js: when `claude` is missing from PATH or wedged,
+  // one failure buys an hour of silence instead of a failed spawn at the end of every session.
+  const path = require('node:path');
+  const fs = require('node:fs');
+  const cooldown = path.join(path.dirname(engine.DB_PATH), 'coach-cooldown');
   try {
+    try { if (Date.now() - fs.statSync(cooldown).mtimeMs < 3600000) return none; } catch { /* none */ }
     const { spawnSync } = require('node:child_process');
     const instructions =
       'Compress this coding session. Output ONLY one JSON object: ' +
@@ -63,6 +69,7 @@ function haikuCompress(engine, firstPrompt, obsLines) {
       env: { ...process.env, AICOACH_INNER: '1' },
     });
     if (r.status !== 0 || !r.stdout) {
+      try { fs.writeFileSync(cooldown, new Date().toISOString()); } catch { /* best effort */ }
       engine.log('session-end.haiku', 'claude -p failed: status=' + r.status + ' stderr=' + String(r.stderr || '').slice(0, 300));
       return none;
     }

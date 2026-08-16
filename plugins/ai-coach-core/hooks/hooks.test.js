@@ -210,9 +210,15 @@ assert.strictEqual(countCorrections(), 1, 'a non-failure notification records no
 // an empty payload, and a hook switched off, must both be silent no-ops rather than errors
 r = run('notice.js', { session_id: 'hn1', cwd: noticeProj });
 assert.strictEqual(r.status, 0, 'empty notification exit 0');
+// coach:off silences the coach LINE and nothing else. The correction still has to be recorded:
+// it is the outcome data /prompt-stats measures lift against, and losing it to a display switch
+// is a silent hole in the numbers. `corrections:off` is the switch that stops the writing.
 r = run('notice.js', { session_id: 'hn1', cwd: noticeProj, message: 'that was wrong' }, { AICOACH_COACH: 'off' });
 assert.strictEqual(r.status, 0, 'coach off exit 0');
-assert.strictEqual(countCorrections(), 1, 'coach:off records nothing');
+assert.strictEqual(countCorrections(), 2, 'coach:off still records the failure');
+r = run('notice.js', { session_id: 'hn1', cwd: noticeProj, message: 'another error here' }, { AICOACH_CORRECTIONS: 'off' });
+assert.strictEqual(r.status, 0, 'corrections off exit 0');
+assert.strictEqual(countCorrections(), 2, 'corrections:off is the switch that records nothing');
 
 // malformed stdin must not be able to break a session
 r = spawnSync('node', [path.join(__dirname, 'notice.js')], { input: 'not json', encoding: 'utf8', env, timeout: 20000 });

@@ -1,6 +1,89 @@
 # Changelog
 
-Releases are git tags, one line per plugin: `{plugin}--v{version}`.
+Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
+release is named with its number in that release's section.
+
+## v1.0.0 — One product, one version (2026-08-16)
+
+**All eight plugins go to 1.0.0 together**, and every dependency range becomes `^1.0.0`. Until now
+the coaches were pinned to `~0.x` ranges on core, so five of memory-coach's six releases existed
+only to chase a core minor it did not otherwise care about. A caret on a shared major ends that:
+core can ship a minor without eight follow-up tags.
+
+This release is a full review of the harness as one thing rather than eight, so most of it is
+corrections to seams between plugins.
+
+**Fixed — memory could hand you the wrong row.** Memory ids are per-database and both databases
+start at 1, so a project memory and a global memory routinely share a number. Three consequences,
+all fixed: the session brief silently dropped a global memory whenever its id collided with a
+branch memory already shown; `forget <id>` deleted the *project's* row when you meant the global
+one; and nothing in the output said which scope an id belonged to. Ids are now printed
+scope-qualified — `#12` is this project's, `#g12` is global — and `forget` honours the letter.
+
+**Fixed — the session brief could exceed its own cap.** The branch section reserved a share *on top
+of* the character budget instead of *out of* it, and the truncation marker's reserve was honoured by
+only the last section. A brief asked for 4000 characters could return roughly 5600. Both are
+clamped, and the test that allowed 50% slack now asserts the real ceiling.
+
+**Fixed — `rekey` stranded six tables out of seven.** Adopting rows under a new project identity
+moved `memories` and left sessions, observations, corrections, prompt signals, findings and repos
+behind, unreachable. It now moves every tenant table in one transaction.
+
+**Fixed — turning off coaching silently deleted the evidence.** The `coach` switch gated whether a
+failure was *recorded*, not just whether the coach line was *shown*, so `coach: off` quietly emptied
+the outcome data `/prompt-coach:prompt-stats` measures lift against. Recording now has its own
+switch, `corrections`, which is what the docs always implied.
+
+**Fixed — resuming a session left every sibling plugin broken.** SessionStart only matched
+`startup|clear`, and the bootstrap that installs `~/.ai-coach/bin/engine.js` runs from there — so a
+first session that happened to be a resume left twenty skills across seven plugins calling a file
+that did not exist. The matcher now covers `resume` and `compact`, which also restores the brief
+after a compaction instead of losing it.
+
+**Fixed — the team seed could be read half-written.** `autoSeed` fires from PreCompact, post-commit
+and session end, which overlap; it wrote straight onto the target. Now it writes a temp file and
+renames.
+
+**Removed — the undocumented `export` verb.** It dumped memories, sessions and observations as raw
+JSON with no redaction, bypassing every rule the team seed enforces. `seed-export` is the supported
+path and always was.
+
+**The stated Node requirement was wrong, twice over.** The README asked for 22.5. Two things
+actually have to line up: `node:sqlite` unflagged, which happened in **22.13**, and **FTS5** in
+the bundled SQLite, which every search in the engine depends on and which arrives in **22.16** and
+**24.0**. The supported floor is therefore `>= 22.16` or `>= 24`, and the whole **23.x line is
+unsupported** — it has the module and no FTS5. Both boundaries were found by probing real Node
+builds in CI rather than reasoned about, and both floors are now pinned in the test matrix.
+
+Below either line the failure landed inside a hook, where fail-open swallowed it, so the plugin
+was silently dead forever with the reason in a log nobody knew existed. Both cases now print one
+line to stderr naming which of the two is missing.
+
+**`/doctor` asked for a count nothing could produce.** It told you to count `distilled` rows in
+`search --full` output, which never printed provenance. Search prints it now, and the new
+`ENGINE stats` verb answers the question directly.
+
+**The three investigation skills stop sweeping the repo three times.** `/map` and `/study` read the
+`stack.md` that `/onboard` writes instead of rediscovering the structure, and `/map` now writes
+feature notes in `/onboard`'s format — the two shared a directory while writing two different
+shapes, and only one of them marked its files as generated.
+
+**`INGEST write` accepts `--body-file`.** It read stdin only, and PowerShell 5.1 has no heredoc, so
+an agent had no portable way to hand it markdown it had produced itself.
+
+Also: `/recall` no longer advertises a `--corrections` flag that never existed; `where` became
+`where.exe` where PowerShell would have resolved it to `Where-Object` and hung; the `researcher`
+agent stops relying on `${CLAUDE_PLUGIN_ROOT}`, which is not substituted in agent files; references
+to `/team-onboarding`, `/goal` and an unimplemented workflow script are gone; and CI now runs all
+three test suites and validates all nine manifests on every push.
+
+## v0.2.2 — Haiku pinning (2026-08-13)
+
+Backfilled: this release shipped and was tagged, but never got a section here.
+
+**Seven user-invoked skills pinned to Haiku at low effort** — `ai-coach v0.2.2`,
+`memory-coach v0.1.3`, `prompt-coach v0.1.2`. Formatting and CLI-wrapping work should not bill at
+frontier rates. The skills that do real analysis were deliberately left on the session model.
 
 ## v0.6.0 — Atlas coach (2026-08-16)
 

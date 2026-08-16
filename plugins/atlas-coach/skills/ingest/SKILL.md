@@ -4,7 +4,7 @@ argument-hint: "<file-or-url>... [--out <dir>] [--raw]"
 disable-model-invocation: true
 model: haiku
 effort: low
-allowed-tools: Bash, Read, WebFetch, Write
+allowed-tools: Bash, Read, WebFetch, Write, Skill
 ---
 
 # /ingest — documents in, markdown out
@@ -13,8 +13,10 @@ A script does everything deterministic: routing, conversion, source hashing, fro
 human index, and the paragraph search index. You do only what needs judgment — reading a PDF no
 tool can, fetching a live page, and refining a rough conversion into something worth keeping.
 
-Script: `INGEST` = `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"`. Output defaults to `./docs`.
-`ENGINE` = `node "$HOME/.ai-coach/bin/engine.js"` (PowerShell: `$env:USERPROFILE\.ai-coach\bin\engine.js`).
+`INGEST` means `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"` — the path arrives pre-resolved;
+same command in PowerShell. Output defaults to `./docs`.
+`ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
 
 ## Steps
 
@@ -28,10 +30,16 @@ Script: `INGEST` = `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"`. Output defaul
    | via | What you do |
    |---|---|
    | copy / pandoc / markitdown | `INGEST convert <file>` — deterministic, no model involved |
-   | model-read (pdf, no markitdown) | Read the PDF with the Read tool's `pages` param, **20 pages per call, until finished**, preserving headings/tables/lists; pipe the markdown into `INGEST write <slug> --source <path> --sha <hash from plan>` |
+   | model-read (pdf, no markitdown) | Read the PDF with the Read tool's `pages` param, **20 pages per call, until finished**, preserving headings/tables/lists; hand the markdown to `INGEST write <slug> --source <path> --sha <hash from plan>` |
    | defuddle (URL) | `defuddle parse <url> --md` (check `defuddle --help` if flags changed), pipe into `INGEST write <slug> --source <url> --converter defuddle` |
-   | WebFetch (URL, no defuddle) | WebFetch it, pipe the markdown into `INGEST write <slug> --source <url>` |
+   | WebFetch (URL, no defuddle) | WebFetch it, then hand the markdown to `INGEST write <slug> --source <url>` |
    | unsupported | Report the type and stop. Don't guess a converter |
+
+   **Handing markdown to `INGEST write`:** a real pipe (`defuddle … | INGEST write …`) when one
+   command produced it. Markdown *you* generated — a PDF you read, a page you fetched — goes
+   through a file instead: Write it to a temp path, then `INGEST write <slug> --body-file <path>`.
+   Do not try to pipe your own text: PowerShell 5.1 has no heredoc, and a quoted shell string
+   mangles markdown on every platform.
 
    Missing converter = one install hint from the plan output, then move on — never install,
    never hand-parse a docx. Team-doc sources (Notion, Confluence, Google Docs): load
@@ -43,15 +51,16 @@ Script: `INGEST` = `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"`. Output defaul
    `--summary "<two lines: what this is, who needs it>"` and `--tags "<3-5 comma-separated>"`.
 
 4. **Index** — `INGEST index` rebuilds `docs/00-index.md`. The paragraph search index updates
-   itself on every write; `INGEST search "<query>"` proves a doc is findable, `INGEST stats`
-   shows what the corpus holds and what has gone stale.
+   itself on every write. Then verify: `INGEST search "<a phrase from the document>"` must return
+   the doc you just wrote. Not optional — an ingested document nobody can find was not ingested.
 
 5. **Remember** — one line per ingested document:
    `ENGINE add reference "<title> ingested at docs/<slug>.md — <one line on what it covers>" 0.75`
 
 6. **Report**: written · skipped-as-unchanged · failed-with-reason, and that `./docs` is shared
-   with the team once committed (the `.atlas-index.db` index is not — `*.db` is gitignored and
-   `INGEST reindex` rebuilds it anywhere).
+   with the team once committed. The `.atlas-index.db` index is not meant to travel — check
+   `.gitignore` covers `*.db` and add the line if it does not; `INGEST reindex` rebuilds it
+   anywhere, so nothing is lost by leaving it out.
 
 ## Rules
 

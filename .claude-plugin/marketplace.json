@@ -1,10 +1,12 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "ai-coach",
   "owner": {
     "name": "Moataz",
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
+  "version": "1.0.0",
   "plugins": [
     {
       "name": "ai-coach-core",
@@ -21,7 +23,7 @@
     {
       "name": "memory-coach",
       "source": "./plugins/memory-coach",
-      "description": "Memory you can search, hand to a teammate, and trust: /recall, /handoff, /team, /project.",
+      "description": "Memory you can search, hand to a teammate, and trust: /recall, /handoff, /team, /project, /name, /doctor.",
       "category": "productivity",
       "tags": [
         "memory",

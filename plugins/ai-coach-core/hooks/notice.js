@@ -20,7 +20,11 @@ process.stdin.on('end', () => {
     if (!message) process.exit(0);
 
     engine = require('./engine.js');
-    if (!engine.optOn('coach', 'on')) process.exit(0);
+    // `coach` controls the coach LINE, not this row. Gating the write here meant turning off a
+    // display option silently destroyed the outcome data /prompt-stats measures lift against —
+    // and the loss was invisible until someone asked why their numbers were empty.
+    // The switch for recording nothing at all is `corrections`.
+    if (!engine.optOn('corrections', 'on')) process.exit(0);
     engine.useProject(data.cwd);
 
     const signal = engine.correctionSignal(message);

@@ -13,7 +13,8 @@ real tokens — several agents per run — and says so; a quick lookup doesn't n
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
-`INGEST` means `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"`.
+`INGEST` means `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"` — the path arrives pre-resolved;
+same command in PowerShell.
 
 ## Steps
 
@@ -23,7 +24,9 @@ real tokens — several agents per run — and says so; a quick lookup doesn't n
 2. **Tier.** Decompose into non-overlapping sub-questions: 3 (simple lookup) / 5 (comparison) /
    7 (landscape) — `--tier` overrides. Never more than 8 agents total, including verification.
 3. **Fan out.** One `researcher` agent per sub-question, in parallel, via the Agent tool. Each
-   returns a ≤600-word cited brief; their raw reading never enters this context.
+   returns a ≤600-word cited brief; their raw reading never enters this context. When `./docs`
+   exists, paste the resolved `INGEST` command — the one above, already substituted in this
+   skill's text — into each agent's prompt: an agent cannot expand `${CLAUDE_PLUGIN_ROOT}` itself.
 4. **Claim gate.** Collect the non-obvious claims and send them (batched) to the `verifier`
    agent. REFUTED claims are dropped AND the drop is reported — a silently vanished claim
    teaches nobody. PLAUSIBLE claims stay, marked `(unverified)` inline. CONFIRMED claims carry

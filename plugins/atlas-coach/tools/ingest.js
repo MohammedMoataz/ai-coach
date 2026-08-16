@@ -311,9 +311,20 @@ function cli() {
     }
     case 'write': {
       const slug = slugify(rest[0] || '');
+      // Body arrives on stdin, or from a file. The file route exists for callers that cannot
+      // build a pipe: PowerShell 5.1 has no heredoc, so an agent writing its own markdown had
+      // no portable way to feed this command at all.
+      const bodyFile = flag('body-file', null);
       let body = '';
-      try { body = fs.readFileSync(0, 'utf8'); } catch { /* empty stdin */ }
-      if (!body.trim()) { console.error('write: markdown body expected on stdin'); process.exitCode = 1; break; }
+      if (bodyFile) {
+        try { body = fs.readFileSync(bodyFile, 'utf8'); } catch (err) {
+          console.error('write: cannot read --body-file ' + bodyFile + ': ' + err.message);
+          process.exitCode = 1; break;
+        }
+      } else {
+        try { body = fs.readFileSync(0, 'utf8'); } catch { /* empty stdin */ }
+      }
+      if (!body.trim()) { console.error('write: markdown body expected on stdin or via --body-file'); process.exitCode = 1; break; }
       const file = writeDoc(out, slug, body, {
         title: flag('title', slug.replace(/-/g, ' ')),
         source: flag('source', 'unknown'),
@@ -344,7 +355,8 @@ function cli() {
       console.log(JSON.stringify(statsFor(out), null, 2));
       break;
     default:
-      console.log('usage: ingest.js <plan|convert|write|index|search|reindex|stats> [inputs...] [--out <dir>]');
+      console.log('usage: ingest.js <plan|convert|write|index|search|reindex|stats> [inputs...] [--out <dir>]\n'
+        + '  write <slug> reads markdown from stdin, or from --body-file <path>');
   }
 }
 

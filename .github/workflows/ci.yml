@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both supported floors are pinned exactly, because they are what the README promises.
+        # node:sqlite needs to be unflagged (22.13+) AND ship FTS5 (22.16+ / 24.0+, verified by
+        # probe). The 23.x line has the module without FTS5 and is EOL — deliberately not tested.
+        node: ['22.16', '24.0', 'lts/*', 'latest']
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node plugins/ai-coach-core/hooks/engine.test.js
+      - run: node plugins/ai-coach-core/hooks/hooks.test.js
+      - run: node plugins/atlas-coach/tools/ingest.test.js
+
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - run: node .github/check-manifests.js

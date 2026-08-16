@@ -5,15 +5,16 @@ or when explaining the mechanism.
 
 ## Why a claim gate
 
-The lineage's survey of OSS research agents found one shared gap: none adversarially verify
-their own findings before reporting them. Plausible-but-wrong survives every pipeline that only
-gathers. The gate is the product; the fan-out is just speed.
+A survey of open-source research agents found one shared gap: none adversarially verify their own
+findings before reporting them. Plausible-but-wrong survives every pipeline that only gathers.
+The gate is the product; the fan-out is just speed.
 
 ## Workflow variant
 
 When the user has opted into multi-agent orchestration (their words: "use a workflow",
-"be comprehensive"), the pipeline runs as a Workflow script instead of sequential Agent calls.
-Shape (modeled on the genius `research.workflow.js`, which shipped and worked):
+"be comprehensive") *and* the harness exposes a Workflow tool, the pipeline runs as a workflow
+script instead of sequential Agent calls. Without that tool the sequential path is the pipeline —
+the shape below still describes it, one stage at a time:
 
 - **Schemas** force structure at the tool-call layer:
   - findings: `{ findings: [{ claim, source, quote }] }` — a claim without a quote from its

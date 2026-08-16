@@ -69,8 +69,8 @@ No regex can judge these. They live in the review path and in the templates.
 ### 10. Ask for evidence, not a claim
 CCB: *"Have Claude show evidence rather than asserting success."* The named failure is the
 "trust-then-verify gap" — accepting "done" without the passing output.
-There is a ladder of strength: criteria in the prompt → a `/goal` condition → a Stop hook →
-a reviewer subagent. Reach up it as the cost of being wrong rises.
+There is a ladder of strength: criteria in the prompt, then a command that must exit zero, then a
+Stop hook, then a reviewer subagent. Reach up it as the cost of being wrong rises.
 *Source: CCB, "Give Claude a way to verify its work".*
 
 ### 11. Point at an example already in the repo

@@ -1,5 +1,5 @@
 ---
-description: Curated tools that pair well with Claude Code - detect what's installed, install only what the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
+description: Detect which of the seven curated companion tools are already installed, then install only the ones the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
 argument-hint: "[partner-name]"
 disable-model-invocation: true
 model: haiku
@@ -17,9 +17,10 @@ coach points at them instead of absorbing them. Nothing installs without the use
 ## Steps
 
 1. **Detect.** Read `references/catalog.md` — it is the feature, not optional detail. Batch every
-   entry's `Check:` into as few shell calls as possible (one `Get-Command` sweep for binaries, one
-   `claude plugin list`, one `claude mcp list`). Not found / non-zero exit = missing. If the user
-   passed a partner name as argument, check only that one and skip to step 4.
+   entry's `Check:` into as few shell calls as possible: one sweep for the binaries
+   (`command -v <a> <b> …`, or `Get-Command` on Windows), one `claude plugin list`, one
+   `claude mcp list`. Not found / non-zero exit = missing. If the user passed a partner name as
+   argument, check only that one and skip to step 4.
 2. **Brief.** One compact table: partner · installed? · the verdict line. The verdict is the whole
    pitch — no selling, and its caveat (token cost, restart, needs Chrome/uv/OAuth) stays attached.
 3. **Ask.** AskUserQuestion, one call, two multiSelect questions covering only the *missing*

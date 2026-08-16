@@ -12,7 +12,7 @@ A prompt is a brief for someone competent who has never seen your project. The r
 not rudeness or length — it is a missing fact the reader had no way to supply: which file, what
 "working" looks like, what must not change.
 
-`ENGINE` below means `node "$HOME/.ai-coach/bin/engine.js"`, or
+`ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
 
 ## Modes

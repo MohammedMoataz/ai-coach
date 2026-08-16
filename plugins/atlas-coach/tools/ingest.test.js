@@ -149,4 +149,22 @@ if (g.converters().pandoc) {
   assert.match(fs.readFileSync(res.file, 'utf8'), /ampersand path/, 'converted body present');
 }
 
+// write --body-file: the route for a caller that cannot build a pipe. PowerShell 5.1 has no
+// heredoc, so an agent handing over markdown it generated itself has no other portable option.
+{
+  const body = path.join(tmp, 'generated body.md');
+  fs.writeFileSync(body, '# Read by the model\n\nA paragraph the agent produced itself, & survived.\n');
+  r = run('write', 'model-read-doc', '--body-file', body, '--source', 'paper.pdf', '--out', out);
+  assert.strictEqual(r.status, 0, 'write --body-file exits 0: ' + r.stderr);
+  const written = JSON.parse(r.stdout).file;
+  const text = fs.readFileSync(written, 'utf8');
+  assert.match(text, /A paragraph the agent produced itself, & survived\./, 'body written verbatim');
+  assert.match(text, /source: paper\.pdf/, 'frontmatter still applied');
+
+  // a missing --body-file fails loudly rather than writing an empty document
+  r = run('write', 'no-such-body', '--body-file', path.join(tmp, 'absent.md'), '--out', out);
+  assert.notStrictEqual(r.status, 0, 'a missing body file is an error');
+  assert.match(r.stderr, /cannot read --body-file/, 'and says which file: ' + r.stderr);
+}
+
 console.log('ingest.test.js: ALL PASS');

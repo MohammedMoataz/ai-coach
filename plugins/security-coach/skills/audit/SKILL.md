@@ -20,11 +20,13 @@ likely-exploited beats severe-on-paper. It never installs anything and never rei
 
 **No argument** — detect and run everything installed, in this order.
 
-**`sast`** — static analysis. Detect with `where opengrep` / `where semgrep` (PowerShell:
-`Get-Command`). Prefer Opengrep (fully LGPL, community rules); Semgrep CE works too — note that its
-bundled rules moved to a restrictive license in Dec 2024 if the team plans to redistribute results.
-Run against the given path or the repo root; ask for JSON output when the tool offers it.
-Missing both: `winget install opengrep` or see github.com/opengrep/opengrep — one line, move on.
+**`sast`** — static analysis. Detect with `command -v opengrep` / `command -v semgrep`, or
+`where.exe opengrep` on Windows — never bare `where`, which PowerShell resolves to `Where-Object`
+and which then blocks waiting on pipeline input. Prefer Opengrep (fully LGPL, community rules);
+Semgrep CE works too — note that its bundled rules moved to a restrictive license in Dec 2024 if
+the team plans to redistribute results. Run against the given path or the repo root; ask for JSON
+output when the tool offers it. Missing both: point at github.com/opengrep/opengrep for the
+current install line — one line, move on. Do not invent a package id.
 
 **`deps`** — dependency CVEs. Detect `osv-scanner` (best default: Apache-2.0, single Windows exe,
 19+ lockfile types — `winget install Google.OSVScanner` or `scoop install osv-scanner`). Fall back

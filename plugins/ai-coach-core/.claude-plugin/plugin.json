@@ -1,7 +1,7 @@
 {
   "name": "ai-coach-core",
   "displayName": "AI Coach Core",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "The engine every AI Coach plugin runs on. Owns the session brief, the memory database, the secrets guard, and every hook — so the coach plugins above it ship skills and nothing else.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
@@ -19,7 +19,13 @@
     "coach": {
       "type": "boolean",
       "title": "Coaching",
-      "description": "The coach line in the session brief, and one-line hints on vague prompts. Shown to you only — nothing is injected into the model's context.",
+      "description": "The coach line in the session brief, and one-line hints on vague prompts. Shown to you only — nothing is injected into the model's context. Display only: turning this off does not stop failures being recorded (see Record failures).",
+      "default": true
+    },
+    "corrections": {
+      "type": "boolean",
+      "title": "Record failures",
+      "description": "When a failure notification surfaces, record that it happened — the signal word, the message, and what was being asked. This is the evidence /prompt-coach:prompt-stats measures prompt habits against. No model call, and the prompt text is never stored.",
       "default": true
     },
     "learn": {
