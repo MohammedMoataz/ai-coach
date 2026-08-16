@@ -23,6 +23,27 @@ jobs:
       - run: node plugins/ai-coach-core/hooks/hooks.test.js
       - run: node plugins/atlas-coach/tools/ingest.test.js
 
+  # TEMPORARY: find the real floor. node:sqlite unflagged is necessary but not sufficient — the
+  # bundled SQLite also has to ship FTS5, which every search in the engine depends on.
+  fts5-probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.13', '22.14', '22.16', '22.18', '23.4', '23.11', '24.0', '24.4']
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: |
+          node -e "
+            const {DatabaseSync}=require('node:sqlite');
+            const d=new DatabaseSync(':memory:');
+            d.exec('CREATE VIRTUAL TABLE t USING fts5(x)');
+            console.log(process.version+' FTS5 OK');
+          "
+
   manifests:
     runs-on: ubuntu-latest
     steps:
