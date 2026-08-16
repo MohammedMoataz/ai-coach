@@ -48,9 +48,11 @@ renames.
 JSON with no redaction, bypassing every rule the team seed enforces. `seed-export` is the supported
 path and always was.
 
-**Node's version is now stated once, loudly.** Below Node 22.5 `node:sqlite` throws inside every
-hook, every hook swallows it (fail-open is the rule), and the plugin was silently dead forever. It
-now says so on stderr.
+**Node's version is now stated once, loudly — and the stated floor was wrong.** `node:sqlite`
+appeared in 22.5 but stayed behind `--experimental-sqlite` until **22.13**, so every version this
+project claimed to support between those two refused to load it. CI on the exact floor is what
+caught it. Below that line the module throws inside every hook, every hook swallows it (fail-open
+is the rule), and the plugin was silently dead forever; it now says so on stderr.
 
 **`/doctor` asked for a count nothing could produce.** It told you to count `distilled` rows in
 `search --full` output, which never printed provenance. Search prints it now, and the new

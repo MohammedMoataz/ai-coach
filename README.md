@@ -20,8 +20,9 @@ whether that actually cost you anything before offering an opinion about it.
 
 ## Install
 
-Requires **Node ≥ 22.5** (`node:sqlite`). Session-end distillation additionally wants `claude` on
-PATH, and degrades quietly without it.
+Requires **Node ≥ 22.13** — that is where `node:sqlite` stopped needing `--experimental-sqlite`;
+22.5 through 22.12 have the module but refuse to load it unflagged. Session-end distillation
+additionally wants `claude` on PATH, and degrades quietly without it.
 
 ```bash
 claude plugin marketplace add MohammedMoataz/ai-coach

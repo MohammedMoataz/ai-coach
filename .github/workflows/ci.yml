@@ -9,8 +9,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 22.5 is the floor the engine declares (node:sqlite); latest catches the next break.
-        node: ['22.5', 'lts/*', 'latest']
+        # 22.13 is the floor: node:sqlite exists from 22.5 but stays behind --experimental-sqlite
+        # until 22.13. Pinning the exact floor is the point — it is what the README promises.
+        node: ['22.13', 'lts/*', 'latest']
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:

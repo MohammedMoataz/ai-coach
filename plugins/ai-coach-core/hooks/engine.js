@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // AI Coach engine: memory + sessions + observations + team seed. Zero dependencies.
-// Requires Node >= 22.5 (node:sqlite). DB survives plugin updates (lives in ~/.ai-coach).
+// Requires Node >= 22.13 (node:sqlite unflagged). DB survives plugin updates (lives in ~/.ai-coach).
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -79,12 +79,14 @@ function migrate(d, tables) {
 // it is a shadow of memories and the triggers rebuild it on insert.
 const REKEY_TABLES = ['repos', 'sessions', 'memories', 'observations', 'corrections', 'prompt_signals', 'findings'];
 
-// node:sqlite landed in Node 22.5 and is the one hard requirement. Without this, an older Node
-// throws inside every hook, every hook swallows it (fail-open is the rule), and the plugin is
-// silently dead forever while the reason sits in a log nobody knows exists. Say it once, loudly.
+// node:sqlite is the one hard requirement. It appeared in 22.5 but stayed behind
+// --experimental-sqlite until 22.13, so 22.5-22.12 throws ERR_UNKNOWN_BUILTIN_MODULE here and
+// 22.13 is the real floor. Without this message an older Node throws inside every hook, every
+// hook swallows it (fail-open is the rule), and the plugin is silently dead forever while the
+// reason sits in a log nobody knows exists. Say it once, loudly.
 function requireSqlite() {
   try { return require('node:sqlite'); } catch (err) {
-    const msg = `AI Coach needs Node >= 22.5 for node:sqlite — this is ${process.version}. `
+    const msg = `AI Coach needs Node >= 22.13 for node:sqlite — this is ${process.version}. `
       + 'Upgrade Node, or set AICOACH_OFF=1 to silence this.';
     if (!process.env.AICOACH_OFF) { try { process.stderr.write(msg + '\n'); } catch { /* no tty */ } }
     log('node-version', msg);
