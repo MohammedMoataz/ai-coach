@@ -48,11 +48,16 @@ renames.
 JSON with no redaction, bypassing every rule the team seed enforces. `seed-export` is the supported
 path and always was.
 
-**Node's version is now stated once, loudly — and the stated floor was wrong.** `node:sqlite`
-appeared in 22.5 but stayed behind `--experimental-sqlite` until **22.13**, so every version this
-project claimed to support between those two refused to load it. CI on the exact floor is what
-caught it. Below that line the module throws inside every hook, every hook swallows it (fail-open
-is the rule), and the plugin was silently dead forever; it now says so on stderr.
+**The stated Node requirement was wrong, twice over.** The README asked for 22.5. Two things
+actually have to line up: `node:sqlite` unflagged, which happened in **22.13**, and **FTS5** in
+the bundled SQLite, which every search in the engine depends on and which arrives in **22.16** and
+**24.0**. The supported floor is therefore `>= 22.16` or `>= 24`, and the whole **23.x line is
+unsupported** — it has the module and no FTS5. Both boundaries were found by probing real Node
+builds in CI rather than reasoned about, and both floors are now pinned in the test matrix.
+
+Below either line the failure landed inside a hook, where fail-open swallowed it, so the plugin
+was silently dead forever with the reason in a log nobody knew existed. Both cases now print one
+line to stderr naming which of the two is missing.
 
 **`/doctor` asked for a count nothing could produce.** It told you to count `distilled` rows in
 `search --full` output, which never printed provenance. Search prints it now, and the new

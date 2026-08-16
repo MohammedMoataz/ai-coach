@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 // AI Coach engine: memory + sessions + observations + team seed. Zero dependencies.
-// Requires Node >= 22.13 (node:sqlite unflagged). DB survives plugin updates (lives in ~/.ai-coach).
+// Requires Node >= 22.16 or >= 24 (node:sqlite with FTS5); 23.x has no FTS5 and is unsupported.
+// DB survives plugin updates (lives in ~/.ai-coach).
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -79,19 +80,23 @@ function migrate(d, tables) {
 // it is a shadow of memories and the triggers rebuild it on insert.
 const REKEY_TABLES = ['repos', 'sessions', 'memories', 'observations', 'corrections', 'prompt_signals', 'findings'];
 
-// node:sqlite is the one hard requirement. It appeared in 22.5 but stayed behind
-// --experimental-sqlite until 22.13, so 22.5-22.12 throws ERR_UNKNOWN_BUILTIN_MODULE here and
-// 22.13 is the real floor. Without this message an older Node throws inside every hook, every
-// hook swallows it (fail-open is the rule), and the plugin is silently dead forever while the
-// reason sits in a log nobody knows exists. Say it once, loudly.
+// node:sqlite is the hard requirement, and it takes TWO things to be usable, verified in CI
+// against real Node builds rather than assumed:
+//   - the module unflagged     — 22.5 shipped it behind --experimental-sqlite, 22.13 freed it
+//   - FTS5 in the bundled build — every search here is FTS5; it arrives in 22.16 and 24.0
+// The 23.x line has the module and no FTS5, and is EOL, so it is unsupported outright.
+// Both failures land inside hooks, where fail-open swallows them, so the plugin would otherwise
+// be silently dead forever with the reason in a log nobody knows exists. Say it once, loudly.
+const NODE_REQUIREMENT = 'AI Coach needs Node >= 22.16 or >= 24 (node:sqlite with FTS5)';
+function nodeTooOld(err, what) {
+  const msg = `${NODE_REQUIREMENT} — this is ${process.version}, which has no ${what}. `
+    + 'Upgrade Node, or set AICOACH_OFF=1 to silence this.';
+  if (!process.env.AICOACH_OFF) { try { process.stderr.write(msg + '\n'); } catch { /* no tty */ } }
+  log('node-version', msg);
+  return err;
+}
 function requireSqlite() {
-  try { return require('node:sqlite'); } catch (err) {
-    const msg = `AI Coach needs Node >= 22.13 for node:sqlite — this is ${process.version}. `
-      + 'Upgrade Node, or set AICOACH_OFF=1 to silence this.';
-    if (!process.env.AICOACH_OFF) { try { process.stderr.write(msg + '\n'); } catch { /* no tty */ } }
-    log('node-version', msg);
-    throw err;
-  }
+  try { return require('node:sqlite'); } catch (err) { throw nodeTooOld(err, 'usable node:sqlite'); }
 }
 
 function open(file, schemaPath, kind) {
@@ -99,7 +104,13 @@ function open(file, schemaPath, kind) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const d = new DatabaseSync(file);
   d.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
-  d.exec(fs.readFileSync(schemaPath, 'utf8')); // creates anything missing
+  try {
+    d.exec(fs.readFileSync(schemaPath, 'utf8')); // creates anything missing
+  } catch (err) {
+    // "no such module: fts5" is a Node build problem, not a corrupt database — say which.
+    if (/fts5/i.test(String(err && err.message))) throw nodeTooOld(err, 'FTS5 in its SQLite build');
+    throw err;
+  }
   migrate(d, kind);                            // widens anything that predates it
   return d;
 }

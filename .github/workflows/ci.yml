@@ -9,9 +9,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 22.13 is the floor: node:sqlite exists from 22.5 but stays behind --experimental-sqlite
-        # until 22.13. Pinning the exact floor is the point — it is what the README promises.
-        node: ['22.13', 'lts/*', 'latest']
+        # Both supported floors are pinned exactly, because they are what the README promises.
+        # node:sqlite needs to be unflagged (22.13+) AND ship FTS5 (22.16+ / 24.0+, verified by
+        # probe). The 23.x line has the module without FTS5 and is EOL — deliberately not tested.
+        node: ['22.16', '24.0', 'lts/*', 'latest']
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -22,27 +23,6 @@ jobs:
       - run: node plugins/ai-coach-core/hooks/engine.test.js
       - run: node plugins/ai-coach-core/hooks/hooks.test.js
       - run: node plugins/atlas-coach/tools/ingest.test.js
-
-  # TEMPORARY: find the real floor. node:sqlite unflagged is necessary but not sufficient — the
-  # bundled SQLite also has to ship FTS5, which every search in the engine depends on.
-  fts5-probe:
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ['22.13', '22.14', '22.16', '22.18', '23.4', '23.11', '24.0', '24.4']
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-      - run: |
-          node -e "
-            const {DatabaseSync}=require('node:sqlite');
-            const d=new DatabaseSync(':memory:');
-            d.exec('CREATE VIRTUAL TABLE t USING fts5(x)');
-            console.log(process.version+' FTS5 OK');
-          "
 
   manifests:
     runs-on: ubuntu-latest

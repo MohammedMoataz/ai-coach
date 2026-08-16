@@ -20,9 +20,12 @@ whether that actually cost you anything before offering an opinion about it.
 
 ## Install
 
-Requires **Node ≥ 22.13** — that is where `node:sqlite` stopped needing `--experimental-sqlite`;
-22.5 through 22.12 have the module but refuse to load it unflagged. Session-end distillation
-additionally wants `claude` on PATH, and degrades quietly without it.
+Requires **Node ≥ 22.16, or ≥ 24**. Two things have to line up and CI checks both against real
+Node builds: `node:sqlite` unflagged (22.13+) and FTS5 in its bundled SQLite, which every search
+here depends on (22.16+ / 24.0+). **The 23.x line has the module without FTS5 and is not
+supported.** On a Node that cannot run it, the engine says so on stderr rather than failing open
+in silence. Session-end distillation additionally wants `claude` on PATH, and degrades quietly
+without it.
 
 ```bash
 claude plugin marketplace add MohammedMoataz/ai-coach
