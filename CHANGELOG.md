@@ -3,6 +3,97 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.3.0 — What the business is, and what comes next (2026-08-22)
+
+Six plugins document the code, the session, the prompts and the world outside the repo. None of
+them documents the **business**: who the actors are, what the processes actually do, which rules
+are enforced in code and which live in someone's inbox. And nothing turns "we need partial refunds"
+into a specification with a definition of done and a plan a cheap model can execute unattended.
+
+**strategy-coach 1.0.0 · harness-coach 1.0.1 · ai-coach 1.2.0**
+
+### The boundary that makes this a separate plugin
+
+investigation-coach answers *what the code is* — architecture, patterns, stack, all evidence from
+the repo. strategy-coach answers *what the business is* and *what comes next*. The test is one
+line: "how does X work here" → investigate; "what should we build and why" → strategize.
+
+The consequence is a rule, not a preference: `blueprint` reads `docs/onboarding/` and never
+re-derives it. Two tools tracing the same code and disagreeing is worse than one tool with a gap.
+
+### `/strategy-coach:vault`
+
+Makes `./docs` an Obsidian vault — a hub note, `business/` and `features/`, one page of
+conventions, and links to whatever onboarding, study, research and ingest already wrote. Pinned to
+Haiku; it is folder scaffolding.
+
+It **never creates `.obsidian/`**, keeping the rule investigation-coach already set: Obsidian
+writes its own on open, and a hand-made one with the wrong schema is worse than none. It only
+gitignores the per-machine noise. `docs/00-index.md` belongs to `/atlas-coach:ingest`, so the hub
+links it and never edits it.
+
+### `/strategy-coach:blueprint`
+
+The business in two voices, one file. A person gets the flow, so every process note carries a
+Mermaid diagram. An agent gets the mapping, so every process note carries a table of
+`file:line`. Splitting those into two documents guarantees one goes stale, so they share a file.
+
+Every technical row is `file:line`, `INFERRED`, or **`NOT IN CODE`** — that third marker is the
+one worth having. A step that exists in the business and nowhere in the code is a finding, and
+most documentation tools have no way to say it. Claims sourced from a person are attributed
+(`per Sara, 2026-08-20`), because unattributed they read as though the code proved them.
+
+Renderings degrade rather than block: Mermaid in the note is the source of truth, an Artifact page
+aggregates it, and a Miro board happens only when Miro is already connected.
+
+### `/strategy-coach:feature`
+
+Intake, then specification, then a dispatch. Two files: `spec.md` for people, `plan.md` for an
+agent in a fresh session on a cheap model that cannot ask anything.
+
+Two things make it more than a template. **The definition of done is a table whose every row names
+a command or an observable** — "fast", "clean" and "robust" are rejected, and a criterion that
+cannot be made checkable is moved to Unknowns rather than dressed up. And **the plan is not written
+until the user signs off on the spec and the DoD**. That gate is deliberate: an AI-drafted spec
+nobody read is how a wrong feature gets built quickly.
+
+`plan.md` is written to `/prompt-coach:dispatch`'s four rules — its reader genuinely cannot ask a
+follow-up — and the skill checks its own draft with `ENGINE prompt-check`, which runs the nine
+detectors with no model call and no write.
+
+`--prior-art` fans out at most four atlas-coach `researcher` agents to find how others solved this:
+a reference implementation for the developer, the failure modes everyone hits for the tester. Load-
+bearing claims go through `verifier`; `PLAUSIBLE` is written into the spec as `UNVERIFIED`.
+
+### harness-coach 1.0.1 — Miro joins the catalog
+
+Eighth partner. The verdict says the quiet part: the value of a board is the *audience*, not the
+drawing — Mermaid in a committed file is free, diffs in a pull request, and needs no login. Its
+caveat is a real trap this release had to handle: auth is interactive, so a headless session has
+the tools and no session, and probing with an authenticate call hangs the run. Detect passively.
+
+### Prior art, and what it changed
+
+The design draws on six sources read with `/atlas-coach:ingest` — the converted corpus stayed
+local rather than shipping with the plugin, so the sources are named here instead. Two of them
+changed the design concretely rather than decorating it:
+
+- **arXiv 2505.23695** measured that naming the business domain *before* analysis lifts insight
+  depth 31% over the same model without it. So `blueprint`'s first step is one sentence naming the
+  domain, shown to the user for correction before anything else is written — not a preamble, the
+  step the rest depends on.
+- **Thoughtworks, via Gudala (2025)**, reported a 30% cut in user-story lead time from GenAI — but
+  only after instituting human review gates; the first drafts missed implicit requirements. That is
+  the sign-off gate in `/feature`, and the reason it is a rule rather than a suggestion.
+
+Also folded in: the researcher contract's negative space (`## Unknowns` is required in every
+document this plugin writes, and "none" is not an answer), and the four question types from
+Indeed's critical-thinking piece behind `/feature`'s clarification questions.
+
+The corpus is honest about its own weakness, so this release should be too: four of those six
+sources are vendor or SEO content that asserts rather than measures. The two dated, falsifiable
+claims above are the two that shaped the design.
+
 ## v1.2.0 — The prompts the model writes (2026-08-22)
 
 Nine deterministic detectors grade every prompt the user types. None of them has ever seen a prompt

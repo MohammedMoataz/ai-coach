@@ -6,7 +6,7 @@
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "plugins": [
     {
       "name": "ai-coach-core",
@@ -88,6 +88,18 @@
         "ingest",
         "verification",
         "sources"
+      ]
+    },
+    {
+      "name": "strategy-coach",
+      "source": "./plugins/strategy-coach",
+      "description": "Document what the business is and specify what comes next: an Obsidian vault of actors, processes and rules mapped to code, plus feature specs with a checkable definition of done — /vault, /blueprint, /feature.",
+      "category": "productivity",
+      "tags": [
+        "business-analysis",
+        "requirements",
+        "specification",
+        "obsidian"
       ]
     },
     {
