@@ -3,6 +3,114 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.1.0 — Conclusions, not prompts (2026-08-22)
+
+`/handoff` promised that "session history travels too — who worked which branch, and **what they
+concluded**." It did not. A real user's committed seed settled it: all seven session rows carried
+the raw first prompt, including `"summary":"/memory-coach:handoff"`, `"summary":"proceed"`, and one
+row carrying prompt-coach's own internal judge prompt. What travelled was never a conclusion.
+
+**memory-coach 1.1.0 · ai-coach-core 1.1.0**
+
+### The leak
+
+`sessionEnd` wrote `first_prompt.slice(0,200)` unconditionally and only *upgraded* it when the model
+call succeeded — and `summary` was in `seedExport`'s column list. So every failed Haiku call shipped
+raw prompt text into a git-committed file, against the rule `schema.sql` states for prompt signals:
+prompt text is never stored, because it carries credentials and customer data.
+
+Fixed at the root rather than at the caller: `sessionEnd()` now **refuses** a summary that is the
+session's own prompt, or a prefix of it. One guard in the shared function, so the next person who
+reaches for "something better than nothing" cannot reopen it. The hook passes `null`, the row still
+gets its `ended` stamp, and the local brief falls back to `first_prompt` — which never leaves the
+machine, because it is not a seed field at all.
+
+### Debriefs
+
+A memory is an atomic fact. A **debrief** is what a person concluded when a piece of work finished:
+**business**, **technical**, **evidence**, and **unknowns**. Four columns rather than one blob,
+because it is the only way the engine can *enforce* that negative space exists — "what you could not
+determine" is a required field in this product's own subagent contract (`agents/researcher.md`), and
+a prose blob cannot be checked for it. Sections are capped, ~600 words total.
+
+Nothing writes one automatically. A conclusion exists when someone decides the work is done, which
+is exactly why a subagent's final report is written once, at the end, on purpose.
+
+Identity is `date/author-email/name-slug`, frozen at publish time — readable, and stable across
+machines. Renaming the session afterwards does not orphan a key a teammate already holds. Publishing
+twice under one name on one day replaces the first and **says** `replaced`, because a silent
+overwrite is how two genuinely different conclusions lose one.
+
+New: `/memory-coach:debrief`, and `ENGINE debrief-publish|debriefs|debrief-show|session-digest`.
+`/memory-coach:recall` gained the read path, since that is the skill a "what did we decide about X"
+question can actually reach without anyone typing a command.
+
+### `session-digest` — a long session, uncapped
+
+Session summarisation read the last 40 observations and dropped the rest. What makes a session long
+is repetition, not information: forty edits to one file are one fact and forty rows. So the map step
+is deterministic SQL with no model in it and the model only reduces — failures, recorded corrections
+and the last 60 calls verbatim, repeated `(tool, target)` pairs collapsed to counts. Two hundred
+identical edits become `Edit x200 src/big.ts`. Nothing is truncated. Pages when it has to, and says
+so, so a very large session folds instead of overflowing.
+
+It never includes a correction's `prompt_excerpt`: that is 200 characters of raw prompt, in front of
+a model about to write a document that gets committed.
+
+### Exports are manual now
+
+No hook writes a seed. `autoSeed` fired from SessionEnd, and a second hook refreshed the file on
+every commit and every compact — so knowledge left the machine before anyone decided it was worth
+sharing, and that is the path the leak took. `seed-refresh.js` is **removed**, along with its
+`PostToolUse:Bash` and `PreCompact` entries. A side effect worth having: one fewer node process
+spawned on every Bash call.
+
+`/memory-coach:name` is **removed** as a skill. Naming belongs to the moment you hand work over, so
+`/handoff` and `/debrief` ask for it. The `ENGINE name` verb stays — and now works: it read `a[0]`
+as a session id while every caller passed a label, so it updated zero rows and printed success
+anyway. Both callers resolve the session through one new `latestSession()`, because a skill cannot
+see its own session id.
+
+### Cross-machine correctness
+
+- **The wire format declares itself.** A `meta` line carries the generation, and every row has an
+  explicit `kind` — `memory`, `session`, `prompt_signal`, `debrief`. Governing constraint: an older
+  importer's last line is `if (!r.text) continue`, a *content* check, so any row carrying a top-level
+  `text` is eaten as a memory. Memory rows may have `text`; nothing else ever may. A test enforces it.
+- **Local session uuids stopped travelling.** Sessions and signals reference `skey`, the same
+  `date/author/name` scheme. Verified across a three-machine relay: origin author and key survive
+  each hop, while custody (`meta.by`) changes.
+- **Import is one transaction**, in two passes — sessions first, so ordering inside the file stops
+  mattering. A signal is accepted only when the local session agrees about *who* authored it;
+  otherwise it is rejected and counted. Before, a teammate's signals could attach to your session
+  row and `prompt-stats` would count them as yours.
+- **Carried timestamps are clamped forward to now.** One expression fixes five query families:
+  display ordering, branch ordering, the prompt-stats window, the prune cutoff, and identity dates.
+  A machine with a fast clock could otherwise own "Last session here" for weeks.
+- **`provenance: 'imported'` is finally written.** Declared and rendered since v0.1.0, never stored,
+  while `/handoff` documented it as working. A `distilled` memory now stays distilled across a hop
+  rather than being laundered into "a teammate wrote this".
+- **One canonical email everywhere.** `coachLine` compared case-sensitively while `promptStats`
+  lowercased, so one git identity behaved differently in two features.
+- **A private trust decision no longer censors the shared file.** Holding a teammate's memory at
+  `workspace` trust dropped it from your next export, deleting their contribution for everyone who
+  had not imported yet. It is relayed now — it was already in the file — and still stays out of your
+  own brief, which is what the flag is actually for.
+
+### The brief
+
+"Last session here" filtered on `project` alone and printed no attribution, so a teammate's newer
+imported session presented as **your** last session. It now filters by author and prints the session
+label. A debrief pointer line was added with no branch condition, deliberately: the branch section
+needs an exact match and `task()` is null on `main`, so a conclusion published on a feature branch
+was unreachable from mainline.
+
+### Not done
+
+The existing committed seed keeps its prompt text in git history — this release stops new leakage
+only. Seed growth is unbounded; with automatic export gone the file no longer churns, so a retention
+window waits for a team that actually needs one.
+
 ## v1.0.0 — One product, one version (2026-08-16)
 
 **All eight plugins go to 1.0.0 together**, and every dependency range becomes `^1.0.0`. Until now

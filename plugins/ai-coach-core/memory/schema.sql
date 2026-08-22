@@ -48,6 +48,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   name         TEXT,                     -- human label; unique per (project, author)
   task         TEXT,
   first_prompt TEXT,
+  -- What this session was FOR, in one line. Travels in the seed, so it must never be the prompt:
+  -- the old fallback wrote first_prompt here whenever the model call failed, which shipped raw
+  -- prompt text -- credentials, customer data, whatever was typed -- into a git-committed file.
+  -- sessionEnd() now refuses a summary that is the prompt. The shared CONCLUSION is a debrief.
   summary      TEXT,
   -- How badly this session went: corrections raised plus failed tool calls, as a single number.
   -- Locally this is computed live from the rows and stays NULL. It is filled only on a session
@@ -119,6 +123,40 @@ CREATE TABLE IF NOT EXISTS findings (
   updated           TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_findings_status ON findings(project, status, created);
+
+-- A memory is an atomic fact. A DEBRIEF is what a person concluded when they finished a piece of
+-- work: what it means for the product, what it means for the code, the evidence behind both, and
+-- what is still unknown. Nothing here is ever written by a hook -- a conclusion exists only when
+-- someone decides the work is done, which is the same contract a subagent's final report has.
+--
+-- Identity is `key` = date/author-email/name-slug, frozen at publish time. A session's uuid means
+-- nothing on a teammate's machine and nothing to a human; this is readable, stable across machines,
+-- and it is the dedup key on import, so a debrief can cross three machines without accreting copies.
+-- Frozen, not derived: renaming the session afterwards must not orphan a key teammates already hold.
+--
+-- Four body columns rather than one blob, because it is the only way the engine can ENFORCE that
+-- negative space exists. "What I could NOT determine" is a required field in this product's own
+-- subagent contract, and a prose blob cannot be checked for it.
+CREATE TABLE IF NOT EXISTS debriefs (
+  id         INTEGER PRIMARY KEY,
+  key        TEXT NOT NULL UNIQUE,      -- 2026-08-20/sara@example.com/orders-csv-export
+  project    TEXT,                      -- local tenant, stamped on import like memories
+  repo       TEXT,
+  session_id TEXT,                      -- the local session this came from; NEVER exported
+  name       TEXT,                      -- the session label, snapshotted at publish
+  author     TEXT NOT NULL,
+  username   TEXT,
+  role       TEXT,
+  task       TEXT,
+  business   TEXT NOT NULL,             -- what changed for the product or the user
+  technical  TEXT NOT NULL,             -- what changed in the code: the decision and its trade-off
+  evidence   TEXT NOT NULL,             -- file:line, tests, commands. No source => UNVERIFIED
+  unknowns   TEXT NOT NULL,             -- what is NOT done, NOT determined. Required. "None" is not an answer
+  provenance TEXT DEFAULT 'human',      -- human | imported. Stamped locally, never carried
+  created    TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_debriefs_project ON debriefs(project, created);
+CREATE INDEX IF NOT EXISTS idx_debriefs_ident   ON debriefs(author, name, created);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
   text, content='memories', content_rowid='id'

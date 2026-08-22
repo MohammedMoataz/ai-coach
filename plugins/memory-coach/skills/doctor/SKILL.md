@@ -27,7 +27,10 @@ the command *you* would run, and you decide.
 4. **Contradictions** — scan the top memories (`ENGINE brief`) for pairs that cannot both be true,
    and for any that name a file, flag, or command that no longer exists. Verify before reporting:
    Read the path, or `git log -1 -- <path>` if it was deleted. No check, no finding.
-5. **Low-value bulk** — memories that are one-off notes with no reuse, and anything with confidence
+5. **Conclusions without evidence** — `ENGINE debriefs`. A debrief whose evidence section names
+   no `file:line`, test or command is an opinion with a header on it. Say which ones, and that
+   the fix is republishing under the same name (it replaces, it does not duplicate).
+6. **Low-value bulk** — memories that are one-off notes with no reuse, and anything with confidence
    below 0.4 that is months old.
 
 ## Report

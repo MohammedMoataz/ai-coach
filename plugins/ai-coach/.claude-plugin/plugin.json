@@ -1,7 +1,7 @@
 {
   "name": "ai-coach",
   "displayName": "AI Coach",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Install this one. Pulls in the engine and every coach released so far. Ships no components of its own, so it costs nothing at session start.",
   "author": {
     "name": "Moataz",
@@ -17,11 +17,11 @@
   "dependencies": [
     {
       "name": "ai-coach-core",
-      "version": "^1.0.0"
+      "version": "^1.1.0"
     },
     {
       "name": "memory-coach",
-      "version": "^1.0.0"
+      "version": "^1.1.0"
     },
     {
       "name": "prompt-coach",

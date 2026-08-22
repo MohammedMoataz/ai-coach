@@ -1,7 +1,7 @@
 {
   "name": "ai-coach-core",
   "displayName": "AI Coach Core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "The engine every AI Coach plugin runs on. Owns the session brief, the memory database, the secrets guard, and every hook — so the coach plugins above it ship skills and nothing else.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
@@ -60,8 +60,8 @@
     },
     "seed_auto": {
       "type": "boolean",
-      "title": "Keep the team seed current",
-      "description": "Refresh .ai-coach/team-seed.jsonl on /compact, /clear and after each commit. Only ever touches a seed that already exists; never stages or commits.",
+      "title": "Allow in-place seed refresh",
+      "description": "Allow the `auto-seed` command to refresh an existing .ai-coach/team-seed.jsonl in place. No hook exports on its own any more — a seed is published deliberately with /memory-coach:handoff — so this only governs that one explicit command.",
       "default": true
     },
     "default_trust": {
