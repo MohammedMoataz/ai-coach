@@ -46,7 +46,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **prompt-coach** | Skills only: `prompt`, `prompt-stats`, `dispatch`. |
 | **security-coach** | Skills only: `scan`, `audit`, `triage`. |
 | **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
-| **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project. |
+| **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
 | **atlas-coach** | `research`, `ingest`, `analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
 | **strategy-coach** | Skills only: `vault`, `blueprint`, `feature`, `market` — document the business, specify what comes next, and look outward: competitors, industry rules, and how the industry already solved your gap. |
 | **ai-coach** | The bundle. Install this one. |

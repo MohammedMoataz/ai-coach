@@ -1,6 +1,6 @@
 ---
-description: Map the architecture - services, components, and who calls whom - as an artifact page, markdown diagrams, and an Obsidian canvas. Use for "/map", "architecture diagram", "how do the services connect".
-argument-hint: "[--full] [--feature <name>] [--project]"
+description: Map the architecture - services, components, and who calls whom - as an artifact page, markdown diagrams, an Obsidian canvas, and optionally editable draw.io files. Use for "/map", "architecture diagram", "how do the services connect".
+argument-hint: "[--full] [--feature <name>] [--project] [--diagrams drawio]"
 disable-model-invocation: true
 ---
 
@@ -23,6 +23,10 @@ feature traced end to end (sequence diagram + its feature note only). Large repo
 AskUserQuestion (multiSelect) offering the detected top areas — never map a huge system
 unprompted.
 
+`--diagrams drawio` adds `docs/onboarding/architecture.drawio` to the outputs. Ask for it when
+someone who does not edit code has to maintain the picture — that is the one thing mermaid cannot
+do, and the reason not to reach for a subscription whiteboard instead.
+
 ## Steps
 
 1. **Trace** via Explore subagents: services, components, and the call/data edges between them.
@@ -41,6 +45,11 @@ unprompted.
      table (component · responsibility · talks to · evidence).
    - **`docs/onboarding/architecture.canvas`** — JSON Canvas: nodes = services/components grouped
      per layer, edges = calls with labels.
+   - **`docs/onboarding/architecture.drawio`** — only with `--diagrams drawio`. Load
+     `references/drawio.md` first: the coordinates are on a fixed grid because the format has no
+     auto-layout, and a generated diagram with overlapping boxes is worse than none. Say in the
+     report how to open it — the VS Code extension `hediet.vscode-drawio`, the free desktop app, or
+     app.diagrams.net. GitHub will not render it.
    - **`docs/onboarding/features/<feature>.md`** — one note per feature the map demonstrates, in
      `/investigation-coach:onboard`'s eight-section feature format (read
      `${CLAUDE_PLUGIN_ROOT}/skills/onboard/references/formats.md` before writing one — the two

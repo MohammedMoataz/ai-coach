@@ -1,6 +1,6 @@
 # Partner catalog
 
-Eight entries, each: verdict (the whole pitch, caveat attached) · check · install. Adding a partner
+Nine entries, each: verdict (the whole pitch, caveat attached) · check · install. Adding a partner
 is a markdown edit here — there is deliberately no registry file to parse. Facts dated 2026-08;
 verify install lines against upstream if this file has aged.
 
@@ -51,12 +51,33 @@ verify install lines against upstream if this file has aged.
   defer to the MCP server, so they track upstream rather than going stale. Caveat: the value is
   the *audience*, not the drawing. Mermaid in a committed markdown file is free, diffs in a pull
   request, and needs no login; reach for a board when people outside the repo need to see it.
+- **Cost ceiling:** the free tier caps editable boards, so a team that documents on Miro hits a
+  paid plan quickly. If what you actually wanted was a diagram a non-developer can edit, draw.io
+  below does that in a committed file for nothing. Miro earns its price for live, many-people-at-
+  once workshops — not for documentation that has to last.
 - **Check:** `claude plugin list` output contains `miro@`
 - **Install:** `claude plugin install miro@claude-plugins-official`, then `/reload-plugins`, then
   the user opens `/plugin` → Installed → miro → authenticate. Guide, don't automate.
 - **Caveat:** auth is an interactive OAuth flow, so a headless or fresh session has the tools and
   no session — never call an authenticate tool to probe for it, or the run hangs waiting on a
   browser. Detect passively, skip with one line.
+
+### draw.io — diagrams as committed, hand-editable files
+
+- **Verdict:** the answer to "a stakeholder needs to edit this picture" without a subscription.
+  Free, open source, no account, and the file lives in the repo and diffs in a pull request.
+  `/investigation-coach:map --diagrams drawio`, `/investigation-coach:onboard --diagrams drawio` and
+  `/strategy-coach:blueprint --visual drawio` all write `.drawio` XML directly, so **nothing needs
+  installing to generate one** — a viewer is only needed to open it. Caveat: the format has no
+  auto-layout and GitHub will not render it in-browser. Mermaid stays the better default whenever
+  the person maintaining the diagram edits code.
+- **Check:** `code --list-extensions` contains `hediet.vscode-drawio` (nothing to check if you only
+  ever open files at app.diagrams.net)
+- **Install (viewer, pick one):** `code --install-extension hediet.vscode-drawio` — opens `.drawio`
+  files natively in VS Code, no account; or `winget install -e --id JGraph.Draw` for the desktop
+  app; or nothing at all and drag the file onto app.diagrams.net.
+- **Then:** `.drawio.svg` and `.drawio.png` are export formats that render anywhere *and* stay
+  editable — export from the app when you need one embedded in a README. No skill hand-writes those.
 
 ### ast-grep — structural search and codemods
 

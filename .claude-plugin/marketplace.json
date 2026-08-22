@@ -69,7 +69,7 @@
     {
       "name": "investigation-coach",
       "source": "./plugins/investigation-coach",
-      "description": "Onboard anyone onto the project: generated docs, an architecture map you can open in Obsidian, and study material — /onboard, /map, /study.",
+      "description": "Onboard anyone onto the project: generated docs, an architecture map you can open in Obsidian or edit in draw.io, and study material — /onboard, /map, /study.",
       "category": "productivity",
       "tags": [
         "onboarding",

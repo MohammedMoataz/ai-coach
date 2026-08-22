@@ -1,6 +1,6 @@
 ---
 description: Generate onboarding docs for this project - core features, setup, rules, stack, patterns, all evidence-cited. Use for "/onboard", "onboard a new team member", "document this project for newcomers".
-argument-hint: "[status] [--full] [--feature <name>] [--project]"
+argument-hint: "[status] [--full] [--feature <name>] [--project] [--diagrams drawio]"
 disable-model-invocation: true
 ---
 
@@ -21,6 +21,12 @@ Default: this repo, **surface layer** (core features only). `--full`: everything
 span the repos declared in `.ai-coach/project.md`. `--feature <name>`: one feature, one file.
 Large repo and no flag: use AskUserQuestion (multiSelect) to offer the detected top areas and let
 the user pick the focus.
+
+`--diagrams drawio`: also emit an editable `.drawio` diagram beside the notes — the flow a newcomer
+has to hold in their head, as boxes someone can drag. **Off by default**, deliberately: this skill's
+job is the prose a teammate reads on day one, and a diagram that nobody maintains is the failure
+mode these docs already exist to avoid. Ask for it when a non-developer will keep the picture
+current.
 
 ## Steps
 
@@ -45,8 +51,16 @@ docs/onboarding/
 
 4. **Feature mode**: `--feature <name>` writes ONE `docs/onboarding/features/<name>.md` in the
    eight-section feature format (see references) instead of the full tree.
-5. **Remember.** After a verified write — every file listed above exists, and re-reading one shows
-   the content you intended, generated-by line included:
+5. **Diagrams**, only with `--diagrams drawio`. Load
+   `${CLAUDE_PLUGIN_ROOT}/skills/map/references/drawio.md` — the format has no auto-layout, so the
+   grid rule there is what stops the boxes overlapping. One file, matching the scope: the core flow
+   as `docs/onboarding/onboarding.drawio`, or `features/<name>.drawio` in feature mode. Boxes trace
+   to `file:line` the same as the prose; an unverified edge is dashed, grey and labelled `INFERRED`.
+   Then tell the user how to open it — the VS Code extension `hediet.vscode-drawio`, the free
+   desktop app, or app.diagrams.net; GitHub will not render it. For a full architecture picture
+   point at `/investigation-coach:map --diagrams drawio` instead of growing this one.
+6. **Remember.** After a verified write — every file listed above exists, and re-reading one shows
+   the content you intended, generated-by line included (a `.drawio` must additionally parse as XML):
    `ENGINE add reference "onboarding docs at docs/onboarding/ (<scope>)" 0.75`. Never on a
    partial or failed write.
 

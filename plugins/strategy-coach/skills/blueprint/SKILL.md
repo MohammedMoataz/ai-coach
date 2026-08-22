@@ -1,6 +1,6 @@
 ---
 description: Document what the business is — actors, processes, rules, glossary — mapped to the code that implements it, as Obsidian notes plus diagrams. Use for "/blueprint", "document the business", "map the processes", "what does this system actually do".
-argument-hint: "[--full | --feature <name>] [--no-visual]"
+argument-hint: "[--full | --feature <name>] [--visual mermaid|drawio|miro|none]"
 disable-model-invocation: true
 ---
 
@@ -54,12 +54,14 @@ the input here.
    Each `NOT IN CODE` row is a candidate for `/strategy-coach:market --gap "<it>"`, which searches
    how this industry already solved it — name that option in the report rather than speculating
    here.
-6. **Draw it.** A Mermaid flowchart inside each process note — the note is the source of truth.
-   Then one Artifact page aggregating the diagrams for people who will not open Obsidian. Skip both
-   with `--no-visual`.
-7. **Miro, only if it is already there.** Check whether Miro tools are present in this session.
-   Present: offer a board and write its URL back into the note. Absent: one line saying so, then
-   continue — this never blocks. Load `references/visual.md` before touching Miro.
+6. **Draw it.** A Mermaid flowchart inside each process note — the note is the source of truth,
+   always, whatever else you render. Then one Artifact page aggregating the diagrams for people who
+   will not open Obsidian. `--visual none` skips both.
+7. **Render anywhere else only if asked.** `--visual drawio` writes an editable `.drawio` beside
+   the notes, for a picture someone who does not edit code will maintain. `--visual miro` puts it on
+   a board, but only if Miro is already connected — check **passively**, never call an authenticate
+   tool, and a missing Miro is one line in the report rather than a failed run. Load
+   `references/visual.md` before either.
 8. **Score your own draft, then revise once.** Before showing anything, grade the notes against the
    five dimensions in `references/review.md` — 1 to 4, each with a one-line justification. Any
    dimension below 3 gets one revision pass targeted at that dimension, then you stop. This is the
