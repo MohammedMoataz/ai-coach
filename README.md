@@ -43,7 +43,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 |---|---|
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors. Everything else depends on it. |
 | **memory-coach** | Skills only: `recall`, `debrief`, `handoff`, `team`, `project`, `doctor`. |
-| **prompt-coach** | Skills only: `prompt`, `prompt-stats`. |
+| **prompt-coach** | Skills only: `prompt`, `prompt-stats`, `dispatch`. |
 | **security-coach** | Skills only: `scan`, `audit`, `triage`. |
 | **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
 | **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project. |
@@ -56,8 +56,9 @@ Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The ful
 Measured with `claude plugin details`, not estimated — **~1,317 always-on tokens** for the whole
 product as of v0.6.0: core and the bundle are 0, memory-coach ~298, prompt-coach ~114,
 security-coach ~201, harness-coach ~72, investigation-coach ~225, atlas-coach ~407 (three skills
-plus two agents). Several skill descriptions were rewritten in v1.0.0, so the figure is due a
-re-measure; the shape holds — what is always on is the descriptions, and nothing else.
+plus two agents). It has drifted: descriptions were rewritten in v1.0.0, and two skills were added
+since — `debrief` in v1.1.0 and `dispatch` in v1.2.0 — so the figure is stale and understated by
+roughly two descriptions. The shape holds — what is always on is the descriptions, and nothing else.
 
 ## What happens on its own
 
@@ -91,21 +92,23 @@ re-measure; the shape holds — what is always on is the descriptions, and nothi
 
 `/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` · `/memory-coach:team` ·
 `/memory-coach:project` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
-`/prompt-coach:prompt-stats` · `/security-coach:scan` · `/security-coach:audit` ·
-`/security-coach:triage` · `/harness-coach:partners` · `/investigation-coach:onboard` ·
-`/investigation-coach:map` · `/investigation-coach:study` · `/atlas-coach:research` ·
-`/atlas-coach:ingest` · `/atlas-coach:analyze`
+`/prompt-coach:prompt-stats` · `/prompt-coach:dispatch` · `/security-coach:scan` ·
+`/security-coach:audit` · `/security-coach:triage` · `/harness-coach:partners` ·
+`/investigation-coach:onboard` · `/investigation-coach:map` · `/investigation-coach:study` ·
+`/atlas-coach:research` · `/atlas-coach:ingest` · `/atlas-coach:analyze`
 
-Only `recall` fires on its own — Claude should reach for memory unprompted when a question matches
-prior work. Everything else waits for you. A skill with side effects should run when you say so.
+Two fire on their own. `recall`, so Claude reaches for memory unprompted when a question matches
+prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a follow-up — advice that
+has to be remembered before it applies is advice that never applies. Everything else waits for you:
+a skill with side effects should run when you say so, and neither of these has any.
 
 Every CLI-and-format skill is pinned to Haiku at low effort — that work should never bill at
 frontier rates (`ingest` joins that tier: routing and refinement are mechanical). The rest stay
-on the session model, deliberately: `recall` runs inside a real answer; investigation-coach's
-three and atlas-coach's `research`/`analyze` are real analysis — pinned down, the output reads
-like a file listing. Each of those says up front that it costs real tokens and takes a scoping
-flag to bound the spend. The hooks' own LLM calls (plan-mode review, session-end distillation)
-are hardcoded to Haiku too.
+on the session model, deliberately: `recall` and `dispatch` run inside a real answer, never as a
+report of their own; investigation-coach's three and atlas-coach's `research`/`analyze` are real
+analysis — pinned down, the output reads like a file listing. Each of those says up front that it
+costs real tokens and takes a scoping flag to bound the spend. The hooks' own LLM calls (plan-mode
+review, session-end distillation) are hardcoded to Haiku too.
 
 ## What a teammate actually receives
 
