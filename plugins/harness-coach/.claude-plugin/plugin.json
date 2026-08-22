@@ -1,7 +1,7 @@
 {
   "name": "harness-coach",
   "displayName": "Harness Coach",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The toolbox next to the coach: a curated list of partner tools that pair well with Claude Code — detect what's installed, pick what you want, install only that. Ships skills only.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",

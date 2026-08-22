@@ -1,6 +1,6 @@
 # Partner catalog
 
-Seven entries, each: verdict (the whole pitch, caveat attached) · check · install. Adding a partner
+Eight entries, each: verdict (the whole pitch, caveat attached) · check · install. Adding a partner
 is a markdown edit here — there is deliberately no registry file to parse. Facts dated 2026-08;
 verify install lines against upstream if this file has aged.
 
@@ -43,6 +43,20 @@ verify install lines against upstream if this file has aged.
   self-signed cert).
 - **Caveat:** a server added with `claude mcp add` is not usable until Claude Code restarts. Setup
   is interactive end to end — guide the user, never automate it.
+
+### miro — a shared whiteboard the session can draw on
+
+- **Verdict:** for the diagram a stakeholder will actually look at — actor flows, process maps,
+  a visual code review — on a board the team already has open. Official plugin, and its skills
+  defer to the MCP server, so they track upstream rather than going stale. Caveat: the value is
+  the *audience*, not the drawing. Mermaid in a committed markdown file is free, diffs in a pull
+  request, and needs no login; reach for a board when people outside the repo need to see it.
+- **Check:** `claude plugin list` output contains `miro@`
+- **Install:** `claude plugin install miro@claude-plugins-official`, then `/reload-plugins`, then
+  the user opens `/plugin` → Installed → miro → authenticate. Guide, don't automate.
+- **Caveat:** auth is an interactive OAuth flow, so a headless or fresh session has the tools and
+  no session — never call an authenticate tool to probe for it, or the run hangs waiting on a
+  browser. Detect passively, skip with one line.
 
 ### ast-grep — structural search and codemods
 
