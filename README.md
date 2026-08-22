@@ -48,7 +48,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
 | **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project. |
 | **atlas-coach** | `research`, `ingest`, `analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
-| **strategy-coach** | Skills only: `vault`, `blueprint`, `feature`, `market` — document the business, specify what comes next, and find the competitive gap. |
+| **strategy-coach** | Skills only: `vault`, `blueprint`, `feature`, `market` — document the business, specify what comes next, and look outward: competitors, industry rules, and how the industry already solved your gap. |
 | **ai-coach** | The bundle. Install this one. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under

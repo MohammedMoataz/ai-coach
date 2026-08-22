@@ -29,6 +29,19 @@ tags: [feature, spec]
 <Two or three sentences. What is happening today that makes this worth building. If the answer is
 "a customer asked", say which and what they were trying to finish.>
 
+## Cost and benefit
+
+| | |
+|---|---|
+| **Cost** | <the honest estimate, in the unit you actually have: days, or "one sprint", or "unknown until the spike in Unknowns is done"> |
+| **Benefit** | <what improves, and for whom — a number where one exists, the observable change where it does not> |
+| **Judged worth it by** | <name> · <date> |
+
+Required, and the "unknown" answer is allowed — what is not allowed is leaving it out. A
+specification that cannot be declined is not a decision document, and every field above exists so
+that someone *could* decline it. If the benefit is smaller than the cost and it is still being
+built, say why in one line; that reason is usually the most interesting sentence in the file.
+
 ## Scope
 
 **In:**

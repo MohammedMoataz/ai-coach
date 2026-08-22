@@ -15,8 +15,14 @@ it can fail — so every process note carries a diagram. An **agent** needs the 
 function is that step, at which line — so every process note carries a table with `file:line`.
 Same file, both readable; splitting them guarantees one goes stale.
 
-This skill does not re-derive the architecture. If `/investigation-coach:map` has run, its output
-is the input here.
+Why files rather than a conversation: the documented failure of LLM analytics work is that nothing
+accumulates — each new person reloads the context, rephrases the questions, and retraces the same
+steps, because the previous session's understanding was never written anywhere durable. A committed
+markdown note survives the session, diffs in a pull request, and is readable by the next agent
+without being re-derived. That is the whole reason this skill writes files instead of answering.
+
+It also does not re-derive the architecture. If `/investigation-coach:map` has run, its output is
+the input here.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
@@ -45,14 +51,23 @@ is the input here.
 5. **Map each process to code.** One row per step: the entry point as `file:line`, or the word
    `INFERRED` when you are reading intent rather than proof. Never blank. A step that exists in the
    business and nowhere in the code is a finding, not an omission — record it as `NOT IN CODE`.
+   Each `NOT IN CODE` row is a candidate for `/strategy-coach:market --gap "<it>"`, which searches
+   how this industry already solved it — name that option in the report rather than speculating
+   here.
 6. **Draw it.** A Mermaid flowchart inside each process note — the note is the source of truth.
    Then one Artifact page aggregating the diagrams for people who will not open Obsidian. Skip both
    with `--no-visual`.
 7. **Miro, only if it is already there.** Check whether Miro tools are present in this session.
    Present: offer a board and write its URL back into the note. Absent: one line saying so, then
    continue — this never blocks. Load `references/visual.md` before touching Miro.
-8. **Report, including the holes.** What was written, what the user still needs to answer, and
-   what you could not determine. Then
+8. **Score your own draft, then revise once.** Before showing anything, grade the notes against the
+   five dimensions in `references/review.md` — 1 to 4, each with a one-line justification. Any
+   dimension below 3 gets one revision pass targeted at that dimension, then you stop. This is the
+   step that separates "the model wrote some notes" from the measured version of this workflow, and
+   the reason it is a numbered step rather than advice is that a self-check nobody scored is a
+   self-check that always passes.
+9. **Report, including the holes.** What was written, the scores and what the revision pass
+   changed, what the user still needs to answer, and what you could not determine. Then
    `ENGINE add reference "business blueprint at docs/business/ — domain: <domain>, processes: <list>" 0.75`
 
 ## Rules

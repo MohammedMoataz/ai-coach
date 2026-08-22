@@ -27,6 +27,10 @@ AI-drafted spec that nobody read is how a wrong feature gets built fast.
    touches, `docs/onboarding/features/<name>.md` if the code side is already documented. Link
    both; never restate them. Missing business notes are worth one line: `/strategy-coach:blueprint`
    makes the spec sharper, but this skill runs without it.
+   **If `docs/business/industry.md` exists, check this feature against it.** An industry
+   requirement or convention that touches what we are building and is absent from the DoD is a
+   finding — add the row, or record in Unknowns why it does not apply. Regulatory rows stay marked
+   `⚠ verify`: cite them, never restate them as settled, and never claim the feature complies.
 3. **Clarify, with real questions.** Use AskUserQuestion. The four that earn their place:
    - *What outcome changes for whom?* — the goal, in the user's words, not a feature name.
    - *How will we know it worked?* — push until the answer is observable. "Faster" is not.
@@ -40,10 +44,12 @@ AI-drafted spec that nobody read is how a wrong feature gets built fast.
    `references/prior-art.md`. Bounded: at most 4 researchers.
 5. **Write `spec.md`.** Format in `references/formats.md`. The definition of done is a table where
    every row names a command or an observable behaviour. Any row you cannot make checkable goes to
-   Unknowns instead — an uncheckable criterion is a disagreement scheduled for later.
-6. **Gate: get sign-off.** Show the goal, the scope boundary, and the whole DoD table. Ask
-   plainly whether it is right. **Do not write `plan.md` until the user answers.** If they change
-   something, update `spec.md` and ask again. This is the step that makes the rest worth having.
+   Unknowns instead — an uncheckable criterion is a disagreement scheduled for later. The cost and
+   benefit line is required: a specification nobody could decline is not a decision document.
+6. **Gate: get sign-off.** Show the goal, the scope boundary, the cost-and-benefit line, and the
+   whole DoD table. Ask plainly whether it is right, and make declining an explicit option — a
+   gate that only accepts is not a gate. **Do not write `plan.md` until the user answers.** If they
+   change something, update `spec.md` and ask again.
 7. **Write `plan.md` for a reader who cannot ask.** Load `references/formats.md`. It restates the
    DoD as its success criteria, names files with `@path` and an exemplar to imitate, and says what
    comes back. Then check it: `ENGINE prompt-check "<the plan's task statement>"` — flags mean
@@ -58,6 +64,8 @@ AI-drafted spec that nobody read is how a wrong feature gets built fast.
   read is a plan for whatever the model guessed.
 - **Every DoD row carries its check** — a command, a test name, or `observable:` plus where to see
   it. No adjectives: "fast", "clean" and "robust" are not criteria.
+- **Cost, benefit, and who judged it worthwhile are required fields.** "Unknown until we spike" is
+  a legitimate cost; omitting the question is not.
 - **`## Unknowns` is required in both files, and "none" is not an answer.** Something is always
   unresolved; the honest list is what stops a confident wrong build.
 - **`plan.md` assumes nothing.** No "as we discussed", no "the file we looked at". Its reader is a
@@ -74,6 +82,9 @@ AI-drafted spec that nobody read is how a wrong feature gets built fast.
 ## Related
 
 `/strategy-coach:blueprint` supplies the business context that makes a spec specific.
+`/strategy-coach:market --gap "<the gap>"` answers "how has this already been solved" before you
+specify a solution to it — reach for that first when the feature is filling a gap rather than
+adding a capability, and `--industry` for the rules this feature has to live inside.
 `/prompt-coach:dispatch` is the contract `plan.md` is written to — read it if the plan needs to be
 defended. `/memory-coach:debrief` is the other end: what was actually concluded once the work is
 done. `/harness-coach:partners` lists spec-kit, which also does spec-driven development — reach
