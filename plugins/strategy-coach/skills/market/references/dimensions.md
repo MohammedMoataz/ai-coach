@@ -40,13 +40,17 @@ by a user asking for it than by the vendor not listing it.**
 ## `--deep` adds two
 
 5. **Pricing, and what it reveals.**
-   Tiers, what gates the upgrade, and the floor. Pricing is the most honest document a company
-   publishes — it names who they want. Report the model, not just the numbers; and if pricing is
-   "contact us", that is itself the finding.
+   Tiers, and specifically **what gates the upgrade** — the feature held one tier above the one
+   most people buy is their view of what is valuable. Then the floor, any usage metric they meter
+   on (seats, runs, volume — the metric reveals what costs them), and whether discounting is
+   structural or ad-hoc. Pricing is the most honest document a company publishes: it names who they
+   want. If pricing is "contact us", that is the finding, not a missing answer.
 
 6. **Content and search position.**
-   What topics they dominate and what they never write about. The gap in their content is often the
-   gap in their product, and it is the cheapest gap to test.
+   What topics they dominate, what they never write about, and where the content stops relative to
+   the funnel — plenty of top-of-funnel explainers with nothing comparative usually means a product
+   that does not want to be compared. The gap in their content is often the gap in their product,
+   and it is much the cheapest gap to test.
 
 ## Deriving the gap
 
@@ -67,3 +71,17 @@ three lines explicitly; if any is blank, the honest report is "no defensible gap
 - Do not summarize a competitor's marketing back as analysis. If a section could have been written
   from their homepage alone, cut it.
 - Do not rank competitors on a score you invented. A weighted total hides which column decided it.
+
+## Where this question set came from
+
+Deliberately not from the competitive-analysis frameworks it resembles. Two were read while
+designing this skill; both supply an impressive amount of procedure — one runs to five prompt
+templates of a dozen sub-bullets each — and between them they weight no sources, date no claim, and
+report no result. Their pricing and digital-footprint sections did contribute items above; their
+method contributed the thing to avoid.
+
+The failure mode they share is worth naming, because it is easy to reproduce: a prompt that asks
+for eleven dimensions of a competitor returns eleven dimensions of a competitor. It reads thorough.
+Nothing in it is checkable, nothing is dated, and no line of it tells you what to do differently.
+Length is not evidence. Four answered questions with sources beat eleven asserted ones, which is
+why the default here is four.

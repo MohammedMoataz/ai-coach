@@ -1,6 +1,6 @@
 ---
-description: Position the product against its competitors — who they are, what they actually ship, where the gap is, and what to do about it. Use for "/market", "competitor analysis", "who are we competing with", "where is the positioning gap".
-argument-hint: "[<competitor or market>] [--deep] [--refresh]"
+description: Look outward — competitors and where the gap is, the industry's rules and conventions, and how that industry already solved a gap you are stuck on. Use for "/market", "competitor analysis", "gap analysis", "industry rules", "how do others solve this".
+argument-hint: "[<competitor or market>] [--industry] [--gap \"<the gap>\"] [--deep] [--refresh]"
 disable-model-invocation: true
 ---
 
@@ -19,11 +19,30 @@ One more inversion. Most of what a vendor publishes about itself is marketing, a
 competitive-analysis blog publishes is unmeasured. This skill therefore treats a landing page as a
 *claim* and a bug tracker as *evidence*, and it says which is which in the output.
 
+## Three modes
+
+Same discipline — weighted sources, dated claims, verified before load-bearing — pointed at three
+different questions. Everything after this section describes the default; the other two load
+`references/industry.md`.
+
+| Mode | Question | Writes |
+|---|---|---|
+| default | who competes with us, and where is the gap | `docs/market/<slug>.md` |
+| `--industry` | what does this industry require, expect, and no longer do | `docs/business/industry.md` |
+| `--gap "<the gap>"` | how has this industry already solved this, if it has | the answer, plus a row in `industry.md` |
+
+`--gap` is the one to reach for when the blueprint turned up a `NOT IN CODE` step or a process
+nobody can justify. It searches for precedent **before** proposing anything, and it is allowed to
+come back with "the industry has not solved this either" — which is a genuine finding, not a
+failure to find one.
+
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
 
 ## Steps
 
+0. **If `--industry` or `--gap` was passed, load `references/industry.md` and follow it instead.**
+   Those modes share step 1 and the source hierarchy, and diverge from step 3 onward.
 1. **Name what we are, first.** One sentence: the domain, the buyer, and the outcome we sell.
    Read `docs/business/overview.md` if `/strategy-coach:blueprint` has run — that is what it is
    for. Without it, ask. Analysis with no self-definition drifts into a general industry survey,
@@ -68,6 +87,11 @@ competitive-analysis blog publishes is unmeasured. This skill therefore treats a
   how a strategy document becomes actively harmful.
 - **Never name a private individual.** Public companies, products and public posts are in scope;
   people are not the unit of analysis.
+- **In `--gap` mode, precedent comes before proposal.** Proposing a solution where the industry
+  already converged is the one failure that mode cannot have.
+- **Never assert compliance, and mark every regulatory claim `⚠ verify`.** This skill records what
+  an industry requires considering; whether this project complies is a question for someone
+  qualified to answer it, and the note says so in its own text.
 
 ## Related
 

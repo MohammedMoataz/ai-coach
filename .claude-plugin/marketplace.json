@@ -93,7 +93,7 @@
     {
       "name": "strategy-coach",
       "source": "./plugins/strategy-coach",
-      "description": "Document what the business is and specify what comes next: an Obsidian vault of actors, processes and rules mapped to code, feature specs with a checkable definition of done, and where the competitive gap is — /vault, /blueprint, /feature, /market.",
+      "description": "Document what the business is and specify what comes next: an Obsidian vault of actors, processes and rules mapped to code, feature specs with a checkable definition of done, the competitive gap, the industry rules you must live inside, and how that industry already solved a gap — /vault, /blueprint, /feature, /market.",
       "category": "productivity",
       "tags": [
         "business-analysis",

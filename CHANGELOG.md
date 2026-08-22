@@ -11,10 +11,11 @@ are enforced in code and which live in someone's inbox. Nothing turns "we need p
 into a specification with a definition of done and a plan a cheap model can execute unattended.
 And nothing looks outward at who else is solving the same problem.
 
-Four skills, in the order you would use them: `vault` prepares the place, `blueprint` documents
-what exists, `market` says where the gap is, `feature` specifies what to build.
+Four skills, in the order you would use them: `vault` prepares the place, `blueprint` documents what
+exists, `market` looks outward — at competitors, at the industry's own rules, and at how that
+industry already solved the gap you are stuck on — and `feature` specifies what to build.
 
-**strategy-coach 1.1.0 · harness-coach 1.0.1 · ai-coach 1.2.0**
+**strategy-coach 1.2.0 · harness-coach 1.0.1 · ai-coach 1.2.0**
 
 ### The boundary that makes this a separate plugin
 
@@ -97,6 +98,38 @@ skill is shaped against them: both supplied procedure with no measurement, and n
 sources or dated a single claim. The prompt templates were useful as raw material; the method is
 not inherited.
 
+### `/strategy-coach:market --industry` and `--gap` — the rules of the game
+
+Competitors are *who*. The industry is *the rules everyone plays by*, and those are the constraints
+a project most often discovers late and expensively. `--industry` writes `docs/business/industry.md`
+across six families: regulatory, standards, conventions, commercial, operational, and — the one
+nobody documents — **anti-patterns the industry tried and abandoned**. Each row carries a **We**
+column: `file:line`, `INFERRED`, or `NOT IN CODE`. A `NOT IN CODE` beside a regulatory row is the
+most valuable cell this plugin can produce.
+
+`--gap "<the gap>"` is the mode to reach for when `blueprint` surfaced a step that exists in the
+business and nowhere in the code. It searches for **precedent before proposing anything**, then
+classifies the answer honestly — *converged* (one dominant approach), *divergent* (real trade-offs,
+report them rather than picking a winner), *regulated* (the answer is dictated; stop guessing),
+*unsolved* (the industry has not cracked it either), or *dissolved* (the problem is avoided upstream
+— usually the best answer available). Only when nothing is found does it propose, labelled
+`NO PRECEDENT FOUND — proposal` with the trade-off it accepts and the smallest thing that would
+disprove it. A proposal offered where precedent exists is negligence; one offered where none exists
+is the job.
+
+The answer is written back into `industry.md`, so the next gap search finds it instead of re-running
+the research. Where it becomes work, it hands off to `/feature`.
+
+**On regulatory claims, the skill is deliberately timid.** Every regulatory row is marked
+`⚠ verify` — meaning a qualified professional must confirm it before anyone relies on it — the note
+says so in its own text, and **it never states that this project complies**. A regulation summarized
+by a language model from secondary sources is the start of a conversation with counsel, not a
+substitute for one. This is the one place in the marketplace where being useful and being cautious
+genuinely conflict, and caution wins.
+
+`industry.md` also draws the line `rules.md` could not: rules *we* chose live in `blueprint`'s note,
+rules *imposed on us* live here, and confusing the two is how a convention gets defended as law.
+
 ### harness-coach 1.0.1 — Miro joins the catalog
 
 Eighth partner. The verdict says the quiet part: the value of a board is the *audience*, not the
@@ -110,21 +143,40 @@ The design draws on six sources read with `/atlas-coach:ingest` — the converte
 local rather than shipping with the plugin, so the sources are named here instead. Two of them
 changed the design concretely rather than decorating it:
 
-- **arXiv 2505.23695** measured that naming the business domain *before* analysis lifts insight
-  depth 31% over the same model without it. So `blueprint`'s first step is one sentence naming the
-  domain, shown to the user for correction before anything else is written — not a preamble, the
-  step the rest depends on.
+- **arXiv 2505.23695** is a seven-agent pipeline — profile, detect domain, extract concepts,
+  analyse through three lenses, score, reflect, revise. Two findings, and they are not the same
+  strength. Naming the domain before analysing is reported **qualitatively**: better coverage,
+  structure and business relevance, no number attached. The **measured** result — G-Eval depth
+  +31%, novelty +28%, insightfulness +12% against prompt-only GPT-4o — belongs to the *whole
+  pipeline*, not to any one step. `blueprint` takes both: naming the domain is step 1, and the
+  scored self-check with one revision pass (step 8) is the loop that produced the measured lift.
+  Taking the first without the second would have been name-dropping a number.
 - **Thoughtworks, via Gudala (2025)**, reported a 30% cut in user-story lead time from GenAI — but
   only after instituting human review gates; the first drafts missed implicit requirements. That is
   the sign-off gate in `/feature`, and the reason it is a rule rather than a suggestion.
+- **Savant Labs** names four structural gaps between LLMs and analytics work: context that will not
+  fit, data handling that stays manual, no visual reasoning, and no foundation for collaboration —
+  "each new user has to start from scratch, reloading context, rephrasing prompts, retracing
+  steps". That last one is the argument for a committed vault of plain markdown rather than a
+  conversation, and it is now written into `blueprint`'s rationale instead of being implied by it.
+- **Indeed's business-analyst skill list** was used as a coverage checklist against these four
+  skills, and it found a real hole: cost-benefit analysis. A definition of done is binary, so
+  nothing anywhere asked whether the benefit exceeded the cost. `spec.md` now requires one line
+  naming the cost, the benefit and who judged it worthwhile — a specification that cannot be
+  declined is not a decision document.
 
-Also folded in: the researcher contract's negative space (`## Unknowns` is required in every
-document this plugin writes, and "none" is not an answer), and the four question types from
-Indeed's critical-thinking piece behind `/feature`'s clarification questions.
+Also folded in: the researcher contract's negative space — `## Unknowns` is required in every
+document this plugin writes, and "none" is not an answer.
 
 The corpus is honest about its own weakness, so this release should be too: four of those six
-sources are vendor or SEO content that asserts rather than measures. The two dated, falsifiable
-claims above are the two that shaped the design.
+sources are vendor or SEO content that asserts rather than measures, and the two remaining
+competitive-analysis frameworks contributed nothing but a method to avoid.
+
+One correction to an earlier draft of this entry, recorded rather than quietly edited: it credited
+the +31% depth figure to domain detection alone. That is wrong — the paper reports domain detection
+qualitatively and the +31% for the full pipeline. The claim was checked against the source, found
+overstated, and both the number and the design were corrected: `blueprint` now implements the
+scored revision loop the figure actually measures.
 
 ## v1.2.0 — The prompts the model writes (2026-08-22)
 

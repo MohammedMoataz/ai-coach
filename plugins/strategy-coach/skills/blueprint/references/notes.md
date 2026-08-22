@@ -40,7 +40,8 @@ tags: [business, overview]
 ## Reference
 - [[actors]] — who uses this and what each is trying to finish
 - [[glossary]] — the team's words, and their names in the code
-- [[rules]] — the constraints, and where each is enforced
+- [[rules]] — the constraints we set, and where each is enforced
+- [[industry]] — the constraints the industry sets, from `/strategy-coach:market --industry`
 
 ## What we could not determine
 - <one line per open question, with who could answer it>
@@ -75,6 +76,10 @@ that `txn_ref` and "payment reference" are the same thing.
 
 A business rule is a constraint that can be violated. Note where it is enforced — and the
 unenforced ones are the point of this table.
+
+These are the rules *we* chose. The ones the industry imposes live in `industry.md`, written by
+`/strategy-coach:market --industry`, so that a rule we invented is never confused with a rule we
+must follow. A row here that turns out to be an industry requirement belongs in that file instead.
 
 | Rule | Source | Enforced at |
 |---|---|---|
