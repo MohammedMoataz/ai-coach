@@ -97,6 +97,12 @@ see its own session id.
   had not imported yet. It is relayed now — it was already in the file — and still stays out of your
   own brief, which is what the flag is actually for.
 
+- **A memory keeps the age it was written at.** `created` was exported but dropped on import, so a
+  teammate's three-month-old lesson arrived dated today and outranked your own equally old one —
+  `score()` decays confidence against age. Worse, because export carries the date, every relay hop
+  re-stamped it, so a memory circulating in a seed could never decay at all. Found by asking whether
+  memories transfer at all: they always did, but not their age.
+
 ### The brief
 
 "Last session here" filtered on `project` alone and printed no attribution, so a teammate's newer

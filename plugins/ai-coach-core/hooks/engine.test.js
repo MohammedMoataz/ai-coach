@@ -1076,6 +1076,45 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
     'with no id it resolves the latest session, which is what a skill means by "this one"');
 }
 
+// A memory's AGE survives the trip. score() decays confidence against created, so re-stamping an
+// import to today made a teammate's three-month-old lesson outrank your own equally old one — and
+// because export carries created, every relay hop refreshed it again and a circulating memory
+// could never age at all.
+{
+  const ageProj = path.join(tmp, 'ageproj');
+  e.useProject(ageProj);
+  e.add('learning', 'an aged lesson about batching', 0.9, ageProj);
+  e.db().prepare("UPDATE memories SET created = datetime('now','-90 days') WHERE text LIKE 'an aged lesson%'").run();
+  const ageSeed = path.join(tmp, 'age-seed.jsonl');
+  e.seedExport(ageSeed);
+
+  const ageMate = path.join(tmp, 'agemate');
+  e.useProject(ageMate);
+  e.seedImport(ageSeed, ageMate);
+  const got = e.search('aged lesson batching', { full: true })[0];
+  assert.ok(got, 'the memory imported');
+  const days = (Date.now() - Date.parse(String(got.created).replace(' ', 'T') + 'Z')) / 86400000;
+  assert.ok(days > 80, 'an imported memory keeps the age it was written at, not the day it arrived: '
+    + got.created);
+
+  // and relaying it does not refresh it — otherwise nothing in a circulating seed ever decays
+  const hopSeed = path.join(tmp, 'age-hop.jsonl');
+  e.seedExport(hopSeed);
+  const hopRow = fs.readFileSync(hopSeed, 'utf8').split(/\r?\n/).filter(Boolean)
+    .map((l) => JSON.parse(l)).find((r) => r.kind === 'memory' && /aged lesson/.test(r.text || ''));
+  assert.strictEqual(hopRow.created, got.created, 'a relayed memory carries its original date');
+
+  // a future-dated one is still clamped, same rule as sessions
+  const skewSeed2 = path.join(tmp, 'age-skew.jsonl');
+  fs.writeFileSync(skewSeed2, JSON.stringify({ kind: 'memory', type: 'note',
+    text: 'a memory from a fast clock', confidence: 0.8, author: 'sara@example.com',
+    created: '2099-01-01 00:00:00' }) + '\n');
+  e.seedImport(skewSeed2, ageMate);
+  const skewed = e.search('fast clock memory', { full: true })[0]
+    || e.search('a memory from a fast clock', { full: true })[0];
+  assert.ok(skewed && skewed.created < '2099', 'a future-dated memory is clamped to now: ' + (skewed && skewed.created));
+}
+
 // rekey moves debriefs with everything else — v1.0.0 shipped a fix for exactly this class of bug
 assert.ok(e.REKEY_TABLES.includes('debriefs'), 'debriefs is a tenant table rekey knows about');
 

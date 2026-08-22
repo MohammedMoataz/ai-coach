@@ -403,7 +403,13 @@ function add(type, text, confidence, proj, source, extra) {
   const r = x.repo !== undefined ? x.repo : (proj ? repo(proj) : null);
   const target = p ? openTenant(p) : userDb();
   if (p) registerRepoIn(target, r);
-  target.prepare('INSERT INTO memories(type,text,text_key,confidence,provenance,project,repo,source,author,username,role,task,workspace) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+  // `created` is normally the default, but an IMPORTED memory keeps the age it was written at.
+  // Age is a property of the knowledge, not of when you received it: score() decays confidence
+  // against it, so re-stamping an import to today made a teammate's three-month-old lesson
+  // outrank your own equally old one — and every relay hop refreshed it again, so a circulating
+  // memory could never age at all. COALESCE keeps the default for a locally written row.
+  target.prepare('INSERT INTO memories(type,text,text_key,confidence,provenance,project,repo,source,author,username,role,task,workspace,created)'
+    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(?, datetime('now')))")
     .run(TYPES.has(type) ? type : 'note', String(text), norm(text),
       confidence == null ? 0.7 : Number(confidence),
       // who actually produced this line. A model-distilled memory must never be able to pass
@@ -415,7 +421,8 @@ function add(type, text, confidence, proj, source, extra) {
       // someone's role later changes in the roster
       x.role !== undefined ? x.role : roleOf(au, proj),
       x.task !== undefined ? x.task : task(null, proj),
-      x.workspace ? 1 : 0);
+      x.workspace ? 1 : 0,
+      x.created ? clampTs(x.created) : null);
 }
 function registerRepoIn(d, r) {
   if (!r) return;
@@ -1532,7 +1539,7 @@ function seedImport(file, dir) {
       // `imported` is finally written, not just declared — a distilled row stays distilled.
       add(r.type || 'note', r.text, w ? Math.min(conf, 0.3) : r.confidence, null, r.source,
         { project: here, repo: r.repo || null, author: au, username: r.username || null,
-          role: r.role || null, task: r.task || null, workspace: w,
+          role: r.role || null, task: r.task || null, workspace: w, created: r.created,
           provenance: r.provenance === 'distilled' ? 'distilled' : 'imported' });
       c.added++; if (w) c.workspace++;
     }
