@@ -19,8 +19,13 @@ process.stdin.on('end', () => {
     const act = engine.sessionActivity(id, 40); // LAST 40 — the conclusion is where learnings live
     const first = (act.session && act.session.first_prompt) || '';
     const obsLines = act.observations.map((o) => '- ' + (o.digest || o.target)).join('\n');
-    // close the row first so a killed hook still leaves a usable "last session" line
-    engine.sessionEnd(id, first ? first.slice(0, 200) : null);
+    // Close the row first so a killed hook still leaves a timestamped session.
+    // Deliberately NO summary here: the old fallback was first_prompt.slice(0, 200), and `summary`
+    // is exported into a git-committed seed — so every failed model call shipped raw prompt text to
+    // the whole team. With no summary the row still gets its `ended` stamp, and the local brief
+    // falls back to first_prompt, which never leaves this machine.
+    // The shared conclusion is a debrief, published on purpose: /memory-coach:debrief.
+    engine.sessionEnd(id, null);
 
     if (engine.optOn('learn', 'on') && (first || act.observations.length >= 3)) {
       const out = haikuCompress(engine, first, obsLines);
@@ -36,7 +41,9 @@ process.stdin.on('end', () => {
       }
     }
     engine.pruneObservations(30); // observations are session fuel, not knowledge
-    engine.autoSeed(data.cwd);    // /clear and exit both land here — leave the seed current
+    // No automatic export. A seed is published deliberately with /memory-coach:handoff — the same
+    // rule a debrief follows. Exporting on every session end meant knowledge left the machine
+    // before anyone had decided it was worth sharing, and it is what shipped the prompt-text leak.
   } catch (err) {
     try { (engine || require('./engine.js')).log('session-end', err); } catch { /* silent */ }
   }

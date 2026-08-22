@@ -155,9 +155,15 @@ assert.strictEqual(e.search('wisdom', { author: 'nobody@nowhere' }).length, 0, '
 // seed-export --task exports only that task's rows, with author+task in the payload
 const tseed = path.join(tmp, 'task-seed.jsonl');
 assert.strictEqual(e.seedExport(tseed, { task: 'orders-v2' }).memories, 1, 'task-filtered export');
-const trow = JSON.parse(fs.readFileSync(tseed, 'utf8').split('\n')[0]);
+// Line 0 is the `meta` row now: the format declares its own generation, so a reader never has to
+// infer what a line is from whichever fields it happens to carry.
+const tlines = fs.readFileSync(tseed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+assert.strictEqual(tlines[0].kind, 'meta', 'the seed opens with its format generation');
+assert.strictEqual(tlines[0].seed, 2, 'generation 2');
+const trow = tlines.find((r) => r.kind === 'memory');
 assert.strictEqual(trow.author, 'tester@example.com', 'seed row carries author');
 assert.strictEqual(trow.task, 'orders-v2', 'seed row carries task');
+assert.ok(trow.text, 'a memory row still carries `text` — what an older importer keys on');
 
 // roster + workspace import: new joiner capped and held private, unknown author full trust
 const teamProj = path.join(tmp, 'teamproj');
@@ -191,10 +197,16 @@ const strangerRow = e.search('stranger note', { full: true })[0];
 assert.strictEqual(strangerRow.workspace, 0, 'unknown author = full trust');
 assert.ok(e.search('joiner unverified')[0]._display.includes('[workspace]'), 'search marks workspace rows');
 
-// workspace rows never re-export (someone else's claim, held privately, not yours to pass on)
+// A workspace row is RELAYED, not re-published. It reached this database by already being in the
+// shared file, so passing it on exposes nothing new — while dropping it would delete a teammate's
+// contribution from the channel for everyone who has not imported yet. A private, reversible trust
+// decision must not censor a shared file. It still stays out of MY brief; that is the flag's job.
 const reseed = path.join(tmp, 'reseed.jsonl');
 e.seedExport(reseed);
-assert.ok(!fs.readFileSync(reseed, 'utf8').includes('joiner unverified'), 'workspace row excluded from export');
+assert.ok(fs.readFileSync(reseed, 'utf8').includes('joiner unverified'),
+  "a teammate's own row is relayed even while held at workspace trust");
+assert.ok(!e.brief(8000, teamProj).includes('joiner unverified'),
+  'and it still never reaches my brief');
 
 // a project's export contains that project's rows and nothing else — the tenant is the filter
 e.useProject('/demo/proj');
@@ -643,11 +655,13 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   // signals travel in a handoff — flags only, and re-importing must not inflate the counts
   {
     const seedFile = path.join(tmp, 'sig-seed.jsonl');
-    e.sessionEnd('ps-mate-1', 'omar looked at the exporter'); // only summarised sessions travel
+    e.sessionEnd('ps-mate-1', 'omar looked at the exporter'); // only FINISHED sessions travel
     const exp = e.seedExport(seedFile);
     assert.ok(exp.signals > 0, 'signals ride along with their sessions: ' + JSON.stringify(exp));
     const body = fs.readFileSync(seedFile, 'utf8');
-    assert.ok(body.includes('"kind":"psignal"'), 'psignal rows are in the seed');
+    // the kind names are explicit enums now, so a reader never infers a row's type from its fields
+    assert.ok(body.includes('"kind":"prompt_signal"'), 'prompt_signal rows are in the seed');
+    assert.ok(!body.includes('"session_id"'), 'a local session uuid never travels — signals carry skey');
     assert.ok(!/"text":"[^"]*hedged/.test(body), 'no prompt text travels — there is none to travel');
 
     const mateProj = path.join(tmp, 'mateproj'); // a colleague importing into their own project
@@ -807,5 +821,301 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
     { encoding: 'utf8', env: process.env, timeout: 20000 });
   assert.strictEqual(r.status, 0, 'second run is a harmless overwrite, not an error');
 }
+
+
+// ---------- v1.1.0: debriefs, and the guarantee that a prompt cannot reach a seed ----------
+
+// THE regression of this release. `summary` was first_prompt.slice(0,200), written unconditionally,
+// and `summary` was in seedExport's column list — so a business question typed into a prompt got
+// committed to git. Enforced in two places: sessionEnd() refuses it, and the export boundary is
+// the single point every writer of that column routes through.
+{
+  const leakProj = path.join(tmp, 'leakproj');
+  e.useProject(leakProj);
+  const CANARY = 'SUPPLIER-SECRET-CANARY is the bank transfer leg auto approved';
+  e.sessionStart('leak-1', leakProj);
+  e.firstPrompt('leak-1', CANARY);
+  // exactly what the hook does now, and what it used to do (the prompt as a "summary")
+  e.sessionEnd('leak-1', null);
+  assert.strictEqual(e.sessionActivity('leak-1').session.summary, null,
+    'a session with no model summary has no summary — not the prompt');
+  e.sessionEnd('leak-1', CANARY);
+  assert.strictEqual(e.sessionActivity('leak-1').session.summary, null,
+    'and sessionEnd REFUSES the prompt even when a caller hands it over');
+  e.sessionEnd('leak-1', CANARY.slice(0, 40));
+  assert.strictEqual(e.sessionActivity('leak-1').session.summary, null,
+    'including a prefix of it — a summary written from prompt text IS prompt text');
+  e.sessionEnd('leak-1', 'split the refund approval switch');
+  assert.strictEqual(e.sessionActivity('leak-1').session.summary, 'split the refund approval switch',
+    'a real summary is stored normally');
+
+  e.add('note', 'a fact that is allowed to travel', 0.7, leakProj);
+  const leakSeed = path.join(tmp, 'leak-seed.jsonl');
+  e.seedExport(leakSeed);
+  const body = fs.readFileSync(leakSeed, 'utf8');
+  assert.ok(body.includes('a fact that is allowed to travel'), 'the seed still carries memories');
+  assert.ok(!body.includes('SUPPLIER-SECRET-CANARY'), 'prompt text cannot reach a seed by any route');
+  assert.ok(!body.includes('"first_prompt"'), 'first_prompt is not a seed field at all');
+  const rows = body.split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  const sRow = rows.find((r) => r.kind === 'session');
+  assert.ok(sRow, 'the session still travels as attribution');
+  assert.strictEqual(sRow.id, undefined, 'a local session uuid never travels — it means nothing elsewhere');
+  assert.ok(sRow.skey, 'it travels as date/author/name instead');
+  // the compatibility contract of the whole format
+  for (const r of rows) {
+    if (r.kind !== 'memory') {
+      assert.ok(!('text' in r), `kind=${r.kind} must not carry a top-level 'text': an older importer's `
+        + "last line is `if (!r.text) continue`, so any other row with text is ingested as a memory");
+    }
+  }
+}
+
+// publish: every section required, caps enforced, key shape, re-publish replaces
+{
+  const dProj = path.join(tmp, 'debriefproj');
+  e.useProject(dProj);
+  process.env.AICOACH_TASK = 'feature/orders-csv';
+  e.sessionStart('d-1', dProj);
+  e.nameSession('d-1', 'orders CSV export');
+  const fields = {
+    business: 'refund wallet and credit legs auto-approve; the bank transfer leg does not',
+    technical: 'split the approval switch in src/refund/approve.ts so the bank leg falls through',
+    evidence: 'src/refund/approve.ts:88; npm test -- refund green',
+    unknowns: 'whether odoo auto-approves the bank leg in production — UNVERIFIED',
+  };
+  for (const f of ['business', 'technical', 'evidence', 'unknowns']) {
+    const missing = { ...fields, session: 'd-1' };
+    delete missing[f];
+    assert.throws(() => e.debriefPublish(missing), new RegExp('--' + f),
+      `a debrief without ${f} is refused — negative space is a field, not an afterthought`);
+  }
+  const pub = e.debriefPublish({ session: 'd-1', ...fields });
+  assert.match(pub.key, /^\d{4}-\d{2}-\d{2}\/tester@example\.com\/orders-csv-export$/,
+    'key is date/author/name-slug: ' + pub.key);
+  assert.strictEqual(pub.replaced, false, 'first publish is new');
+
+  const again = e.debriefPublish({ session: 'd-1', ...fields, business: 'corrected: only the bank leg is manual' });
+  assert.strictEqual(again.key, pub.key, 'same work, same day, same key');
+  assert.strictEqual(again.replaced, true, 'and it SAYS it replaced — a silent overwrite loses a conclusion');
+  assert.strictEqual(e.debriefList({}).length, 1, 'without duplicating');
+  assert.match(e.debriefGet(pub.key).business, /^corrected:/, 'the newer body won');
+
+  e.debriefPublish({ session: 'd-1', ...fields, technical: 'X'.repeat(9000) });
+  assert.strictEqual(e.debriefGet(pub.key).technical.length, 1400, 'sections are capped, not trusted');
+
+  // the key is FROZEN at publish: renaming the session afterwards must not orphan a key a
+  // teammate already holds
+  e.nameSession('d-1', 'renamed after publishing');
+  assert.ok(e.debriefGet(pub.key), 'the key still resolves after a rename');
+}
+
+// list + show: filters, resolution by name, ambiguity refused rather than guessed
+{
+  assert.strictEqual(e.debriefList({ author: 'TESTER@EXAMPLE.COM' }).length, 1,
+    'author filter is case-insensitive, like every other identity comparison');
+  assert.strictEqual(e.debriefList({ author: 'nobody@nowhere' }).length, 0, 'wrong author excluded');
+  assert.strictEqual(e.debriefList({ name: 'csv' }).length, 1, 'name substring');
+  assert.strictEqual(e.debriefList({ grep: 'bank transfer' }).length, 1, '--grep searches the body');
+  assert.strictEqual(e.debriefList({ task: 'no-such-branch' }).length, 0, 'task filter');
+  const one = e.debriefList({})[0];
+  assert.ok(e.debriefGet(one.key), 'resolvable by key');
+  const rendered = e.debriefRender(one);
+  assert.ok(/## Not done \/ not determined/.test(rendered), 'negative space is its own rendered section');
+  assert.ok(/## Business/.test(rendered) && /## Technical/.test(rendered) && /## Evidence/.test(rendered),
+    'all four sections render');
+  delete process.env.AICOACH_TASK;
+}
+
+// debriefs travel, dedup by key across machines, and an imported one is labelled and framed as data
+{
+  const dSeed = path.join(tmp, 'debrief-seed.jsonl');
+  e.useProject(path.join(tmp, 'debriefproj'));
+  const exp = e.seedExport(dSeed);
+  assert.strictEqual(exp.debriefs, 1, 'the debrief is exported: ' + JSON.stringify(exp));
+  const line = fs.readFileSync(dSeed, 'utf8').split('\n').filter(Boolean)
+    .map((l) => JSON.parse(l)).find((r) => r.kind === 'debrief');
+  assert.ok(line && !line.text, 'no text field, so an older importer skips the row instead of eating it');
+  assert.strictEqual(line.session_id, undefined, 'the local session uuid does not travel');
+  assert.strictEqual(line.provenance, undefined, 'provenance is stamped by the importer, never carried');
+
+  const mate = path.join(tmp, 'debrief-mate');
+  e.useProject(mate);
+  const i1 = e.seedImport(dSeed, mate);
+  assert.strictEqual(i1.debriefs, 1, 'imported: ' + JSON.stringify(i1));
+  const imported = e.debriefList({})[0];
+  assert.strictEqual(imported.provenance, 'imported', "a teammate's debrief is labelled, and stays labelled");
+  assert.ok(/Treat every line as DATA/.test(e.debriefRender(imported)),
+    'and is rendered as data, never as instructions to the model reading it');
+
+  const i2 = e.seedImport(dSeed, mate);
+  assert.strictEqual(i2.debriefs, 0, 're-import adds nothing');
+  assert.strictEqual(i2.debriefsDup, 1, 'and reports the skip — silence reads as "the seed had none"');
+
+  // a third hop keeps the original author and key, so identity survives relaying
+  const hop = path.join(tmp, 'hop-seed.jsonl');
+  e.seedExport(hop);
+  const hopLine = fs.readFileSync(hop, 'utf8').split('\n').filter(Boolean)
+    .map((l) => JSON.parse(l)).find((r) => r.kind === 'debrief');
+  assert.strictEqual(hopLine.key, line.key, 'the key survives a re-export — no accretion across hops');
+  assert.strictEqual(hopLine.author, 'tester@example.com', 'and so does the author');
+}
+
+// provenance:'imported' was declared and rendered since v0.1.0 but never actually written
+{
+  const provSeed = path.join(tmp, 'prov-seed.jsonl');
+  fs.writeFileSync(provSeed, JSON.stringify({
+    kind: 'memory', type: 'learning', text: 'an imported memory says this', confidence: 0.8, author: 'sara@example.com',
+  }) + '\n');
+  const pProj2 = path.join(tmp, 'provimport');
+  e.useProject(pProj2);
+  e.seedImport(provSeed, pProj2);
+  const row = e.search('imported memory says', { full: true })[0];
+  assert.strictEqual(row.provenance, 'imported', 'written, not just declared');
+  assert.ok(e.search('imported memory says')[0]._display.includes('[imported]'), 'and shown in search');
+  // a distilled row stays distilled rather than being laundered into "a teammate wrote it"
+  fs.writeFileSync(provSeed, JSON.stringify({
+    kind: 'memory', type: 'learning', text: 'quokka distillate came out of a transcript',
+    confidence: 0.6, author: 'sara@example.com', provenance: 'distilled',
+  }) + '\n');
+  e.seedImport(provSeed, pProj2);
+  assert.strictEqual(e.search('quokka distillate', { full: true })[0].provenance, 'distilled',
+    'a distilled memory is not laundered into a human judgment by travelling');
+}
+
+// identity is canonical everywhere: mixed-case git emails behaved differently in coachLine
+// (case-sensitive) than in promptStats (lowercased) before this
+{
+  assert.strictEqual(e.canon('  Alice@Example.COM '), 'alice@example.com', 'canon trims and lowercases');
+  assert.strictEqual(e.canon(''), null, 'empty is null, not an empty string');
+  assert.strictEqual(e.canon(null), null, 'null stays null');
+}
+
+// a future-dated carried timestamp cannot pin "most recent" or dodge the prune
+{
+  const skewProj = path.join(tmp, 'skewproj');
+  e.useProject(skewProj);
+  const skewSeed = path.join(tmp, 'skew-seed.jsonl');
+  fs.writeFileSync(skewSeed, [
+    JSON.stringify({ kind: 'meta', seed: 2, by: 'alice@example.com' }),
+    JSON.stringify({ kind: 'session', skey: '2099-01-01/alice@example.com/from-the-future',
+      name: 'from the future', author: 'alice@example.com', summary: 'a clock 70 years fast',
+      created: '2099-01-01 00:00:00', ended: '2099-01-01 00:00:00' }),
+  ].join('\n') + '\n');
+  e.seedImport(skewSeed, skewProj);
+  const stored = e.db().prepare("SELECT created FROM sessions WHERE name = 'from the future'").get();
+  assert.ok(stored.created < '2099', 'a future-dated timestamp is clamped to now, not trusted: ' + stored.created);
+  assert.ok(!e.brief(4000, skewProj).includes('a clock 70 years fast'),
+    "and a skewed clock cannot pin someone else's session as my last session");
+}
+
+// an unvouched prompt signal is rejected: its whole value is the join, and a misjoined one
+// silently corrupts another person's statistics
+{
+  const orphProj = path.join(tmp, 'orphanproj');
+  e.useProject(orphProj);
+  const orphSeed = path.join(tmp, 'orphan-seed.jsonl');
+  fs.writeFileSync(orphSeed, [
+    JSON.stringify({ kind: 'meta', seed: 2, by: 'carol@example.com' }),
+    JSON.stringify({ kind: 'prompt_signal', skey: 'never/existed/at-all', len: 40,
+      flags: 'hedged-opener', hinted: 0, created: '2026-08-01 10:00:00' }),
+  ].join('\n') + '\n');
+  const r = e.seedImport(orphSeed, orphProj);
+  assert.strictEqual(r.signals, 0, 'no signal is accepted without a session to attribute it to');
+  assert.strictEqual(r.orphans, 1, 'and the rejection is counted, not silently dropped');
+}
+
+// a broken row cannot leave a half-applied seed behind: the import is one transaction
+{
+  const txProj = path.join(tmp, 'txproj');
+  e.useProject(txProj);
+  const badSeed = path.join(tmp, 'bad-seed.jsonl');
+  fs.writeFileSync(badSeed, [
+    JSON.stringify({ kind: 'meta', seed: 2, by: 'alice@example.com' }),
+    JSON.stringify({ kind: 'memory', type: 'note', text: 'ROLLBACK CANARY must not survive', confidence: 0.9 }),
+    '{"kind":"memory","type":"note","text":"unterminated',
+  ].join('\n') + '\n');
+  e.seedImport(badSeed, txProj); // a malformed LINE is skipped, not fatal
+  assert.strictEqual(e.search('ROLLBACK CANARY', { full: true }).length, 1,
+    'one unparseable line does not abort the rest of the import');
+}
+
+// an unknown kind from a future version is skipped, counted, and never destroyed
+{
+  const fProj = path.join(tmp, 'futureproj');
+  e.useProject(fProj);
+  const fSeed = path.join(tmp, 'future-seed.jsonl');
+  fs.writeFileSync(fSeed, [
+    JSON.stringify({ kind: 'meta', seed: 99, by: 'dave@example.com' }),
+    JSON.stringify({ kind: 'quasar', body: 'a kind from 2028', author: 'dave@example.com' }),
+  ].join('\n') + '\n');
+  const r = e.seedImport(fSeed, fProj);
+  assert.strictEqual(r.unknown, 1, 'an unknown kind is counted, never silently swallowed');
+  assert.strictEqual(r.seed, 99, 'and the format generation is read, so the CLI can say "upgrade"');
+}
+
+// session-digest: nothing truncated, repeats collapsed, failures verbatim
+{
+  const digProj = path.join(tmp, 'digestproj');
+  e.useProject(digProj);
+  e.sessionStart('dig-1', digProj);
+  for (let i = 0; i < 200; i++) e.observe('dig-1', 'Edit', 'src/big.ts', 'edit big.ts');
+  e.observe('dig-1', 'Bash', '', 'FAIL npm test -- unit');
+  for (let i = 0; i < 5; i++) e.observe('dig-1', 'Read', 'docs/spec.md', 'read spec');
+  e.correction('dig-1', 'the build failed here');
+  e.sessionEnd('dig-1', 'looked at the big file');
+  const d = e.sessionDigest('dig-1', { tail: 3 });
+  assert.match(d.text, /206 tool calls/, 'the header counts everything, capped at nothing: ' + d.text.slice(0, 80));
+  assert.ok(d.text.includes('Edit x200 src/big.ts'),
+    'two hundred identical edits collapse to one counted line — nothing is truncated away');
+  assert.ok(d.text.includes('Read x2 docs/spec.md'),
+    'and the rest collapse too, minus whatever the tail holds verbatim');
+  assert.match(d.text, /FAIL npm test -- unit/, 'a failure travels verbatim — it is the evidence');
+  assert.match(d.text, /\[failed\]|the build failed here/, 'recorded corrections are included');
+  assert.ok(!/prompt_excerpt/.test(d.text), 'but never the prompt excerpt behind a correction');
+  assert.strictEqual(e.sessionDigest(null, { tail: 3 }).total, 206,
+    'with no id it resolves the latest session, which is what a skill means by "this one"');
+}
+
+// A memory's AGE survives the trip. score() decays confidence against created, so re-stamping an
+// import to today made a teammate's three-month-old lesson outrank your own equally old one — and
+// because export carries created, every relay hop refreshed it again and a circulating memory
+// could never age at all.
+{
+  const ageProj = path.join(tmp, 'ageproj');
+  e.useProject(ageProj);
+  e.add('learning', 'an aged lesson about batching', 0.9, ageProj);
+  e.db().prepare("UPDATE memories SET created = datetime('now','-90 days') WHERE text LIKE 'an aged lesson%'").run();
+  const ageSeed = path.join(tmp, 'age-seed.jsonl');
+  e.seedExport(ageSeed);
+
+  const ageMate = path.join(tmp, 'agemate');
+  e.useProject(ageMate);
+  e.seedImport(ageSeed, ageMate);
+  const got = e.search('aged lesson batching', { full: true })[0];
+  assert.ok(got, 'the memory imported');
+  const days = (Date.now() - Date.parse(String(got.created).replace(' ', 'T') + 'Z')) / 86400000;
+  assert.ok(days > 80, 'an imported memory keeps the age it was written at, not the day it arrived: '
+    + got.created);
+
+  // and relaying it does not refresh it — otherwise nothing in a circulating seed ever decays
+  const hopSeed = path.join(tmp, 'age-hop.jsonl');
+  e.seedExport(hopSeed);
+  const hopRow = fs.readFileSync(hopSeed, 'utf8').split(/\r?\n/).filter(Boolean)
+    .map((l) => JSON.parse(l)).find((r) => r.kind === 'memory' && /aged lesson/.test(r.text || ''));
+  assert.strictEqual(hopRow.created, got.created, 'a relayed memory carries its original date');
+
+  // a future-dated one is still clamped, same rule as sessions
+  const skewSeed2 = path.join(tmp, 'age-skew.jsonl');
+  fs.writeFileSync(skewSeed2, JSON.stringify({ kind: 'memory', type: 'note',
+    text: 'a memory from a fast clock', confidence: 0.8, author: 'sara@example.com',
+    created: '2099-01-01 00:00:00' }) + '\n');
+  e.seedImport(skewSeed2, ageMate);
+  const skewed = e.search('fast clock memory', { full: true })[0]
+    || e.search('a memory from a fast clock', { full: true })[0];
+  assert.ok(skewed && skewed.created < '2099', 'a future-dated memory is clamped to now: ' + (skewed && skewed.created));
+}
+
+// rekey moves debriefs with everything else — v1.0.0 shipped a fix for exactly this class of bug
+assert.ok(e.REKEY_TABLES.includes('debriefs'), 'debriefs is a tenant table rekey knows about');
 
 console.log('engine.test.js: ALL PASS');

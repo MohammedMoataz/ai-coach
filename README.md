@@ -42,7 +42,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | Plugin | What it is |
 |---|---|
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors. Everything else depends on it. |
-| **memory-coach** | Skills only: `recall`, `handoff`, `team`, `project`, `name`, `doctor`. |
+| **memory-coach** | Skills only: `recall`, `debrief`, `handoff`, `team`, `project`, `doctor`. |
 | **prompt-coach** | Skills only: `prompt`, `prompt-stats`. |
 | **security-coach** | Skills only: `scan`, `audit`, `triage`. |
 | **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
@@ -68,7 +68,8 @@ re-measure; the shape holds — what is always on is the descriptions, and nothi
   session and the one nothing else captures.
 - **Observations**: every Edit, Write and Bash becomes a one-line record; failures marked `FAIL`.
   `<private>…</private>` is stripped at the boundary, before anything reaches disk.
-- **Session-end distillation**: one Haiku call turns the session into a summary and 0–3 learnings.
+- **Session-end distillation**: one Haiku call turns the session into a local summary and 0–3
+  learnings. It stays on your machine — what teammates see is a debrief you published on purpose.
 - **Prompt hints**: at most two, shown to you and never to the model. Nine deterministic detectors,
   no model call. **Exploratory questions are exempt** — "what would you improve in this file?" is a
   legitimate way to work, and a coach that nags at it deserves to be switched off.
@@ -88,8 +89,8 @@ re-measure; the shape holds — what is always on is the descriptions, and nothi
 
 ## What you drive
 
-`/memory-coach:recall` · `/memory-coach:handoff` · `/memory-coach:team` · `/memory-coach:project` ·
-`/memory-coach:name` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
+`/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` · `/memory-coach:team` ·
+`/memory-coach:project` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
 `/prompt-coach:prompt-stats` · `/security-coach:scan` · `/security-coach:audit` ·
 `/security-coach:triage` · `/harness-coach:partners` · `/investigation-coach:onboard` ·
 `/investigation-coach:map` · `/investigation-coach:study` · `/atlas-coach:research` ·
@@ -105,6 +106,32 @@ three and atlas-coach's `research`/`analyze` are real analysis — pinned down, 
 like a file listing. Each of those says up front that it costs real tokens and takes a scoping
 flag to bound the spend. The hooks' own LLM calls (plan-mode review, session-end distillation)
 are hardcoded to Haiku too.
+
+## What a teammate actually receives
+
+A memory is one fact. A **debrief** is what you concluded when a piece of work was done, and it is
+the thing worth handing over. It is published on purpose — no hook writes one — and it carries a
+contract borrowed from this product's own research agents: every claim names a source or is written
+`UNVERIFIED`, and *what you could not determine* is a required field rather than an omission.
+
+```
+$ engine debriefs
+2026-08-20/sara@example.com/orders-csv-export  [imported]
+    orders CSV export · Sara Malik · 2026-08-20 · feature/orders-csv
+    Refunds settle the bank-transfer leg manually now; wallet and credit stay auto-approved.
+```
+
+Identity is `date/author/name` — readable, and stable across machines. A session's own id is a
+local UUID that means nothing on your teammate's laptop and nothing to a person, so it never
+travels. Publish twice under one name on one day and the second **replaces** the first, and says so.
+
+```
+$ engine debrief-show 2026-08-20/sara@example.com/orders-csv-export
+```
+
+Sessions still travel, as attribution only: who worked which branch, when, and how rough it was.
+The one-line session summary stays on the machine that made it — every fallback it ever had was raw
+prompt text, and this file lives in git.
 
 ## Coaching from evidence, not etiquette
 

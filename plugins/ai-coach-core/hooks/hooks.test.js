@@ -114,7 +114,10 @@ const act = e.sessionActivity('hs1');
 assert.ok(act.session, 'session row exists');
 assert.strictEqual(act.session.first_prompt, 'build the widget', 'first prompt recorded');
 assert.ok(act.session.ended, 'session closed');
-assert.strictEqual(act.session.summary, 'build the widget', 'summary fallback = first prompt');
+// This used to assert the leak: the fallback wrote first_prompt into `summary`, and `summary`
+// was exported into a git-committed seed. NULL is the correct value when no model summary exists —
+// the row still gets its `ended` stamp, and the brief falls back to first_prompt, which is local.
+assert.strictEqual(act.session.summary, null, 'session-end never writes prompt text as a summary');
 assert.deepStrictEqual(act.observations.map((o) => o.digest), ['edit demo/proj/a.js', 'FAIL npm test'],
   'two observations, inner-guarded call wrote nothing, failure marked');
 const resumed = e.sessionActivity('resumed-1').session;
@@ -159,31 +162,27 @@ const started = JSON.parse(r.stdout);
 assert.ok(started.hookSpecificOutput.sessionTitle, 'session title emitted: ' + r.stdout);
 assert.strictEqual(started.hookSpecificOutput.hookEventName, 'SessionStart', 'correct event name');
 
-// seed-refresh does nothing when the project never opted in
-const refreshProj = path.join(tmp, 'refreshproj');
-fs.mkdirSync(path.join(refreshProj, '.ai-coach'), { recursive: true });
-r = run('seed-refresh.js', { hook_event_name: 'PreCompact', trigger: 'manual', cwd: refreshProj });
-assert.strictEqual(r.status, 0, 'seed-refresh exit 0');
-assert.strictEqual(r.stdout.trim(), '', 'no seed file = silent, and none created');
-assert.ok(!fs.existsSync(path.join(refreshProj, '.ai-coach', 'team-seed.jsonl')), 'seed never created unasked');
-
-// ...and refreshes it once the project has one
-r = spawnSync('node', [path.join(__dirname, 'engine.js'), 'add', 'note', 'refresh me', '0.8', '--project', refreshProj],
-  { encoding: 'utf8', env, timeout: 20000 });
-assert.strictEqual(r.status, 0, 'engine add exit 0: ' + r.stderr);
-fs.writeFileSync(path.join(refreshProj, '.ai-coach', 'team-seed.jsonl'), '');
-r = run('seed-refresh.js', { hook_event_name: 'PreCompact', trigger: 'manual', cwd: refreshProj });
-assert.ok(r.stdout.includes('refreshed .ai-coach/team-seed.jsonl'), 'compact refreshes the seed: ' + r.stdout);
-assert.ok(fs.readFileSync(path.join(refreshProj, '.ai-coach', 'team-seed.jsonl'), 'utf8').includes('refresh me'),
-  'seed contains the project memory');
-
-// a commit refreshes it; any other Bash call does not
-fs.writeFileSync(path.join(refreshProj, '.ai-coach', 'team-seed.jsonl'), '');
-r = run('seed-refresh.js', { hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'npm test' }, cwd: refreshProj });
-assert.strictEqual(r.stdout.trim(), '', 'ordinary bash call ignored');
-assert.strictEqual(fs.readFileSync(path.join(refreshProj, '.ai-coach', 'team-seed.jsonl'), 'utf8'), '', 'seed untouched');
-r = run('seed-refresh.js', { hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'git commit -m "wip"' }, cwd: refreshProj });
-assert.ok(r.stdout.includes('refreshed .ai-coach/team-seed.jsonl'), 'commit refreshes the seed: ' + r.stdout);
+// Exports are MANUAL now. Nothing auto-writes a seed: session end used to call autoSeed, and a
+// PostToolUse/PreCompact hook refreshed it on every commit and compact. Knowledge left the machine
+// before anyone decided it was worth sharing, and that is the path the prompt-text leak took.
+// The end-to-end guarantee: driving the real hook chain cannot produce a seed at all.
+{
+  const leakRepo = path.join(tmp, 'leakrepo');
+  fs.mkdirSync(path.join(leakRepo, '.ai-coach'), { recursive: true });
+  const seedPath = path.join(leakRepo, '.ai-coach', 'team-seed.jsonl');
+  fs.writeFileSync(seedPath, ''); // even opted in, nothing should write it
+  const CANARY = 'CANARY-BANK-LEG is the transfer auto approved';
+  r = run('prompt.js', { session_id: 'lk1', cwd: leakRepo, prompt: CANARY });
+  assert.strictEqual(r.status, 0, 'prompt hook exit 0');
+  r = run('session-end.js', { session_id: 'lk1', cwd: leakRepo });
+  assert.strictEqual(r.status, 0, 'session-end exit 0');
+  assert.strictEqual(fs.readFileSync(seedPath, 'utf8'), '',
+    'SessionEnd does not export at all — a seed is published deliberately with /handoff');
+  assert.ok(!fs.readFileSync(seedPath, 'utf8').includes('CANARY-BANK-LEG'),
+    'and prompt text cannot reach a committed seed through the hook chain');
+  assert.ok(!fs.existsSync(path.join(__dirname, 'seed-refresh.js')),
+    'the auto-refresh hook is gone, which also removes one node spawn per Bash call');
+}
 
 // ---------- notice.js: the correction capture ----------
 
