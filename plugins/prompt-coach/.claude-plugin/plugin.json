@@ -1,8 +1,8 @@
 {
   "name": "prompt-coach",
   "displayName": "Prompt Coach",
-  "version": "1.0.0",
-  "description": "Write prompts that land, and see which of your habits actually cost you time. Ships skills only — the detectors, the hook and the engine belong to ai-coach-core.",
+  "version": "1.1.0",
+  "description": "Write prompts that land, see which of your habits actually cost you time, and brief a context that cannot ask you a follow-up. Ships skills only — the detectors, the hook and the engine belong to ai-coach-core.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",

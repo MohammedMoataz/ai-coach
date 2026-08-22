@@ -3,6 +3,62 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.2.0 — The prompts the model writes (2026-08-22)
+
+Nine deterministic detectors grade every prompt the user types. None of them has ever seen a prompt
+*Claude* writes — a subagent dispatch, a plan spec, a spec written for a fresh session after a
+reset, a workflow stage. Those are prompts, they fail the same nine ways, and the hook that would
+catch it is `UserPromptSubmit`, which never fires for them.
+
+**prompt-coach 1.1.0**
+
+### `/prompt-coach:dispatch`
+
+Four rules for a prompt whose reader **cannot ask a follow-up**:
+
+1. **Resolve the ambiguity now.** Receiving a vague prompt, the right move is to stop and ask.
+   Sending one, that move does not exist — the recipient picks an interpretation silently and spends
+   a whole context on it. The highest-value line in a dispatch is the approach already tried and
+   rejected, and it is the one most often missing.
+2. **Success criteria, not steps.** The point of a separate context is that it loops without you,
+   and it can only loop against a check. Bounded, or it does not end. Without the verification
+   ritual on top — "double-check everything" now causes over-verification, not care.
+3. **Name the artifact and the shape.** `@path` and an exemplar file already in the repo. A
+   dispatched context has no transcript, no cursor and no open tab, so `deictic-no-path` is strictly
+   worse here than in chat, where at least you are both looking at the same screen.
+4. **Say what comes back.** Size, evidence, negative space. The rule with no counterpart in chat and
+   the specific way delegation fails: no return contract means a file dump, paid for twice — once in
+   the subagent's tokens, once in the context it lands in. Copied from this product's own
+   `agents/researcher.md`, where *what could not be determined* is a required closing line.
+
+Then the part that is not advice: `ENGINE prompt-check "<draft>"`, run on the model's own draft
+before sending. The same nine regexes, no model call — and **no write**, which is what makes it
+safe. `prompt-check` is the one prompt verb that records nothing, so self-checking a dispatch cannot
+put signals into `/prompt-coach:prompt-stats` for prompts the user never typed.
+
+The skill is **model-invocable**, unlike every other skill here except `recall`. Guidance that has
+to be remembered before it applies is guidance that never applies, and this one has no side effects
+to justify a gate. It is also unpinned: `dispatch` runs inside real work, and a Haiku-shaped answer
+would be a report about briefing rather than a brief.
+
+### Also
+
+- README's claim that "only `recall` fires on its own" was true when written and is now false. Fixed
+  rather than left, on the same principle that killed `/handoff`'s "what they concluded".
+- The always-on token figure is still the v0.6.0 measurement. It now says so plainly, and says it
+  is understated by two skill descriptions rather than implying a rewrite is the only drift.
+
+### Prior art
+
+The shape — a compact behavioral skill, four principles, one file, model-invocable — is
+[andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills). The substance is
+inverted on purpose. Karpathy's first principle is *ask rather than guess*, which is the correct
+move for a context that has someone to ask; a dispatch has nobody, so the same instinct has to be
+spent before sending instead of deferred. And where those four principles are asserted, these carry
+the dated source and the detector id that grades them — `references/rules.md` already records that
+rule 2's verification advice reversed once. Advice with an expiry date is the only kind worth
+shipping in a tool that outlives a model generation.
+
 ## v1.1.0 — Conclusions, not prompts (2026-08-22)
 
 `/handoff` promised that "session history travels too — who worked which branch, and **what they

@@ -6,7 +6,7 @@
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "plugins": [
     {
       "name": "ai-coach-core",
@@ -34,7 +34,7 @@
     {
       "name": "prompt-coach",
       "source": "./plugins/prompt-coach",
-      "description": "Write prompts that land, and see which habits actually cost you time: /prompt, /prompt-stats.",
+      "description": "Write prompts that land, see which habits actually cost you time, and brief a context that cannot ask you a follow-up: /prompt, /prompt-stats, /dispatch.",
       "category": "productivity",
       "tags": [
         "prompt",
