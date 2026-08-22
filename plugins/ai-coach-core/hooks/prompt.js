@@ -78,31 +78,12 @@ Now review:
 PROMPT: `;
 
 function haikuReview(engine, prompt) {
-  const cooldown = path.join(path.dirname(engine.DB_PATH), 'coach-cooldown');
-  try {
-    // a wedged CLI must not tax every plan-mode prompt: after one failure, skip for 1h
-    try { if (Date.now() - fs.statSync(cooldown).mtimeMs < 3600000) return null; } catch { /* none */ }
-    // strip anything the user marked private before it leaves for another process
-    const safe = prompt.replace(/<private>[\s\S]*?<\/private>/gi, '[private]').slice(0, 2000);
-    const { spawnSync } = require('node:child_process');
-    const r = spawnSync(process.env.AICOACH_CLAUDE_BIN || 'claude', ['-p', '--model', 'claude-haiku-4-5'], {
-      input: JUDGE + safe,
-      encoding: 'utf8',
-      timeout: 12000, // inside the hook's 20s budget, with margin
-      shell: true,
-      env: { ...process.env, AICOACH_INNER: '1' },
-    });
-    if (r.status !== 0 || !r.stdout || !r.stdout.trim()) {
-      fs.writeFileSync(cooldown, new Date().toISOString());
-      engine.log('coach.haiku', 'claude -p failed: status=' + r.status + ' stderr=' + String(r.stderr || '').slice(0, 300));
-      return null;
-    }
-    return format(r.stdout);
-  } catch (err) {
-    try { fs.writeFileSync(cooldown, new Date().toISOString()); } catch { /* best effort */ }
-    engine.log('coach.haiku', err);
-    return null;
-  }
+  // strip anything the user marked private before it leaves for another process
+  const safe = prompt.replace(/<private>[\s\S]*?<\/private>/gi, '[private]').slice(0, 2000);
+  // 12s sits inside the hook's own 20s budget, with margin. Backoff and logging live in the
+  // engine, and are scoped to 'coach' so a session-end failure cannot silence plan review.
+  const r = engine.claudeRun('coach', JUDGE + safe, 12000);
+  return r.ok ? format(r.stdout) : null;
 }
 
 // A judge that returns prose instead of JSON is still useful — show it rather than dropping it.

@@ -99,11 +99,20 @@ function requireSqlite() {
   try { return require('node:sqlite'); } catch (err) { throw nodeTooOld(err, 'usable node:sqlite'); }
 }
 
+// Bumped whenever schema.sql, user-schema.sql or migrate() changes. A database stamped with the
+// current number is known to have every table and column already, so open() can skip both the
+// schema exec and migrate()'s PRAGMA probes. That work was being redone on every hook process —
+// and observe.js is a fresh process on every Edit, Write and Bash.
+const SCHEMA_VERSION = 1;
+
 function open(file, schemaPath, kind) {
   const { DatabaseSync } = requireSqlite();
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const d = new DatabaseSync(file);
   d.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
+  let stamped = 0;
+  try { stamped = Number(d.prepare('PRAGMA user_version').get().user_version) || 0; } catch { /* treat as 0 */ }
+  if (stamped >= SCHEMA_VERSION) return d; // already current — nothing to create, nothing to widen
   try {
     d.exec(fs.readFileSync(schemaPath, 'utf8')); // creates anything missing
   } catch (err) {
@@ -112,6 +121,9 @@ function open(file, schemaPath, kind) {
     throw err;
   }
   migrate(d, kind);                            // widens anything that predates it
+  // Stamp last: a throw above leaves the database unstamped, so the next open retries the whole
+  // setup rather than trusting a half-built schema.
+  try { d.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`); } catch (err) { log('open.stamp', err); }
   return d;
 }
 
@@ -208,6 +220,56 @@ function optOn(key, def) { // boolean options; 'off'/'false'/'0' all mean off
   return !(v === 'off' || v === 'false' || v === '0' || v === 'no');
 }
 
+// ---------- the one `claude -p` call ----------
+// prompt.js (plan review) and session-end.js (distillation) both shell out to Haiku, and both
+// need the same backoff: one failure buys an hour of silence rather than a failed spawn on every
+// prompt. They used to carry a copy of this block each AND SHARE ONE COOLDOWN FILE, so a
+// distillation that timed out on a long session silently disabled plan review for the next hour,
+// and vice versa — two unrelated features, one switch.
+//
+// The cooldown is per feature now. The exception is a `claude` that cannot be run at all: that is
+// not one feature's problem, so it backs off every feature at once.
+const COOLDOWN_MS = 3600000;
+const MISSING_BIN = /not recognized as an internal|command not found|no such file or directory/i;
+function cooldownPath(feature) {
+  return path.join(path.dirname(DB_PATH), feature ? 'coach-cooldown-' + feature : 'coach-cooldown');
+}
+function cooling(feature) {
+  for (const f of [null, feature]) { // the shared marker silences everyone; the feature's own, itself
+    try { if (Date.now() - fs.statSync(cooldownPath(f)).mtimeMs < COOLDOWN_MS) return true; } catch { /* none */ }
+  }
+  return false;
+}
+function coolDown(feature) {
+  try { fs.writeFileSync(cooldownPath(feature), new Date().toISOString()); } catch { /* best effort */ }
+}
+function claudeRun(feature, input, timeoutMs) {
+  if (cooling(feature)) return { ok: false, stdout: '' };
+  try {
+    const r = require('node:child_process').spawnSync(
+      process.env.AICOACH_CLAUDE_BIN || 'claude', ['-p', '--model', 'claude-haiku-4-5'],
+      {
+        input,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        shell: true,
+        env: { ...process.env, AICOACH_INNER: '1' }, // spawned children record nothing: no recursion
+      });
+    if (r.status === 0 && r.stdout && r.stdout.trim()) return { ok: true, stdout: r.stdout };
+    const why = String((r.error && r.error.message) || r.stderr || '');
+    // `shell: true` turns a missing binary into the shell's own error, so match on that rather
+    // than on ENOENT, which never arrives here.
+    const missing = !!r.error || r.status === 127 || MISSING_BIN.test(why);
+    coolDown(missing ? null : feature);
+    log(feature + '.haiku', 'claude -p failed: status=' + r.status + ' stderr=' + why.slice(0, 300));
+    return { ok: false, stdout: '' };
+  } catch (err) {
+    coolDown(feature);
+    log(feature + '.haiku', err);
+    return { ok: false, stdout: '' };
+  }
+}
+
 // ---------- identity, task, project ----------
 
 function git(args, cwd) {
@@ -215,6 +277,68 @@ function git(args, cwd) {
     return require('node:child_process')
       .execSync('git ' + args, { cwd, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || null;
   } catch { return null; }
+}
+
+// ---------- reading .git without spawning it ----------
+// repo() and task() run in EVERY hook process, and observe.js is a fresh process on every Edit,
+// Write and Bash. On Windows a `git` spawn costs more than everything else those hooks do put
+// together. Both answers live in plain files, so read them — and fall back to the real git for
+// every shape this does not cover (worktree/submodule .git files, detached HEAD, url insteadOf
+// rewrites). The fallback is what keeps this a speed-up rather than a behaviour change.
+function gitPaths(cwd) {
+  let dir = path.resolve(String(cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd()));
+  for (let i = 0; i < 64; i++) {
+    const g = path.join(dir, '.git');
+    try {
+      // A .git FILE means a worktree or submodule: it points elsewhere and git must resolve it.
+      if (fs.lstatSync(g).isDirectory()) return { root: dir, git: g };
+      return { root: dir, git: null };
+    } catch { /* keep walking up */ }
+    const up = path.dirname(dir);
+    if (up === dir) return null; // filesystem root, no repo
+    dir = up;
+  }
+  return null;
+}
+
+// Minimal git-config reader: enough for `[remote "origin"] url`, and nothing more. Deliberately
+// ignores include/includeIf — a caller that needs those falls back to git.
+function gitConfigValue(file, section, key) {
+  let cur = '';
+  for (const line of safeRead(file, 256 * 1024).split('\n')) {
+    const s = line.trim();
+    if (!s || s.startsWith('#') || s.startsWith(';')) continue;
+    const head = s.match(/^\[([^\]]+)\]$/);
+    if (head) { cur = head[1].replace(/"/g, '').replace(/\s+/g, ' ').trim().toLowerCase(); continue; }
+    const kv = s.match(/^([\w.-]+)\s*=\s*(.*)$/);
+    if (kv && cur === section && kv[1].toLowerCase() === key) return kv[2].trim() || null;
+  }
+  return null;
+}
+
+function originUrl(cwd, paths) {
+  const g = paths === undefined ? gitPaths(cwd) : paths;
+  if (g && g.git) {
+    try {
+      const url = gitConfigValue(path.join(g.git, 'config'), 'remote "origin"', 'url');
+      if (url) return url;
+    } catch { /* unreadable — spawn instead */ }
+  }
+  return git('remote get-url origin', cwd);
+}
+
+// .git/HEAD is authoritative for the current branch and has no include mechanism to miss.
+function headBranch(cwd, paths) {
+  const g = paths === undefined ? gitPaths(cwd) : paths;
+  if (g && g.git) {
+    try {
+      const head = safeRead(path.join(g.git, 'HEAD'), 64 * 1024).trim();
+      const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/);
+      if (ref) return ref[1].trim();
+      if (/^[0-9a-f]{7,40}$/i.test(head)) return 'HEAD'; // detached, same word rev-parse gives
+    } catch { /* unreadable — spawn instead */ }
+  }
+  return git('rev-parse --abbrev-ref HEAD', cwd);
 }
 
 // One canonical form for an email, applied AT THE SOURCE so every downstream comparison is
@@ -257,7 +381,7 @@ function task(explicit, cwd) {
   if (process.env.AICOACH_TASK) return process.env.AICOACH_TASK;
   const key = String(cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd());
   if (_taskCache.has(key)) return _taskCache.get(key);
-  const b = git('rev-parse --abbrev-ref HEAD', key);
+  const b = headBranch(key);
   const t = b && b !== 'main' && b !== 'master' && b !== 'HEAD' ? b : null; // mainline/detached = not a task
   _taskCache.set(key, t);
   return t;
@@ -279,9 +403,11 @@ const _repoCache = new Map();
 function repo(cwd) { // identity of ONE repository
   const key = String(cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd());
   if (_repoCache.has(key)) return _repoCache.get(key);
-  const remote = git('remote get-url origin', key);
+  const paths = gitPaths(key);
+  const remote = originUrl(key, paths);
   const p = remote ? normalizeRemote(remote)
-    : (git('rev-parse --show-toplevel', key) || key).replace(/\\/g, '/').toLowerCase();
+    : ((paths && paths.root) || git('rev-parse --show-toplevel', key) || key)
+      .replace(/\\/g, '/').toLowerCase();
   _repoCache.set(key, p);
   return p;
 }
@@ -549,17 +675,21 @@ function brief(maxChars, proj) {
   // MINE, and identifiable. This filtered on `project` alone and printed no attribution, so a
   // teammate's imported session presented as your own last session purely by being newer. The
   // label means that when the filter is ever wrong, you can see whose session it was.
-  const me = author();
-  const last = db().prepare(
-    `SELECT id, name, project, author, username, first_prompt, summary, created FROM sessions
-     WHERE project = ? AND (author IS NULL OR lower(author) = ?)
-       AND (summary IS NOT NULL OR first_prompt IS NOT NULL)
-     ORDER BY created DESC, rowid DESC LIMIT 1`
-  ).get(p, canon(me) || '');
-  if (last) {
-    push(`Last session here (${sessionLabel(last)}, ${String(last.created).slice(0, 16)}): `
-      + `${last.summary || last.first_prompt}`);
-  }
+  // Each section is guarded on its own. Unguarded, a single SQL error anywhere in here threw out
+  // of brief() and the session started with NO brief and no indication that one was owed.
+  try {
+    const me = author();
+    const last = db().prepare(
+      `SELECT id, name, project, author, username, first_prompt, summary, created FROM sessions
+       WHERE project = ? AND (author IS NULL OR lower(author) = ?)
+         AND (summary IS NOT NULL OR first_prompt IS NOT NULL)
+       ORDER BY created DESC, rowid DESC LIMIT 1`
+    ).get(p, canon(me) || '');
+    if (last) {
+      push(`Last session here (${sessionLabel(last)}, ${String(last.created).slice(0, 16)}): `
+        + `${last.summary || last.first_prompt}`);
+    }
+  } catch (err) { log('brief.lastSession', err); }
 
   // What teammates concluded. One line and a pointer, never the body — a debrief is ~600 words
   // and this whole brief is 4000 characters. No task condition on purpose: the branch section
@@ -576,23 +706,28 @@ function brief(maxChars, proj) {
   // The coach line. One signal, the highest-priority one that is actually true right now —
   // several lines of advice per session is noise, and noise is what gets switched off.
   // Silence is the correct output when there is nothing to say.
-  const coach = coachLine(p, t);
-  if (coach) push('coach: ' + coach);
+  try {
+    const coach = coachLine(p, t);
+    if (coach) push('coach: ' + coach);
+  } catch (err) { log('brief.coach', err); }
 
   // branch section: prior work on THIS branch is recalled automatically — that is the
   // context you cannot be expected to ask for, because you do not know it exists yet
   const shown = new Set();
-  if (t) {
+  if (t) try {
     // No summary/first_prompt requirement any more: a finished session is worth listing for its
     // attribution alone, and an imported one legitimately has neither (summary stays local now).
+    // LIMITs sized past what the cap can print: the character budget is the real limit, and
+    // reading every session and memory of a long-lived branch to then print a handful of them
+    // was work whose cost grew forever while its output stayed the same size.
     const prior = db().prepare(
       `SELECT id, project, name, username, author, role, summary, first_prompt, outcomes, created FROM sessions
        WHERE project = ? AND task = ?
-       ORDER BY created DESC, rowid DESC`
+       ORDER BY created DESC, rowid DESC LIMIT 60`
     ).all(p, t);
     const branchMem = db().prepare(
       `SELECT * FROM memories WHERE workspace IS NOT 1 AND project = ? AND task = ?
-       ORDER BY created DESC, id DESC`
+       ORDER BY created DESC, id DESC LIMIT 200`
     ).all(p, t);
     if (prior.length || branchMem.length) {
       // Clamped: the share is a slice OF the cap, not an allowance on top of it. Unclamped,
@@ -618,7 +753,7 @@ function brief(maxChars, proj) {
         shown.add(m.id);
       }
     }
-  }
+  } catch (err) { log('brief.branch', err); }
 
   // Affine ranking within the project: your own repo outranks a sibling service, which
   // outranks your global knowledge. Workspace rows never enter.
@@ -626,15 +761,24 @@ function brief(maxChars, proj) {
   // scored, so an old but strong memory can still win. The character cap is the only
   // limit on what reaches the session, and it applies after ranking, not before.
   const w = (m) => score(m) * (m.repo === r ? 1.5 : 1) * (t && m.task === t ? 1.5 : 1);
-  const window = 'SELECT * FROM memories WHERE workspace IS NOT 1 ORDER BY created DESC, id DESC';
+  // ponytail: scoring stays whole-corpus by design — an old but strong memory must still be able
+  // to win — so this cap is a safety valve, not a ranking filter. It only bites past 5000 memories
+  // in one scope, which is far beyond what prune leaves standing. Raise it, or make ranking
+  // incremental, if a real corpus ever reaches it.
+  const RANK_SCAN_CAP = 5000;
+  const window = `SELECT * FROM memories WHERE workspace IS NOT 1
+     ORDER BY created DESC, id DESC LIMIT ${RANK_SCAN_CAP}`;
   // `shown` holds TENANT ids only, so only tenant rows may be filtered by it: ids restart at 1
   // in every database, and filtering the concatenation dropped global memories that happened
   // to share an id with a branch memory already printed above.
-  const rows = db().prepare(window).all().filter((m) => !shown.has(m.id))
-    // global memories travel into every project; `_g` keeps their ids distinguishable from
-    // the tenant's, which start at 1 in the same way
-    .concat(userDb().prepare(window).all().map((m) => Object.assign(m, { _g: true })))
-    .sort((a, b) => w(b) - w(a));
+  let rows = [];
+  try {
+    rows = db().prepare(window).all().filter((m) => !shown.has(m.id))
+      // global memories travel into every project; `_g` keeps their ids distinguishable from
+      // the tenant's, which start at 1 in the same way
+      .concat(userDb().prepare(window).all().map((m) => Object.assign(m, { _g: true })))
+      .sort((a, b) => w(b) - w(a));
+  } catch (err) { log('brief.memories', err); }
   if (rows.length) push('Top memories:');
   // Silent truncation reads as "that was everything", which is the one thing a memory brief
   // must never imply — the marker's room was reserved from the cap up front (see `room`).
@@ -747,11 +891,20 @@ function nameSession(id, label) {
 }
 // two teammates may pick the same label; the name is a label, not a key, so disambiguate
 // on display rather than refusing the name
+// Memoized because brief() calls this once per session row it prints: the clash question has the
+// same answer for every row sharing a (project, name, author), and re-preparing the statement per
+// row was the whole cost.
+const _clashCache = new Map();
 function sessionLabel(row) {
   if (!row.name) return String(row.id || '').slice(0, 8);
-  const clash = db().prepare(
-    "SELECT 1 FROM sessions WHERE project = ? AND name = ? AND IFNULL(author,'') <> IFNULL(?,'') LIMIT 1"
-  ).get(row.project, row.name, row.author);
+  const key = JSON.stringify([row.project, row.name, row.author || '']);
+  let clash = _clashCache.get(key);
+  if (clash === undefined) {
+    clash = !!db().prepare(
+      "SELECT 1 FROM sessions WHERE project = ? AND name = ? AND IFNULL(author,'') <> IFNULL(?,'') LIMIT 1"
+    ).get(row.project, row.name, row.author);
+    _clashCache.set(key, clash);
+  }
   return clash ? `${row.name}@${row.username || row.author || 'unknown'}` : row.name;
 }
 function firstPrompt(id, prompt) {
@@ -759,6 +912,19 @@ function firstPrompt(id, prompt) {
   db().prepare('UPDATE sessions SET first_prompt = ? WHERE id = ? AND first_prompt IS NULL')
     .run(String(prompt).slice(0, 300), id);
 }
+// Has this session already been given the spotlighting reminder? The reminder is ~480 characters
+// of model-facing context and it says the same thing every time; a session reading many flagged
+// files paid for it on every single hit. The observations table already records each one, so the
+// answer is a count rather than new state to keep.
+function injectionSeen(sessionId) {
+  if (!sessionId) return false;
+  try {
+    return !!db().prepare(
+      "SELECT 1 FROM observations WHERE session_id = ? AND digest LIKE 'INJ %' LIMIT 1"
+    ).get(sessionId);
+  } catch { return false; } // never let a bookkeeping query suppress a security warning
+}
+
 function observe(sessionId, tool, target, digest) {
   db().prepare('INSERT INTO observations(session_id, tool, target, digest) VALUES(?,?,?,?)')
     .run(sessionId || null, tool || '', String(target || '').slice(0, 300), String(digest || '').slice(0, 300));
@@ -1924,7 +2090,8 @@ function cli() {
 
 module.exports = {
   db, userDb, openTenant, useProject, active, log, bootstrap, BIN_DIR, add, forget, memId, hasText, norm, search, brief,
-  sessionStart, firstPrompt, observe, sessionEnd, sessionActivity, pruneObservations,
+  sessionStart, firstPrompt, observe, injectionSeen, sessionEnd, sessionActivity, pruneObservations,
+  claudeRun, cooldownPath, gitPaths, originUrl, headBranch, SCHEMA_VERSION,
   correction, corrections, correctionSignal, markCorrectionsRecorded,
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,
   safeRead, strings, injectionScan, INJECTION_MARKERS, findingAdd, findingUpdate, findingList,
