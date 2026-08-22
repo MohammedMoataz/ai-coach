@@ -7,10 +7,14 @@ release is named with its number in that release's section.
 
 Six plugins document the code, the session, the prompts and the world outside the repo. None of
 them documents the **business**: who the actors are, what the processes actually do, which rules
-are enforced in code and which live in someone's inbox. And nothing turns "we need partial refunds"
+are enforced in code and which live in someone's inbox. Nothing turns "we need partial refunds"
 into a specification with a definition of done and a plan a cheap model can execute unattended.
+And nothing looks outward at who else is solving the same problem.
 
-**strategy-coach 1.0.0 · harness-coach 1.0.1 · ai-coach 1.2.0**
+Four skills, in the order you would use them: `vault` prepares the place, `blueprint` documents
+what exists, `market` says where the gap is, `feature` specifies what to build.
+
+**strategy-coach 1.1.0 · harness-coach 1.0.1 · ai-coach 1.2.0**
 
 ### The boundary that makes this a separate plugin
 
@@ -64,6 +68,34 @@ detectors with no model call and no write.
 `--prior-art` fans out at most four atlas-coach `researcher` agents to find how others solved this:
 a reference implementation for the developer, the failure modes everyone hits for the tester. Load-
 bearing claims go through `verifier`; `PLAUSIBLE` is written into the spec as `UNVERIFIED`.
+
+### `/strategy-coach:market`
+
+Competitive analysis fails in a specific way: it produces an accurate document that changes no
+decision. The feature matrix answers "what do they have?", which is not the question anyone needed
+answering. So this skill inverts the shape — features are inventory, and the finding is what every
+competitor's users complain about, because that is a gap demonstrated rather than asserted.
+
+The source hierarchy is written into the skill rather than left to taste. A vendor's own page is a
+**claim**; an issue tracker, changelog or postmortem is **evidence**; and the output labels which is
+which per row. The default assumption inverts the usual one: a missing feature is better evidenced
+by a user asking for it than by the vendor not listing it. Everything carries the date it was
+checked, because competitor facts decay in weeks.
+
+A gap has to pass three tests, all required — demonstrated demand, consistent absence, and a reason
+*we* could serve it. Missing the third makes it a wish; missing the first makes it a guess. And
+**"no defensible gap found in this pass" is a valid deliverable**: manufacturing a differentiator to
+fill out a document is how a strategy document becomes actively harmful.
+
+Claims that would change a decision go through `atlas-coach:verifier` before they do; `PLAUSIBLE`
+is written as `UNVERIFIED`. Failed claims are listed rather than deleted, so the next refresh does
+not rediscover them as new — and a competitor that later *ships* the thing you built a strategy
+around shows up as a `## Superseded` diff instead of vanishing.
+
+Two of the six ingested sources were competitive-analysis frameworks, and they are the reason this
+skill is shaped against them: both supplied procedure with no measurement, and neither weighted its
+sources or dated a single claim. The prompt templates were useful as raw material; the method is
+not inherited.
 
 ### harness-coach 1.0.1 — Miro joins the catalog
 

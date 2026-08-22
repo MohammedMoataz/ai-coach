@@ -48,7 +48,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
 | **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project. |
 | **atlas-coach** | `research`, `ingest`, `analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
-| **strategy-coach** | Skills only: `vault`, `blueprint`, `feature` — document the business, then specify what comes next. |
+| **strategy-coach** | Skills only: `vault`, `blueprint`, `feature`, `market` — document the business, specify what comes next, and find the competitive gap. |
 | **ai-coach** | The bundle. Install this one. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
@@ -58,9 +58,9 @@ Measured with `claude plugin details`, not estimated — **~1,317 always-on toke
 product as of v0.6.0: core and the bundle are 0, memory-coach ~298, prompt-coach ~114,
 security-coach ~201, harness-coach ~72, investigation-coach ~225, atlas-coach ~407 (three skills
 plus two agents). It has drifted: descriptions were rewritten in v1.0.0, and skills were added
-since — `debrief` in v1.1.0, `dispatch` in v1.2.0, and strategy-coach's three in v1.3.0 — so the
-figure is stale and understated by roughly six descriptions, and strategy-coach is missing from the
-list entirely. The shape holds — what is always on is the descriptions, and nothing else.
+since — `debrief` in v1.1.0, `dispatch` in v1.2.0, and strategy-coach's four in v1.3.0 — so the
+figure is stale and understated by roughly seven descriptions, and strategy-coach is missing from
+the list entirely. The shape holds — what is always on is the descriptions, and nothing else.
 
 ## What happens on its own
 
@@ -98,7 +98,8 @@ list entirely. The shape holds — what is always on is the descriptions, and no
 `/security-coach:audit` · `/security-coach:triage` · `/harness-coach:partners` ·
 `/investigation-coach:onboard` · `/investigation-coach:map` · `/investigation-coach:study` ·
 `/atlas-coach:research` · `/atlas-coach:ingest` · `/atlas-coach:analyze` ·
-`/strategy-coach:vault` · `/strategy-coach:blueprint` · `/strategy-coach:feature`
+`/strategy-coach:vault` · `/strategy-coach:blueprint` · `/strategy-coach:feature` ·
+`/strategy-coach:market`
 
 Two fire on their own. `recall`, so Claude reaches for memory unprompted when a question matches
 prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a follow-up — advice that
@@ -109,10 +110,10 @@ Every CLI-and-format skill is pinned to Haiku at low effort — that work should
 frontier rates (`ingest` and `vault` join that tier: routing, refinement and folder scaffolding are
 mechanical). The rest stay on the session model, deliberately: `recall` and `dispatch` run inside a
 real answer, never as a report of their own; investigation-coach's three, atlas-coach's
-`research`/`analyze`, and strategy-coach's `blueprint`/`feature` are real analysis — pinned down,
-the output reads like a file listing. Each of those says up front that it costs real tokens and
-takes a scoping flag to bound the spend. The hooks' own LLM calls (plan-mode review, session-end
-distillation) are hardcoded to Haiku too.
+`research`/`analyze`, and strategy-coach's `blueprint`, `feature` and `market` are real analysis —
+pinned down, the output reads like a file listing. Each of those says up front that it costs real
+tokens and takes a scoping flag to bound the spend. The hooks' own LLM calls (plan-mode review,
+session-end distillation) are hardcoded to Haiku too.
 
 ## What a teammate actually receives
 

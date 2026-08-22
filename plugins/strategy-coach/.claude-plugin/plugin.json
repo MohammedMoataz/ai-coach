@@ -1,12 +1,12 @@
 {
   "name": "strategy-coach",
   "displayName": "Strategy Coach",
-  "version": "1.0.0",
-  "description": "Document what the business is, and specify what comes next: an Obsidian vault of actors, processes and rules mapped to code, plus feature specs with a definition of done and a plan a cheap model can execute. Ships skills only.",
+  "version": "1.1.0",
+  "description": "Document what the business is, and specify what comes next: an Obsidian vault of actors, processes and rules mapped to code, plus feature specs with a definition of done and a plan a cheap model can execute — and where the competitive gap is. Ships skills only.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",
-  "keywords": ["business-analysis", "requirements", "documentation", "obsidian", "specification"],
+  "keywords": ["business-analysis", "requirements", "documentation", "obsidian", "specification", "competitive-analysis"],
   "dependencies": [
     { "name": "ai-coach-core", "version": "^1.0.0" }
   ]
