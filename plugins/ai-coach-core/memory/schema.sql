@@ -13,6 +13,26 @@ CREATE TABLE IF NOT EXISTS repos (
   added TEXT DEFAULT (datetime('now'))
 );
 
+-- Everyone who has written anything in this project, keyed by the ONE identity that is stable
+-- across machines: the git user.email. Name and role live here and nowhere else — a memory, a
+-- session and a debrief all carry the email and join for the rest.
+--
+-- Consequence, deliberate and documented: role is CURRENT, not snapshotted. `/recall --role qa`
+-- means "written by people who are QA now", not "written while they were QA". Roles move rarely
+-- and .ai-coach/team.md is the shared source of truth for them; keeping a copy on every row made
+-- the same fact editable in three places. If dated role history is ever wanted, the normalized
+-- answer is an author_roles(email, role, from, to) table, not a column back on memories.
+--
+-- Refreshed from .ai-coach/team.md on every session start, and auto-registered for anyone who
+-- turns up in a seed without a roster line — an imported teammate must not lose their name.
+CREATE TABLE IF NOT EXISTS authors (
+  email    TEXT PRIMARY KEY,             -- git user.email, lowercased (canon())
+  username TEXT,                         -- git user.name — display identity
+  role     TEXT,                         -- current roster role, or NULL
+  created  TEXT DEFAULT (datetime('now')),
+  updated  TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS memories (
   id         INTEGER PRIMARY KEY,
   type       TEXT NOT NULL,              -- learning | note | reference | pattern (coerced in engine)
@@ -29,23 +49,32 @@ CREATE TABLE IF NOT EXISTS memories (
   project    TEXT,                       -- the tenant this database belongs to
   repo       TEXT,                       -- which repository of that project it came from
   source     TEXT,                       -- url | session id | manual
-  author     TEXT,                       -- git user.email of whoever wrote it
-  username   TEXT,                       -- git user.name — display identity
-  role       TEXT,                       -- snapshot of the author's roster role when written
-  task       TEXT,                       -- branch name or explicit --task tag
-  workspace  INTEGER DEFAULT 0,          -- 1 = private workspace only; findable, never in the brief
+  author     TEXT REFERENCES authors(email), -- git user.email; name and role join from `authors`
+  -- The branch this was learned on. The project's branch convention (`branches:` in
+  -- .ai-coach/project.md, else the global default) is what makes this groupable: `feat/checkout`
+  -- and `fix/checkout-tax` say what kind of work produced the memory, `my-stuff` says nothing.
+  task       TEXT,
   created    TEXT DEFAULT (datetime('now')),
   uses       INTEGER DEFAULT 0
 );
+-- No `workspace` column. Whether a teammate's memory is held privately is a fact about your
+-- TRUST in its author, which lives once in user.db, and it changes — freezing a copy of it onto
+-- every row meant raising someone's trust did nothing until you re-imported their seed. It is
+-- now derived at read time, so a trust change applies to rows you already hold, immediately.
 
 CREATE TABLE IF NOT EXISTS sessions (
   id           TEXT PRIMARY KEY,
   project      TEXT,
   repo         TEXT,
-  author       TEXT,
-  username     TEXT,
-  role         TEXT,
-  name         TEXT,                     -- human label; unique per (project, author)
+  author       TEXT REFERENCES authors(email),
+  -- Human label. Adopted from Claude Code's own session name when it has one — that is the name
+  -- shown in the status line, so the two never disagree — and auto-generated from branch and
+  -- author only when it does not.
+  name         TEXT,
+  -- Where the name came from, so a later adoption can never demote a better one: a name someone
+  -- typed outranks one Claude Code derived, which outranks the branch-and-author fallback. Without
+  -- this, re-reading the status line at session end would overwrite a deliberate label every time.
+  name_source  TEXT DEFAULT 'auto',      -- auto | claude | user
   task         TEXT,
   first_prompt TEXT,
   -- What this session was FOR, in one line. Travels in the seed, so it must never be the prompt:
@@ -144,9 +173,7 @@ CREATE TABLE IF NOT EXISTS debriefs (
   repo       TEXT,
   session_id TEXT,                      -- the local session this came from; NEVER exported
   name       TEXT,                      -- the session label, snapshotted at publish
-  author     TEXT NOT NULL,
-  username   TEXT,
-  role       TEXT,
+  author     TEXT NOT NULL REFERENCES authors(email),
   task       TEXT,
   business   TEXT NOT NULL,             -- what changed for the product or the user
   technical  TEXT NOT NULL,             -- what changed in the code: the decision and its trade-off
@@ -175,6 +202,10 @@ END;
 CREATE INDEX IF NOT EXISTS idx_memories_text_key ON memories(text_key);
 CREATE INDEX IF NOT EXISTS idx_memories_created  ON memories(created);
 CREATE INDEX IF NOT EXISTS idx_memories_repo     ON memories(repo, created);
+-- Both foreign keys are indexed: every read that shows a name or a role joins on them, and an
+-- unindexed FK turns each of those joins into a scan of the whole table.
+CREATE INDEX IF NOT EXISTS idx_memories_author   ON memories(author);
+CREATE INDEX IF NOT EXISTS idx_sessions_author   ON sessions(author);
 CREATE INDEX IF NOT EXISTS idx_obs_session       ON observations(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_project  ON sessions(project, created);
 CREATE INDEX IF NOT EXISTS idx_sessions_branch   ON sessions(project, task, created);

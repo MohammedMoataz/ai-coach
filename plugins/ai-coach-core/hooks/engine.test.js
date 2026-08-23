@@ -159,11 +159,16 @@ assert.strictEqual(e.seedExport(tseed, { task: 'orders-v2' }).memories, 1, 'task
 // infer what a line is from whichever fields it happens to carry.
 const tlines = fs.readFileSync(tseed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 assert.strictEqual(tlines[0].kind, 'meta', 'the seed opens with its format generation');
-assert.strictEqual(tlines[0].seed, 2, 'generation 2');
+assert.strictEqual(tlines[0].seed, 3, 'generation 3');
 const trow = tlines.find((r) => r.kind === 'memory');
 assert.strictEqual(trow.author, 'tester@example.com', 'seed row carries author');
 assert.strictEqual(trow.task, 'orders-v2', 'seed row carries task');
 assert.ok(trow.text, 'a memory row still carries `text` — what an older importer keys on');
+// seed 3: a person is stated once, in their own row, and every other row points at the email.
+assert.ok(!('username' in trow) && !('role' in trow), 'a memory row carries the email and nothing else about its author');
+const tauth = tlines.find((r) => r.kind === 'author' && r.email === 'tester@example.com');
+assert.ok(tauth, 'the seed states who its authors are');
+assert.ok(!('text' in tauth), 'an author row carries no `text` — an older importer must walk past it');
 
 // roster + workspace import: new joiner capped and held private, unknown author full trust
 const teamProj = path.join(tmp, 'teamproj');
@@ -186,16 +191,23 @@ fs.writeFileSync(mixSeed, [
 e.useProject(teamProj); // imports land in the project of the repo doing the importing
 const imp = e.seedImport(mixSeed, teamProj);
 assert.strictEqual(imp.added, 3, 'all three imported');
-assert.strictEqual(imp.workspace, 1, 'one held in workspace');
+assert.strictEqual(imp.held, 1, 'one is held at workspace trust');
 const joinerRow = e.search('joiner unverified', { full: true })[0];
-assert.strictEqual(joinerRow.workspace, 1, 'joiner row held private');
-assert.ok(joinerRow.confidence <= 0.3, 'joiner confidence capped');
+// The row is stored EXACTLY as the seed stated it. Holding is a fact about your trust in its
+// author, and it is applied when the row is read — see the trust-change assertions further down.
+assert.strictEqual(joinerRow.confidence, 0.9, 'the seed value is stored unmodified');
+assert.ok(e.isHeld(joinerRow.author), 'joiner row is held');
+assert.strictEqual(e.effConfidence(joinerRow), 0.3, 'and reads at the capped confidence');
 const archRow = e.search('architect solid', { full: true })[0];
-assert.strictEqual(archRow.workspace, 0, 'roster full = untouched');
-assert.strictEqual(archRow.confidence, 0.9, 'confidence kept');
+assert.ok(!e.isHeld(archRow.author), 'roster full = not held');
+assert.strictEqual(e.effConfidence(archRow), 0.9, 'confidence kept');
 const strangerRow = e.search('stranger note', { full: true })[0];
-assert.strictEqual(strangerRow.workspace, 0, 'unknown author = full trust');
-assert.ok(e.search('joiner unverified')[0]._display.includes('[workspace]'), 'search marks workspace rows');
+assert.ok(!e.isHeld(strangerRow.author), 'unknown author = full trust');
+assert.ok(e.search('joiner unverified')[0]._display.includes('[held]'), 'search marks held rows');
+// Identity normalized out of the rows and into `authors`, including for someone in no roster.
+const who = e.authorMap(e.db(), ['joiner@example.com', 'stranger@example.com']);
+assert.strictEqual(who.get('joiner@example.com').role, 'backend', 'roster role landed on the author');
+assert.ok(who.has('stranger@example.com'), 'an author nobody rostered is still registered');
 
 // A workspace row is RELAYED, not re-published. It reached this database by already being in the
 // shared file, so passing it on exposes nothing new — while dropping it would delete a teammate's
@@ -215,7 +227,7 @@ const pn = e.seedExport(pseed);
 assert.ok(pn.memories >= 1, 'project export non-empty');
 for (const line of fs.readFileSync(pseed, 'utf8').trim().split('\n')) {
   const row = JSON.parse(line);
-  if (row.kind === 'session') continue;
+  if (row.kind === 'session' || row.kind === 'author') continue;
   assert.strictEqual(row.project, '/demo/proj', 'every exported memory belongs to the project');
 }
 assert.ok(!fs.readFileSync(pseed, 'utf8').includes('architect solid decision'),
@@ -235,23 +247,29 @@ delete process.env.AICOACH_TASK;
 assert.strictEqual(e.trustList().find((t) => t.email === 'joiner@example.com').level, 'workspace',
   'explicit trust round-trips through trustList');
 
-// promotion: I raise trust locally, re-import lifts the row into the brief with confidence restored
+// Promotion, and the whole point of deriving it: raising trust lifts rows I ALREADY HOLD, with
+// no re-import. The flag used to be frozen onto the row at import time, so a teammate stayed
+// invisible until you remembered to run the import again — which is exactly the step people skip.
 e.setTrust('joiner@example.com', 'full', 'reviewed their work');
+const lifted = e.search('joiner unverified', { full: true })[0];
+assert.ok(!e.isHeld(lifted.author), 'no longer held');
+assert.strictEqual(e.effConfidence(lifted), 0.9, 'full confidence, and it never had to be rewritten');
+assert.ok(e.brief(8000, teamProj).includes('joiner unverified claim'),
+  'the row reaches the brief on the trust change alone — no re-import');
+
+// and back down, just as immediately
+e.setTrust('joiner@example.com', 'workspace');
+const dropped = e.search('joiner unverified', { full: true })[0];
+assert.ok(e.isHeld(dropped.author), 'held again');
+assert.strictEqual(e.effConfidence(dropped), 0.3, 'and capped again');
+assert.ok(!e.brief(8000, teamProj).includes('joiner unverified claim'), 'and out of the brief again');
+
+// A re-import of a seed is still safe, and repairs a confidence an OLDER engine capped on disk.
+e.db().prepare("UPDATE memories SET confidence = 0.3 WHERE text LIKE 'joiner unverified%'").run();
 const imp2 = e.seedImport(mixSeed, teamProj);
 assert.strictEqual(imp2.added, 0, 'no new rows on re-import');
-assert.strictEqual(imp2.promoted, 1, 'joiner promoted');
-const lifted = e.search('joiner unverified', { full: true })[0];
-assert.strictEqual(lifted.workspace, 0, 'no longer workspace-only');
-assert.strictEqual(lifted.confidence, 0.9, 'confidence restored');
-assert.ok(e.brief(8000, teamProj).includes('joiner unverified claim'), 'promoted row now reaches the brief');
-
-// and back down: trust lowered, re-import returns the row to the workspace
-e.setTrust('joiner@example.com', 'workspace');
-const imp3 = e.seedImport(mixSeed, teamProj);
-assert.strictEqual(imp3.workspace, 1, 'joiner returned to workspace');
-const dropped = e.search('joiner unverified', { full: true })[0];
-assert.strictEqual(dropped.workspace, 1, 'flag reapplied');
-assert.ok(dropped.confidence <= 0.3, 'confidence capped again');
+assert.strictEqual(imp2.repaired, 1, 'the capped-on-disk confidence is restored from the seed');
+assert.strictEqual(e.search('joiner unverified', { full: true })[0].confidence, 0.9, 'back to what the seed says');
 
 
 // ---------- v0.4.0: identity, private trust, naming, branch recall, encryption ----------
@@ -267,13 +285,17 @@ assert.strictEqual(team['omar@example.com'].role, 'backend', 'second member pars
 assert.deepStrictEqual(team['lina@example.com'], { name: null, role: 'qa' }, 'bare email + role still works');
 assert.strictEqual(e.roleOf('sara@example.com', dirProj), 'tech-lead', 'role resolved by email');
 
-// identity is stamped on every memory and snapshotted, not looked up later
+// Identity lives on the author, once. A memory carries the email; the name and the role join.
 process.env.AICOACH_USERNAME = 'Tester Person';
 process.env.AICOACH_ROLE = 'qa';
 e.add('learning', 'flaky checkout under load', 0.8, null, null);
 const idRow = e.search('flaky checkout', { full: true })[0];
-assert.strictEqual(idRow.username, 'Tester Person', 'username stamped');
-assert.strictEqual(idRow.role, 'qa', 'role stamped');
+assert.strictEqual(idRow.author, 'tester@example.com', 'the row carries the email');
+assert.ok(!Object.prototype.hasOwnProperty.call(
+  Object.fromEntries(e.userDb().prepare('PRAGMA table_info(memories)').all().map((c) => [c.name, 1])), 'username'),
+'and the memories table has no username column at all');
+assert.strictEqual(idRow.username, 'Tester Person', 'the joined name comes back with the search row');
+assert.strictEqual(idRow.role, 'qa', 'so does the role');
 assert.strictEqual(e.search('flaky', { role: 'qa' }).length, 1, 'search --role filters');
 assert.strictEqual(e.search('flaky', { user: 'tester person' }).length, 1, 'search --user is case-insensitive');
 assert.strictEqual(e.search('flaky', { role: 'tech-lead' }).length, 0, 'wrong role excluded');
@@ -294,7 +316,8 @@ assert.strictEqual(e.sessionStart('n-1', '/demo/named'), n1, 'existing session k
 const n2 = e.sessionStart('n-2', '/demo/named');
 assert.strictEqual(n2, 'feature-orders-tester-person-2', 'collision gets a suffix');
 assert.strictEqual(e.nameSession('n-1', 'orders rework'), 'orders rework', 'explicit rename');
-e.db().prepare("UPDATE sessions SET name='orders rework', author='other@example.com', username='Other Dev' WHERE id='n-2'").run();
+e.ensureAuthor(e.db(), 'other@example.com', 'Other Dev', null);
+e.db().prepare("UPDATE sessions SET name='orders rework', author='other@example.com' WHERE id='n-2'").run();
 assert.strictEqual(e.sessionLabel(e.db().prepare("SELECT * FROM sessions WHERE id='n-1'").get()),
   'orders rework@Tester Person', 'same label by two authors disambiguates on display');
 
@@ -635,6 +658,7 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   {
     const mate = 'omar@example.com';
     e.sessionStart('ps-mate-1', pp);
+    e.ensureAuthor(e.db(), mate, 'Omar Nabil', 'backend');
     e.db().prepare('UPDATE sessions SET author = ? WHERE id = ?').run(mate, 'ps-mate-1');
     e.promptSignal('ps-mate-1', 30, ['hedged-opener'], 1);
     e.correction('ps-mate-1', 'that failed');
@@ -1117,5 +1141,139 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
 
 // rekey moves debriefs with everything else — v1.0.0 shipped a fix for exactly this class of bug
 assert.ok(e.REKEY_TABLES.includes('debriefs'), 'debriefs is a tenant table rekey knows about');
+// and `authors` leads it, because everything else is a foreign key into it
+assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows that reference them');
+
+
+// ---------- v1.5.0: the branch convention ----------
+{
+  const bp = path.join(tmp, 'branchproj');
+  fs.mkdirSync(path.join(bp, '.ai-coach'), { recursive: true });
+  process.env.AICOACH_TASK = 'feat/checkout';
+  assert.strictEqual(e.branchCheck(bp), null, 'a conventional branch says nothing');
+  process.env.AICOACH_TASK = 'my-stuff';
+  const warn = e.branchCheck(bp);
+  assert.match(warn, /does not match the default branch convention/, 'an unconventional one is named: ' + warn);
+  assert.match(warn, /project\.md/, 'and says how to declare your own');
+
+  // a declared convention wins over the default, in both directions
+  fs.writeFileSync(path.join(bp, '.ai-coach', 'project.md'), 'name: branchdemo\nbranches: story/ bug/\n');
+  assert.deepStrictEqual(e.branchStrategy(bp), { prefixes: ['story/', 'bug/'], declared: true }, 'declared list parsed');
+  process.env.AICOACH_TASK = 'story/checkout';
+  assert.strictEqual(e.branchCheck(bp), null, "the project's own prefix passes");
+  process.env.AICOACH_TASK = 'feat/checkout';
+  assert.match(e.branchCheck(bp), /this project's branch convention/,
+    'and a default prefix now fails, because the project said otherwise');
+
+  // mainline is not a task and never gets a lecture
+  for (const b of ['main', 'master', 'develop']) {
+    process.env.AICOACH_TASK = b;
+    assert.strictEqual(e.branchCheck(bp), null, b + ' is mainline, not a badly named branch');
+  }
+  delete process.env.AICOACH_TASK;
+}
+
+// ---------- v1.5.0: one name per session, and it comes from Claude Code ----------
+{
+  const np = path.join(tmp, 'nameproj');
+  process.env.AICOACH_TASK = 'feat/naming';
+  e.useProject(np);
+  e.sessionStart('nm-1', np, { name: 'derived-one', source: 'claude' });
+  assert.strictEqual(e.adoptName('nm-1', 'derived-two', 'claude'), 'derived-two',
+    'a rename within the same source is adopted — that is what checking again at session end is for');
+  assert.strictEqual(e.adoptName('nm-1', 'i typed this', 'user'), 'i typed this', 'a typed name outranks a derived one');
+  assert.strictEqual(e.adoptName('nm-1', 'derived-three', 'claude'), 'i typed this',
+    'and a later derived name must never overwrite it');
+  // our own fallback is the weakest of the three
+  e.sessionStart('nm-2', np);
+  assert.strictEqual(e.db().prepare("SELECT name_source FROM sessions WHERE id='nm-2'").get().name_source, 'auto',
+    'an invented name is marked as invented');
+  assert.strictEqual(e.adoptName('nm-2', 'claude named it', 'claude'), 'claude named it',
+    'so Claude Code\'s own name replaces it');
+  delete process.env.AICOACH_TASK;
+}
+
+// ---------- v1.5.0: a v1 database upgrades without losing who wrote what ----------
+{
+  const { DatabaseSync } = require('node:sqlite');
+  const old = path.join(tmp, 'legacy', 'coach.db');
+  fs.mkdirSync(path.dirname(old), { recursive: true });
+  // Exactly the v1 shape: identity denormalized onto every row, workspace stored as a flag.
+  const d = new DatabaseSync(old);
+  d.exec(`CREATE TABLE memories (id INTEGER PRIMARY KEY, type TEXT NOT NULL, text TEXT NOT NULL,
+      text_key TEXT NOT NULL, confidence REAL DEFAULT 0.7, provenance TEXT DEFAULT 'human',
+      concepts TEXT, project TEXT, repo TEXT, source TEXT, author TEXT, username TEXT, role TEXT,
+      task TEXT, workspace INTEGER DEFAULT 0, created TEXT, uses INTEGER DEFAULT 0);
+    CREATE TABLE sessions (id TEXT PRIMARY KEY, project TEXT, repo TEXT, author TEXT, username TEXT,
+      role TEXT, name TEXT, task TEXT, first_prompt TEXT, summary TEXT, outcomes INTEGER,
+      created TEXT, ended TEXT);
+    INSERT INTO memories(type, text, text_key, confidence, project, author, username, role, task, workspace, created)
+      VALUES('learning','legacy lesson about migrations','legacy lesson about migrations',0.9,
+             'legacyproj','sara@example.com','Sara Malik','tech-lead','feat/legacy',0,'2026-01-01 00:00:00');
+    INSERT INTO memories(type, text, text_key, confidence, project, author, created)
+      VALUES('note','anonymous legacy note','anonymous legacy note',0.5,'legacyproj',NULL,'2026-01-01 00:00:00');
+    INSERT INTO sessions(id, project, author, username, role, name, task, summary, created, ended)
+      VALUES('legacy-1','legacyproj','sara@example.com','Sara Malik','tech-lead','legacy work',
+             'feat/legacy','shipped it','2026-01-01 00:00:00','2026-01-01 01:00:00');
+    PRAGMA user_version = 1;`);
+  d.close();
+
+  // Opening it is the migration. Nothing else is called.
+  const up = new DatabaseSync(old);
+  up.close();
+  process.env.AICOACH_PROJECT = 'legacyproj';
+  const legacyDir = path.join(tmp, 'legacy-cwd');
+  fs.mkdirSync(legacyDir, { recursive: true });
+  // point the engine's tenant resolution at the file we just built
+  const tenant = path.join(e.tenantDir('legacyproj'), 'coach.db');
+  fs.mkdirSync(path.dirname(tenant), { recursive: true });
+  fs.copyFileSync(old, tenant);
+  e.useProject(legacyDir);
+  const ldb = e.db();
+
+  const mcols = ldb.prepare('PRAGMA table_info(memories)').all().map((c) => c.name);
+  assert.ok(!mcols.includes('username') && !mcols.includes('role'), 'the denormalized columns are gone');
+  assert.ok(!mcols.includes('workspace'), 'and so is the stored workspace flag');
+  const scols = ldb.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name);
+  assert.ok(!scols.includes('username') && !scols.includes('role'), 'sessions too');
+
+  // The identity that was on those rows is not lost — it moved.
+  const sara = ldb.prepare("SELECT * FROM authors WHERE email = 'sara@example.com'").get();
+  assert.ok(sara, 'the author on the old rows was carried into `authors`');
+  assert.strictEqual(sara.username, 'Sara Malik', 'with their name');
+  assert.strictEqual(sara.role, 'tech-lead', 'and their role');
+  assert.strictEqual(ldb.prepare('SELECT COUNT(*) AS n FROM memories').get().n, 2, 'no memory was dropped');
+  assert.strictEqual(ldb.prepare('SELECT COUNT(*) AS n FROM authors').get().n, 1,
+    'and a NULL author does not become a row in `authors`');
+  assert.strictEqual(ldb.prepare('PRAGMA user_version').get().user_version, e.SCHEMA_VERSION, 'stamped current');
+
+  // Reads still work, and the migrated row renders with the name it always had.
+  assert.strictEqual(e.authorName('sara@example.com'), 'Sara Malik', 'display identity survives the migration');
+  delete process.env.AICOACH_PROJECT;
+}
+
+// ---------- v1.5.0: a seed written by an OLDER engine still carries names ----------
+{
+  // Format 2 repeated a person's name and role on every row. Nobody here is in any roster, so
+  // those inline fields are the only record of who they are — they must be harvested, not dropped.
+  const oldProj = path.join(tmp, 'oldseedproj');
+  fs.mkdirSync(oldProj, { recursive: true });
+  const s2 = path.join(tmp, 'seed2.jsonl');
+  fs.writeFileSync(s2, [
+    JSON.stringify({ kind: 'meta', seed: 2, by: 'lea@example.com', project: 'oldproj' }),
+    JSON.stringify({ kind: 'memory', type: 'learning', text: 'the old format said who wrote it',
+      confidence: 0.8, author: 'lea@example.com', username: 'Lea Older', role: 'platform',
+      task: 'feat/old', created: '2026-02-01 00:00:00' }),
+  ].join('\n') + '\n');
+  e.useProject(oldProj);
+  const r2 = e.seedImport(s2, oldProj);
+  assert.strictEqual(r2.added, 1, 'the memory imports');
+  assert.strictEqual(r2.authors, 1, 'and its author is registered from the inline fields');
+  const lea = e.authorMap(e.db(), ['lea@example.com']).get('lea@example.com');
+  assert.strictEqual(lea.username, 'Lea Older', 'the name in a format-2 row is not thrown away');
+  assert.strictEqual(lea.role, 'platform', 'nor the role');
+  assert.strictEqual(e.search('old format', { full: true })[0].username, 'Lea Older',
+    'and it comes back through the join, exactly as a format-3 import would');
+}
 
 console.log('engine.test.js: ALL PASS');

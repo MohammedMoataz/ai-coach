@@ -20,7 +20,8 @@ first answer is thin.
    match instead of the short preview. Never open with `--full`.
 3. Scope when the question is scoped: `--task <branch>`, `--author <email>`, `--role qa`,
    `--user <name>`, `--repo <repo>` for one service, `--all` to fan across every project you have
-   worked in.
+   worked in. `--role` and `--user` match the author's **current** name and role from
+   `.ai-coach/team.md` — so `--role qa` means "written by people who are QA now".
 4. Nothing? Retry once with synonyms or word stems before concluding it was never recorded.
 5. Answer from the hits and cite the ids you used. If a memory contradicts what the code now says,
    fix it rather than working around it: `ENGINE forget <id>`, then add the correction.
@@ -30,8 +31,10 @@ first answer is thin.
 - `[distilled]` — a model compressed this out of a session transcript. Nobody confirmed it. Treat it
   as a lead, not a fact, and verify before acting on it.
 - `[imported]` — it came from a teammate's handoff.
-- `[workspace]` — from someone whose trust you set to `workspace`. Never auto-injected; weigh it
-  accordingly.
+- `[held]` — from someone whose trust you set to `workspace`. Never auto-injected, and its
+  confidence reads capped; weigh it accordingly. This is computed from your trust as the row is
+  read, so `/memory-coach:team trust <email> full` un-holds everything of theirs you already have,
+  immediately and with no re-import.
 - No label means a person wrote it deliberately.
 - `#12` is this project's memory; `#g12` is a global one. Different databases, so the letter is
   part of the id — pass it back exactly as printed.
