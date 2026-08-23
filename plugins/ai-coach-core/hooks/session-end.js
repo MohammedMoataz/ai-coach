@@ -16,6 +16,13 @@ process.stdin.on('end', () => {
     const id = data.session_id;
     if (!id) process.exit(0);
 
+    // A session can be renamed at any point after it starts, and the name is half of every
+    // debrief key — so the last chance to notice is here, before the row closes and gets exported.
+    try {
+      const cn = engine.claudeSessionName(id);
+      if (cn && cn.name) engine.adoptName(id, cn.name, cn.source);
+    } catch { /* the name we already have stands */ }
+
     const act = engine.sessionActivity(id, 40); // LAST 40 — the conclusion is where learnings live
     const first = (act.session && act.session.first_prompt) || '';
     const obsLines = act.observations.map((o) => '- ' + (o.digest || o.target)).join('\n');

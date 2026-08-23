@@ -17,8 +17,10 @@ Session summaries are not this. They are a one-line note to yourself and they st
 
 ## Publish — the default
 
-1. **Name the work** if it has no real name yet: `ENGINE name "<label>"`. The label plus your email
-   plus today's date IS the key teammates will refer to, so name the work, not the day.
+1. **Check the name describes the work.** The session's name plus your email plus today's date IS
+   the key teammates will refer to, so it should name the work, not the day. AI Coach adopts the
+   name Claude Code shows in the status line, so the way to change it is `/rename` — do that first
+   if the current one is a placeholder, and the debrief key will use it.
 2. `ENGINE session-digest` — everything this session did. Failures and recorded corrections
    verbatim, repeated calls collapsed to counts, the last 60 calls in full. Nothing is truncated.
    Read it *beside* what you remember: the digest is the part you have forgotten, and your own

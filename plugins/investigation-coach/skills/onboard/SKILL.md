@@ -36,6 +36,12 @@ current.
    a file in the tree WITHOUT that line is hand-written — never overwrite it without asking.
 2. **Sweep** via Explore subagents: entry points, build/test/lint commands, core flows,
    conventions, completed migrations (the thing a naive scan misses — "we moved off X" is a rule).
+   Include the **branch convention**: `git branch -a --format="%(refname:short)"` plus the last
+   ~50 merge commits show what this team actually names branches. Report the prefixes in
+   `start-here.md` under how-we-work, and if `.ai-coach/project.md` has no `branches:` line, offer
+   to add one — it is the only machine-readable form, and it is what AI Coach checks a branch
+   against at session start. A repo with no discernible pattern gets no line: do not invent a
+   convention nobody agreed to.
 3. **Write** the tree below (formats in `references/formats.md` — load it before writing).
    Wikilinks between notes; filenames never contain `* " \ / : | ?`.
 

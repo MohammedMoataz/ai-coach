@@ -5,37 +5,6 @@
 if (process.env.AICOACH_INNER) process.exit(0); // spawned claude -p children: no recursion, no rows
 
 const fs = require('node:fs');
-const path = require('node:path');
-const os = require('node:os');
-
-// If the user already named this session with /rename, adopt that name instead of
-// inventing one. The name is not in the hook payload; it lives in Claude Code's own
-// session metadata, whose layout is internal — so this is best-effort and never fatal.
-function claudeSessionName(id) {
-  try {
-    const dir = path.join(os.homedir(), '.claude', 'sessions');
-    // Newest first, and only the newest few: the session we were just handed is by definition
-    // one of the most recently touched, and a long-lived install accumulates thousands of these
-    // files. Reading all of them cost a session start proportional to how long you had used it.
-    const files = fs.readdirSync(dir)
-      .filter((f) => f.endsWith('.json'))
-      .map((f) => {
-        const p = path.join(dir, f);
-        let mtime = 0;
-        try { mtime = fs.statSync(p).mtimeMs; } catch { /* vanished mid-scan */ }
-        return { p, mtime };
-      })
-      .sort((a, b) => b.mtime - a.mtime)
-      .slice(0, 25);
-    for (const { p } of files) {
-      try {
-        const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-        if (j && j.sessionId === id && j.name) return String(j.name);
-      } catch { /* one unreadable file must not stop the scan */ }
-    }
-  } catch { /* directory absent or the layout changed — fall back to our own name */ }
-  return null;
-}
 
 let raw = '';
 process.stdin.on('data', (d) => (raw += d));
@@ -46,8 +15,14 @@ process.stdin.on('end', () => {
     engine = require('./engine.js');
     engine.bootstrap(); // keep ~/.ai-coach/bin/engine.js current so sibling plugins can call it
     engine.useProject(data.cwd); // resolve which project's database this session belongs to
-    const label = engine.sessionStart(data.session_id, data.cwd, claudeSessionName(data.session_id));
+    const label = engine.sessionStart(data.session_id, data.cwd, engine.claudeSessionName(data.session_id));
     const out = [];
+    // The branch convention, said once and only when it is broken. `task` is the branch, and the
+    // branch is what makes a memory findable next month — a note filed under "my-stuff" is not.
+    try {
+      const b = engine.branchCheck(data.cwd);
+      if (b) out.push(b);
+    } catch { /* a naming convention is never worth failing a session over */ }
     // a project may span several repos; register the declared members, and note when this
     // repo is working under a project that does not list it
     try {

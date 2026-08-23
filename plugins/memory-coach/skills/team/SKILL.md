@@ -39,8 +39,9 @@ Append only — never rewrite anyone else's line. Then tell the user to commit i
 
 **`trust <email> <full|workspace> [note]`** — `ENGINE trust <email> <level> "<note>"`. Say plainly
 that this stays on this machine. `full` means their memories rank in your brief like your own;
-`workspace` means held privately with capped confidence, searchable but never auto-injected and
-never re-exported.
+`workspace` means held privately with capped confidence, searchable but never auto-injected.
+The change applies to memories of theirs you **already hold**, from the next read — there is
+nothing to re-import.
 
 **`sync`** — give every roster member without a trust row the configured default, leaving existing
 choices untouched. Report what changed.
@@ -48,6 +49,8 @@ choices untouched. Report what changed.
 ## Rules
 
 - Never write a `trust:` field into `.ai-coach/team.md`. Trust is not a fact about the team.
-- Roles are free text and are snapshotted onto memories when written, so `/memory-coach:recall
-  --role qa` keeps meaning "what the testers found" after someone changes role.
+- Roles are free text, and this file is the **only** place they live — a memory records the
+  author's email and joins for the rest. So `/memory-coach:recall --role qa` means "written by
+  people who are QA now", and editing a line here re-labels everything that person ever wrote.
+  That is the trade: one editable truth, no role history.
 - Registering is per person. Never add a teammate on their behalf.

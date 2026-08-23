@@ -30,6 +30,8 @@ same file to every sibling repository** — the grouping only holds when every m
 # Project
 name: acme-shop
 
+branches: feat/ fix/ chore/ docs/ refactor/
+
 repos:
   - github.com/acme/shop-api
   - github.com/acme/shop-web
@@ -37,6 +39,14 @@ repos:
 
 Take this repo's identity from `ENGINE project` and put it in the list. Add the siblings the user
 names; the list is documentation and a consistency check, not a gate.
+
+**`branches:`** is this project's branch convention — a space-separated list of accepted prefixes.
+The branch is what a memory, a session and a debrief file themselves under, so prefixes are what
+make them groupable a month later. Omit the line and the common defaults apply (`feat/ fix/ chore/
+docs/ refactor/ test/ perf/ hotfix/ release/`). Either way it is a convention, never a gate: a
+branch that does not match is mentioned once at session start and then recorded as it is.
+`/investigation-coach:onboard` detects the convention a repo already follows and can write this line
+for you.
 
 **`register [<repo>]`** — `ENGINE project register [<repo>]`, for a member not yet listed.
 

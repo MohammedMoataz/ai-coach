@@ -176,6 +176,19 @@ one to another. An agent is not an approval boundary.
 emails and roles. Whom you trust lives only on your machine, never in the shared file and never in a
 seed.
 
+**A person is stated once.** A memory, a session and a debrief record an email; the name and the
+role are a join away, in one `authors` row per person. The consequence is deliberate: `--role qa`
+means "written by people who are QA now", so correcting a line in `team.md` corrects every row that
+person ever wrote. There is no role history, and that is the trade for having one editable truth.
+
+**Whether you hold a teammate's memory back is not a property of the memory.** It is your current
+trust in its author, so it is worked out as the row is read. Raise someone's trust and everything of
+theirs you already have moves up — no re-import, which was the step everybody forgot.
+
+**One name per session.** Claude Code already names every session and shows it in the status line;
+AI Coach adopts that name at session start and checks again at session end, so a rename in between
+is caught. A name someone typed is never overwritten by a derived one.
+
 **Git is the transport.** `/handoff` writes `.ai-coach/team-seed.jsonl`; commit it and knowledge
 moves with the branch, reviewable in a pull request before it touches anyone's database. Optionally
 AES-256-GCM sealed.
