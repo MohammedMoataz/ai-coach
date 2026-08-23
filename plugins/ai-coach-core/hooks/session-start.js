@@ -14,10 +14,22 @@ const os = require('node:os');
 function claudeSessionName(id) {
   try {
     const dir = path.join(os.homedir(), '.claude', 'sessions');
-    for (const f of fs.readdirSync(dir)) {
-      if (!f.endsWith('.json')) continue;
+    // Newest first, and only the newest few: the session we were just handed is by definition
+    // one of the most recently touched, and a long-lived install accumulates thousands of these
+    // files. Reading all of them cost a session start proportional to how long you had used it.
+    const files = fs.readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => {
+        const p = path.join(dir, f);
+        let mtime = 0;
+        try { mtime = fs.statSync(p).mtimeMs; } catch { /* vanished mid-scan */ }
+        return { p, mtime };
+      })
+      .sort((a, b) => b.mtime - a.mtime)
+      .slice(0, 25);
+    for (const { p } of files) {
       try {
-        const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        const j = JSON.parse(fs.readFileSync(p, 'utf8'));
         if (j && j.sessionId === id && j.name) return String(j.name);
       } catch { /* one unreadable file must not stop the scan */ }
     }
@@ -46,22 +58,31 @@ process.stdin.on('end', () => {
         out.push(`This repo (${here}) is not listed in .ai-coach/project.md for project "${decl.name}" — memory still records it; add it to the list to make the project's shape explicit.`);
       }
     } catch { /* declaration is optional */ }
-    const brief = engine.brief(Number(engine.opt('brief_chars', 4000)) || 4000, data.cwd);
+    // Compaction re-fires SessionStart, and a full brief there is paid again on every compact —
+    // repeatedly, in the one session that has already proven it runs long. But dropping the brief
+    // outright loses exactly the context compaction just summarized away. So compaction gets a
+    // quarter-size brief: the top-ranked lines survive, the bill does not repeat in full.
+    const compacted = String(data.source || '') === 'compact';
+    const cap = Number(engine.opt('brief_chars', 4000)) || 4000;
+    const brief = engine.brief(compacted ? Math.min(1000, Math.floor(cap / 4)) : cap, data.cwd);
     if (brief.trim()) out.push('## AI Coach brief\n' + brief);
-    // teammate seed committed in this repo? point at it — deterministic, zero tokens
-    try {
-      const seed = require('node:path').join(String(data.cwd || process.cwd()), '.ai-coach', 'team-seed.jsonl');
-      if (fs.existsSync(seed)) {
-        const n = engine.safeRead(seed, 5 * 1024 * 1024).split('\n').filter((l) => l.trim()).length;
-        out.push(`Team seed present (.ai-coach/team-seed.jsonl, ${n} entries) — run /handoff import to load teammate memories.`);
-      }
-    } catch { /* nudge is optional */ }
-    // partners: nudge once, until the first /partners run writes the marker (engine partners-seen)
-    try {
-      if (engine.optOn('partners', 'on') && !fs.existsSync(engine.PARTNERS_SEEN)) {
-        out.push('Partner tools worth pairing with this setup — run /harness-coach:partners to review them. (This note disappears after the first run.)');
-      }
-    } catch { /* nudge is optional */ }
+    // The nudges below are onboarding, not continuity — after a compact they are pure noise.
+    if (!compacted) {
+      // teammate seed committed in this repo? point at it — deterministic, zero tokens
+      try {
+        const seed = require('node:path').join(String(data.cwd || process.cwd()), '.ai-coach', 'team-seed.jsonl');
+        if (fs.existsSync(seed)) {
+          const n = engine.safeRead(seed, 5 * 1024 * 1024).split('\n').filter((l) => l.trim()).length;
+          out.push(`Team seed present (.ai-coach/team-seed.jsonl, ${n} entries) — run /handoff import to load teammate memories.`);
+        }
+      } catch { /* nudge is optional */ }
+      // partners: nudge once, until the first /partners run writes the marker (engine partners-seen)
+      try {
+        if (engine.optOn('partners', 'on') && !fs.existsSync(engine.PARTNERS_SEEN)) {
+          out.push('Partner tools worth pairing with this setup — run /harness-coach:partners to review them. (This note disappears after the first run.)');
+        }
+      } catch { /* nudge is optional */ }
+    }
     if (out.length || label) {
       console.log(JSON.stringify({
         hookSpecificOutput: {

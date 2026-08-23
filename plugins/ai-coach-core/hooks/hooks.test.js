@@ -105,6 +105,16 @@ assert.ok(r.stdout.includes('hooks smoke memory'), 'memory in brief');
 assert.ok(r.stdout.includes('Last session here'), 'last session line in brief');
 assert.ok(r.stdout.includes('continue the widget'), 'latest session first prompt shown');
 
+// Compaction re-fires SessionStart, so a full brief there is billed again on every compact — in
+// the one session already proven to run long. It still gets a brief (compaction is exactly when
+// that context was summarized away), but a quarter-size one, and none of the onboarding nudges.
+const fullBrief = r.stdout;
+r = run('session-start.js', { session_id: 'hs3', cwd: '/demo/proj', source: 'compact' });
+assert.strictEqual(r.status, 0, 'session-start on compact exit 0');
+assert.ok(r.stdout.includes('## AI Coach brief'), 'compaction still gets a brief: ' + r.stdout);
+assert.ok(r.stdout.length < fullBrief.length, 'the compact brief is smaller than the full one');
+assert.ok(!r.stdout.includes('/harness-coach:partners'), 'no onboarding nudges after a compact');
+
 // verify DB state via engine (same AICOACH_DB, and the same project the hooks wrote under)
 process.env.AICOACH_DB = env.AICOACH_DB;
 process.env.AICOACH_AUTHOR = env.AICOACH_AUTHOR;
@@ -151,7 +161,19 @@ const failEnv = { AICOACH_CLAUDE_BIN: 'node ' + stubFail, STUB_COUNT: stubCount 
 run('prompt.js', { session_id: 'c3', cwd: '/demo/proj', permission_mode: 'plan', prompt: 'fix the login flow it keeps redirecting me back' }, failEnv);
 run('prompt.js', { session_id: 'c3', cwd: '/demo/proj', permission_mode: 'plan', prompt: 'fix the login flow it keeps redirecting me back' }, failEnv);
 assert.strictEqual(fs.readFileSync(stubCount, 'utf8'), 'x', 'one failure = cooldown, second call skips the spawn');
-assert.ok(fs.existsSync(path.join(tmp, 'coach-cooldown')), 'cooldown marker written next to the DB');
+assert.ok(fs.existsSync(path.join(tmp, 'coach-cooldown-coach')), 'cooldown marker written next to the DB');
+
+// The cooldown is per feature. Both used to share one file, so a distillation that timed out at
+// the end of a long session silently disabled plan review for the next hour — two unrelated
+// features behind one switch. Plan review is in cooldown right now (above); session-end must not be.
+assert.ok(!fs.existsSync(path.join(tmp, 'coach-cooldown-session-end')),
+  "plan review's failure does not put distillation in cooldown");
+// AICOACH_LEARN is off suite-wide, so turn it back on for this one call — otherwise distillation
+// never spawns and the assertion below would pass for the wrong reason.
+run('session-end.js', { session_id: 'c3', cwd: '/demo/proj', reason: 'clear' },
+  { ...failEnv, AICOACH_LEARN: 'on' });
+assert.ok(fs.existsSync(path.join(tmp, 'coach-cooldown-session-end')),
+  'distillation records its own cooldown when its own call fails');
 
 // ---------- v0.4.0: session naming + seed refresh ----------
 
@@ -291,7 +313,7 @@ assert.strictEqual(signalsFor().length, 3, 'trivia and slash commands are not ev
 // plan mode spawns the judge — and <private> must never reach it.
 // An earlier case in this file deliberately trips the cooldown; clear it, or the spawn under test
 // is correctly skipped and the assertions below pass against a judge that never ran.
-const cooldownFile = path.join(tmp, 'coach-cooldown');
+const cooldownFile = path.join(tmp, 'coach-cooldown-coach');
 fs.rmSync(cooldownFile, { force: true });
 const fake = path.join(tmp, 'fake-claude.js');
 const seen = path.join(tmp, 'judge-input.txt');

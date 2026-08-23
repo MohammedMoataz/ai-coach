@@ -3,6 +3,84 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.4.0 — Hooks that get out of the way (2026-08-23)
+
+Every hook here runs as a fresh process, and `observe.js` runs on every Edit, Write and Bash. That
+process was paying for a `git` spawn, a full schema exec and ten `PRAGMA table_info` probes before
+it wrote its single row — work whose answer had not changed since the last tool call. Nothing about
+it was visible: it never failed, it just made every tool call slower on the machines least able to
+afford it.
+
+**ai-coach-core 1.2.0 · ai-coach 1.4.0**
+
+Measured on Windows, median of 25 fresh `observe.js` processes against a warm database, same
+payload, same machine — `head` is the previous release, `work` is this one:
+
+```
+head  median 738.6ms  (min 490.9, max 1599.4)
+work  median 414.5ms  (min 262.9, max 1028.9)
+n=25, saved 324.1ms/call (44% faster)
+```
+
+### The database already knows its own shape
+
+`open()` ran `schema.sql` and then `migrate()`'s ten `PRAGMA table_info` probes on every single
+open, on every hook process, forever — to discover each time that everything already existed. It
+now stamps `PRAGMA user_version` and returns immediately when the stamp is current. The stamp is
+written **last**, so a throw part-way through leaves the database unstamped and the next open
+retries the whole setup rather than trusting a half-built schema.
+
+### Reading .git instead of spawning it
+
+`repo()` and `task()` shelled out to `git remote get-url origin` and `git rev-parse --abbrev-ref
+HEAD`. Both answers live in plain files, so they are read directly now — and the real `git` is
+still the fallback for every shape the parser does not cover: worktrees and submodules (a `.git`
+*file*, not a directory), detached HEAD, `url.insteadOf` rewrites, unreadable configs.
+
+Identity is what the tenant database is keyed on, so a changed answer here would silently file
+memories under a different project. Verified identical to the previous release across a repo with a
+remote, a repo without one, a subdirectory, a non-repo directory, a detached HEAD and a linked
+worktree.
+
+### One `claude -p` call, one cooldown per feature
+
+Plan review (`prompt.js`) and session-end distillation (`session-end.js`) each carried a copy of
+the same spawn block **and shared one cooldown file**. So a distillation that timed out at the end
+of a long session silently disabled plan review for the next hour, and a failed judge silently
+disabled distillation — two unrelated features behind one switch, in opposite directions.
+
+Both now call one `engine.claudeRun(feature, …)`. The cooldown is per feature. The one case that
+still backs off everything is a `claude` that cannot be run at all: that is the CLI's problem, not
+one feature's. `shell: true` turns a missing binary into the shell's own error rather than an
+`ENOENT`, so that case is detected on the shell's message and exit status.
+
+### A brief that survives a bad row
+
+Three of `brief()`'s sections were unguarded, so one SQL error anywhere threw out of the whole
+function: the session started with no brief at all, and nothing said one was owed. Each section is
+guarded on its own now — a bad row costs you that section.
+
+The branch queries read every session and memory on the branch to print a handful; both are bounded
+now. Ranking of top memories stays whole-corpus by design — an old but strong memory must still be
+able to win — so the cap there is a safety valve at 5000 rows and is marked as one.
+
+### Compaction gets a brief it does not pay for twice
+
+`SessionStart` fires again on compaction, and it was re-injecting the full ~1k-token brief every
+time — repeatedly, in the one session that has already proven it runs long. Dropping it outright
+would have been worse: compaction is exactly the moment that context was summarized away. So
+compaction now gets a quarter-size brief and none of the onboarding nudges, which are not
+continuity and are pure noise there.
+
+### Smaller things
+
+- The spotlighting reminder is ~480 characters of model-facing context and it said the same thing
+  on every hit. Full text on the session's first flagged result; after that, the flags and one line
+  saying the rule already applies.
+- `claudeSessionName()` read every file in `~/.claude/sessions` to find one session — a session
+  start that got slower the longer you had used Claude Code. Newest 25 by mtime.
+- `sessionLabel()` re-prepared its clash query once per printed row; memoized.
+
 ## v1.3.0 — What the business is, and what comes next (2026-08-22)
 
 Six plugins document the code, the session, the prompts and the world outside the repo. None of
