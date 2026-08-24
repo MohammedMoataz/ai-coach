@@ -1276,4 +1276,42 @@ assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows t
     'and it comes back through the join, exactly as a format-3 import would');
 }
 
+// ---------- settings: one table, and it must agree with the manifest ----------
+{
+  // The defaults used to live at every call site, and the descriptions in plugin.json. Two copies
+  // of the same fact is exactly the shape this release spent its time removing, so the remaining
+  // pair is pinned together here: change a default in one place and this fails.
+  const manifest = JSON.parse(fs.readFileSync(
+    path.join(__dirname, '..', '.claude-plugin', 'plugin.json'), 'utf8')).userConfig;
+  const norm = (v) => (v === true ? 'on' : v === false ? 'off' : String(v));
+  assert.deepStrictEqual(
+    e.SETTINGS.map((s) => s.key).sort(),
+    Object.keys(manifest).sort(),
+    'every setting the engine reads is declared in plugin.json, and vice versa');
+  for (const s of e.SETTINGS) {
+    assert.strictEqual(s.def, norm(manifest[s.key].default),
+      `default for ${s.key} agrees with the manifest`);
+    assert.ok(s.what && s.what.length > 30, `${s.key} says what it does`);
+  }
+
+  // Resolution order, and the source label `config` prints from it.
+  const KEY = 'AICOACH_BRIEF_CHARS';
+  const before = process.env[KEY];
+  delete process.env[KEY];
+  assert.deepStrictEqual(e.optResolve('brief_chars', '4000'),
+    { value: '4000', source: 'default', via: null }, 'unset resolves to the default');
+  process.env.CLAUDE_PLUGIN_OPTION_brief_chars = '2000';
+  assert.strictEqual(e.optResolve('brief_chars', '4000').source, 'plugin', 'a plugin setting is named as one');
+  process.env[KEY] = '1000';
+  const r = e.optResolve('brief_chars', '4000');
+  assert.strictEqual(r.value, '1000', 'the env var outranks the plugin setting');
+  assert.strictEqual(r.source, 'env', 'and is reported as the env');
+  // An empty value is not a setting — same as the lookup this replaced.
+  process.env[KEY] = '';
+  assert.strictEqual(e.optResolve('brief_chars', '4000').value, '4000', 'empty falls through to the default');
+  assert.strictEqual(e.opt('brief_chars', '4000'), '4000', 'and opt() agrees, because it is the same call');
+  delete process.env.CLAUDE_PLUGIN_OPTION_brief_chars;
+  if (before === undefined) delete process.env[KEY]; else process.env[KEY] = before;
+}
+
 console.log('engine.test.js: ALL PASS');

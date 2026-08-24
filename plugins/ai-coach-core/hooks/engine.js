@@ -252,14 +252,48 @@ function active() {
 }
 
 
+// Every knob in one place. "What can I change, and what was it before I changed it?" had no answer
+// short of reading the source: the defaults lived at each call site, the descriptions lived in
+// plugin.json, and nothing printed what was actually in effect. `engine.js config` joins all three,
+// and a test asserts this table against plugin.json's userConfig so they cannot drift apart.
+const SETTINGS = [
+  { key: 'brief_chars', def: '4000', type: 'number',
+    what: 'Ceiling on the memory injected at session start. Ranking happens before the cap, so raising it surfaces more — it does not change what wins.' },
+  { key: 'coach', def: 'on', type: 'boolean',
+    what: 'The coach line in the brief, and one-line hints on vague prompts. Display only — turning it off does not stop failures being recorded.' },
+  { key: 'corrections', def: 'on', type: 'boolean',
+    what: 'Record that a failure surfaced, and what was being asked. This is the evidence /prompt-coach:prompt-stats measures against.' },
+  { key: 'learn', def: 'on', type: 'boolean',
+    what: 'One Haiku call at session end distils a summary and up to 3 learnings. Needs `claude` on PATH; degrades quietly without it.' },
+  { key: 'plan_review', def: 'on', type: 'boolean',
+    what: 'In plan mode only: one Haiku call scores the prompt and suggests a rewrite.' },
+  { key: 'guard', def: 'on', type: 'boolean',
+    what: 'Block tool calls carrying real credentials, and ask before secret-ish payloads. The one hook allowed to stop a call.' },
+  { key: 'spotlight', def: 'on', type: 'boolean',
+    what: 'Scan fetched content and out-of-repo reads for prompt-injection markers. Warn-only, no model call.' },
+  { key: 'partners', def: 'on', type: 'boolean',
+    what: 'The one-time session note suggesting /harness-coach:partners. Disappears after the first run.' },
+  { key: 'seed_auto', def: 'on', type: 'boolean',
+    what: 'Allow the `auto-seed` command to refresh an existing .ai-coach/team-seed.jsonl in place. No hook ever exports on its own.' },
+  { key: 'default_trust', def: 'full', type: 'string',
+    what: 'Trust for a teammate you have not rated: `full` ranks their memories like your own, `workspace` holds them privately.' },
+];
+
 // option lookup: AICOACH_<KEY> env (power-user override) > plugin userConfig
-// (CLAUDE_PLUGIN_OPTION_<key>, set by Claude Code from plugin.json userConfig) > default
-function opt(key, fallback) {
-  const v = process.env['AICOACH_' + key.toUpperCase()]
-    ?? process.env['CLAUDE_PLUGIN_OPTION_' + key]
-    ?? process.env['CLAUDE_PLUGIN_OPTION_' + key.toUpperCase()];
-  return v == null || v === '' ? fallback : v;
+// (CLAUDE_PLUGIN_OPTION_<key>, set by Claude Code from plugin.json userConfig) > default.
+// Split out from opt() so `config` can report WHERE a value came from without re-deriving the
+// order and getting it subtly wrong — the resolution rule exists once.
+function optResolve(key, fallback) {
+  const names = ['AICOACH_' + key.toUpperCase(),
+    'CLAUDE_PLUGIN_OPTION_' + key, 'CLAUDE_PLUGIN_OPTION_' + key.toUpperCase()];
+  let via = null, v;
+  for (const n of names) { if (process.env[n] != null) { via = n; v = process.env[n]; break; } }
+  // An empty value is not a setting. This matches the original `?? … : fallback` chain exactly:
+  // first non-null name wins, and an empty one falls all the way through to the default.
+  if (v == null || v === '') return { value: fallback, source: 'default', via: null };
+  return { value: v, source: via.startsWith('AICOACH_') ? 'env' : 'plugin', via };
 }
+function opt(key, fallback) { return optResolve(key, fallback).value; }
 function optOn(key, def) { // boolean options; 'off'/'false'/'0' all mean off
   const v = String(opt(key, def)).toLowerCase();
   return !(v === 'off' || v === 'false' || v === '0' || v === 'no');
@@ -2320,6 +2354,42 @@ function cli() {
       }
       break;
     }
+    // Every setting, what it is now, what it was born as, and which of the three sources decided.
+    // The source column is the point: "turn it back" is a different action for a plugin setting
+    // than for an environment variable, and guessing which one is in play is how people end up
+    // changing the wrong thing twice.
+    case 'config': {
+      const rows = SETTINGS.map((s) => {
+        const r = optResolve(s.key, s.def);
+        return { key: s.key, type: s.type, value: String(r.value), default: s.def,
+          changed: String(r.value) !== s.def, source: r.source, via: r.via, description: s.what };
+      });
+      if (a.includes('--json')) { console.log(JSON.stringify(rows, null, 2)); break; }
+      const w = (f, min) => Math.max(min, ...rows.map((r) => String(r[f]).length));
+      const wk = w('key', 7), wv = w('value', 5), wd = w('default', 7);
+      console.log(`${'setting'.padEnd(wk)}  ${'now'.padEnd(wv)}  ${'default'.padEnd(wd)}  set by`);
+      console.log(`${'-'.repeat(wk)}  ${'-'.repeat(wv)}  ${'-'.repeat(wd)}  ------`);
+      for (const r of rows) {
+        console.log(`${r.key.padEnd(wk)}  ${r.value.padEnd(wv)}  ${r.default.padEnd(wd)}  `
+          + (r.source === 'default' ? 'default' : `${r.source} (${r.via})`)
+          + (r.changed ? '   <- changed' : ''));
+      }
+      const changed = rows.filter((r) => r.changed);
+      console.log(`\n${changed.length} of ${rows.length} differ from the default`
+        + (changed.length ? ': ' + changed.map((r) => r.key).join(', ') : ''));
+      console.log('\nTo change one:   /plugin  ->  ai-coach-core  ->  the setting  (persists)');
+      console.log('             or:   AICOACH_<KEY>=<value>       (this shell only, wins over the above)');
+      console.log('To reset one:    clear it in /plugin, or unset AICOACH_<KEY>');
+      console.log('Descriptions:    engine.js config --json');
+      // Values come from THIS process's environment. Claude Code passes plugin settings to its own
+      // hook processes, so a bare terminal legitimately sees fewer of them than a session does —
+      // say so, rather than let a `default` here be read as "not configured anywhere".
+      if (!Object.keys(process.env).some((k) => k.startsWith('CLAUDE_PLUGIN_OPTION_'))) {
+        console.log('\nNote: no plugin settings are visible to this process. Claude Code passes them to its'
+          + '\nown hooks, so run this from inside a session to see what your hooks actually see.');
+      }
+      break;
+    }
     case 'whoami': {
       // `missing` exists so a skill does not have to re-derive what an incomplete identity is.
       // Handing work to a teammate with no name and no email on it produces a seed nobody can
@@ -2425,7 +2495,7 @@ module.exports = {
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,
   safeRead, strings, injectionScan, INJECTION_MARKERS, findingAdd, findingUpdate, findingList,
   seedExport, seedImport, autoSeed, project, repo, projectDecl, projectFile, registerRepo,
-  repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn,
+  repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn, optResolve, SETTINGS,
   DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, PARTNERS_SEEN, author, username,
   task, taskSlug, roster, roleOf, setTrust, trustList, trustLevel,
   ensureAuthor, authorMap, authorName, whoLabel, isHeld, effConfidence, notHeldSql, HELD_CONFIDENCE,

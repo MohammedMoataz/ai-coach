@@ -17,7 +17,10 @@ the command *you* would run, and you decide.
 
 ## Steps
 
-1. **Scope** — `ENGINE project`. Report which project and database file this covers.
+1. **Scope** — `ENGINE project`. Report which project and database file this covers. Then
+   `ENGINE config`: report only the settings whose `set by` is **not** `default`, naming the source.
+   Silence when nothing is changed. A turned-off `corrections` or `learn` explains half the findings
+   below, and reading them as a memory problem when they are a settings problem wastes the report.
 2. **Unclosed corrections** — `ENGINE corrections --open`. These are failures the project hit that
    nobody wrote a memory about; they are also what the coach line in the session brief counts. List
    them. Closing one is `/memory-coach:recall`'s two-command procedure — point there, don't restate it.
