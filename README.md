@@ -48,12 +48,12 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors, the compaction snapshot. Everything else depends on it. |
 | **memory-coach** | Skills only: `recall` (search, and `--health`), `debrief`, `handoff`, `roster`. |
 | **prompt-coach** | Skills only: `prompt`, `prompt-stats`, `dispatch`. |
-| **security-coach** | Skills only: `scan`, `audit` (`--triage` chains them), `triage`. |
+| **security-coach** | `scan`, `audit` (`--triage` chains them), `triage` — plus the `examiner` agent: suspected injection content is read in a quarantined context with no shell and no network. |
 | **harness-coach** | Skills only: `partners`, `context` — what is installed next to the coach, and what is filling this session. |
-| **investigation-coach** | Skills only: `onboard` (`--tour` runs all three), `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
-| **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus the marketplace's two agents, `researcher` and `verifier`, reusable from any session. |
+| **investigation-coach** | `onboard` (`--tour` runs all three), `map`, `study` — plus the `scout` agent, which does their repo sweeps in an isolated context, every claim `file:line`-cited. |
+| **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus three agents: `researcher`, `verifier`, and `reader`, which keeps a 200-page PDF out of your context. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the docs vault), `feature` — document the business, then specify what comes next. Inward by design; looking outward is atlas-coach. |
-| **analysis-coach** | Skills only: `elicit`, `insight`, `story` — the business-analyst half: requirements nobody can argue about later, an analysis that has already been argued with, and the version an executive reads. |
+| **analysis-coach** | `elicit`, `insight`, `story` — the business-analyst half — plus the `critic` agent: fresh-context review that has not seen the reasoning it grades. |
 | **ai-coach** | The bundle. Install this one. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
@@ -61,9 +61,9 @@ Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The ful
 
 ### What it costs before you type
 
-**~2,200 always-on tokens** for the whole product — core and the bundle are 0, atlas-coach ~510
-(four skills plus two agents), analysis-coach ~330, memory-coach ~320, investigation-coach ~260,
-strategy-coach ~210, prompt-coach ~200, security-coach ~200, harness-coach ~170. What is always on
+**~2,590 always-on tokens** for the whole product — core and the bundle are 0, atlas-coach ~600
+(four skills, three agents), analysis-coach ~420, investigation-coach ~360, memory-coach ~320,
+security-coach ~310, strategy-coach ~210, prompt-coach ~200, harness-coach ~170. What is always on
 is the descriptions, and nothing else: every skill body, every reference file and every agent
 prompt is paid only when it runs.
 
@@ -143,6 +143,21 @@ strategy-coach's `blueprint` and `feature`, and analysis-coach's three are all r
 pinned down, the output reads like a file listing. Each of those says up front that it costs real
 tokens and takes a scoping flag to bound the spend. The hooks' own LLM calls (plan-mode review,
 session-end distillation) are hardcoded to Haiku too.
+
+### The six agents
+
+Skills are what you drive; agents are the contexts they spawn, and each one exists for one of
+three reasons. **Reading you should not pay for**: `scout` does onboard/map/study's repo sweeps
+and `reader` does ingest's page-batched PDF reading, so neither enters your session — you get
+evidence-cited conclusions and a receipt. **Judgement that must not be anchored**: `verifier`
+attacks research's claims and `critic` grades insight's readings and blueprint's notes, both in
+a fresh context that has never seen the reasoning it judges, both on the session model so the
+judge is never weaker than the session trusting its verdicts. **Quarantine**: `examiner` reads
+suspected injection content with Read and Grep only — no shell, no network, no writes — so the
+content /scan judges never enters the session /scan protects. `researcher` and `scout` are
+pinned to Sonnet as the fan-out cost multipliers; `reader` to Haiku because transcription is
+mechanical; the judges float with your session. Every skill that names an agent also says what to
+do without it — a missing sibling degrades a run, never fails it.
 
 ### Where the skills hand off to each other
 

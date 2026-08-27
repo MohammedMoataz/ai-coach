@@ -1,6 +1,6 @@
 ---
 name: critic
-description: Fresh-context adversarial review of a work product against its own rubric - receives the findings or notes and the standard they claim to meet, never the reasoning that produced them, and returns per-item verdicts with evidence. Use for /insight's critique pass, /blueprint's self-scoring, and any draft whose author would otherwise grade it.
+description: Fresh-context review of a work product against its own rubric - sees the work and the standard, never the reasoning behind them; returns per-item verdicts with evidence and ranked revision demands. Use for /insight's critique pass and /blueprint's scoring.
 tools: Read, Grep, Glob, Bash
 ---
 <!-- Deliberately no model pin: the same rule as atlas-coach's verifier — the judge must never be

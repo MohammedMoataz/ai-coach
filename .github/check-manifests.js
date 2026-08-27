@@ -145,6 +145,32 @@ function eachSkill(fn) {
     }
   }
 }
+// Agents pay the same always-on bill as skills — their descriptions sit in every session — and
+// they are spawned by name from SKILL.md prose, so a missing or bloated description fails the
+// same way a skill's does.
+let agentCount = 0;
+for (const name of manifests.keys()) {
+  const dir = path.join(root, 'plugins', name, 'agents');
+  if (!fs.existsSync(dir)) continue;
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.md')) continue;
+    agentCount++;
+    const rel = path.posix.join('plugins', name, 'agents', f);
+    const text = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\r\n/g, '\n');
+    const fm = text.startsWith('---\n') ? text.slice(4, text.indexOf('\n---', 4)) : '';
+    check(!!fm, `${rel}: no YAML frontmatter`);
+    check((fm.match(/^name:\s*(.+)$/m) || [])[1] === f.replace('.md', ''),
+      `${rel}: frontmatter name does not match the filename skills spawn it by`);
+    const desc = (fm.match(/^description:\s*(.+)$/m) || [])[1] || '';
+    check(!!desc && desc.length <= DESCRIPTION_MAX,
+      `${rel}: description missing or over the ${DESCRIPTION_MAX} ceiling (${desc.length})`);
+    check(/use for|use when|use as|use before|use after/i.test(desc),
+      `${rel}: description names no trigger — say when a skill should spawn it`);
+    check(/^tools:\s*\S/m.test(fm),
+      `${rel}: no tools list — an agent with every tool is an agent nobody scoped`);
+  }
+}
+
 eachSkill((plugin, skill, file, text) => {
   skillCount++;
   skillNames.add(plugin + ':' + skill);
@@ -240,5 +266,5 @@ if (fail.length) {
   console.error('manifest check FAILED:\n- ' + fail.join('\n- '));
   process.exit(1);
 }
-console.log(`manifest check OK: ${manifests.size} plugins, ${skillCount} skills — sources, versions, `
-  + 'dependencies, hook scripts, frontmatter, engine verbs and cross-plugin references all resolve');
+console.log(`manifest check OK: ${manifests.size} plugins, ${skillCount} skills, ${agentCount} agents — sources, `
+  + 'versions, dependencies, hook scripts, frontmatter, engine verbs and cross-plugin references all resolve');

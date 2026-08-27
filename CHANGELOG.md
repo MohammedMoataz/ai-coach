@@ -3,6 +3,70 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.9.0 — Four more agents (2026-08-27)
+
+The marketplace had two agents and one argument for them: some work is better done by a context
+that is not yours. Researcher, because reading the web should not cost the session that asked;
+verifier, because a judge that has seen your reasoning inherits your anchoring. That argument was
+already being half-applied everywhere else — three skills said "sweeps go to Explore subagents",
+two skills graded their own work, /scan read hostile content into the session it was protecting,
+and /ingest fed 200-page PDFs through the caller's window twenty pages at a time.
+
+Four agents finish the thought. Each is the isolation argument in one of its three forms: reading
+you should not pay for, judgement that must not be anchored, and quarantine.
+
+**atlas-coach 1.2.0 · investigation-coach 1.4.0 · security-coach 1.2.0 · analysis-coach 1.1.0 ·
+strategy-coach 1.4.1 · ai-coach 1.9.0**
+
+### scout — reading you should not pay for
+
+The token-heaviest skills in the marketplace — onboard, map, study — relied on the harness's
+generic Explore agent: not guaranteed to exist everywhere, and bound by no evidence contract.
+`scout` is investigation-coach's own: read-only sweeps, sonnet-pinned like researcher because it
+is the fan-out cost multiplier, and its contract is the point — max 500 words, every claim
+`file:line` or `INFERRED`, honest counts, no opinions, a required closing line naming what it
+could not determine. Five consumers: the three investigation skills spawn it directly;
+blueprint's code-tracing and translate's idiom survey name it behind the standing convention —
+use it when installed, do the same inline when not.
+
+### examiner — quarantine
+
+/scan's judgment step said "read the flagged file yourself" — pulling suspected injection content
+into the exact session the spotlight hook exists to protect. `examiner` reads the suspect in a
+disposable context whose tool list is the security boundary: Read and Grep, **nothing else**. No
+WebFetch or WebSearch, so content that tries to exfiltrate or pull a second stage has no tool to
+do it with; no Bash, so an embedded command has no shell; no Write, so nothing it reads persists
+anything. One verdict per hit with the shortest quote that proves it, uncertain lands on
+suspicious never on benign, and pasted content stays judged inline — it is already in the
+session, so quarantine is moot and the skill now says so.
+
+### critic — judgement that must not be anchored
+
+insight's critique pass and blueprint's self-scoring were the same weak shape: the context that
+produced the work grading the work. `critic` receives the work and the rubric, never the chain of
+thought — callers are told to withhold it, the agent is told not to ask. It reads the rubric
+before the work, recomputes what can be recomputed, attacks the headline finding hardest, and
+returns ranked revision demands rather than edits, because the fixing belongs in the author's
+context where the domain knowledge lives. No model pin — the verifier's rule: the judge must
+never be weaker than the session trusting its verdicts.
+
+### reader — the largest context spend, moved out of your context
+
+A PDF with no converter was read into the calling session twenty pages per call — a 200-page
+document is the single biggest context hit anything here can cause. `reader` does the batched
+reading in its own window, haiku-pinned because transcription is mechanical, and hands the
+markdown to `INGEST write --body-file`. It returns a receipt, not the content: pages read, batch
+count, and anything that did not survive transcription by page number — silence about page 40
+reads as "page 40 is in there", and that is the one lie an ingested corpus cannot carry.
+
+### The bill, and the checker
+
+Six agents now. Always-on cost ~2,200 → ~2,590; each agent's description was trimmed to the
+researcher/verifier weight before shipping rather than after someone noticed. And
+`check-manifests.js` lints agents the way it lints skills — frontmatter present, name matching
+the filename skills spawn it by, description under the ceiling with a trigger phrase, and a tools
+list, because an agent with every tool is an agent nobody scoped.
+
 ## v1.8.0 — analysis-coach (2026-08-27)
 
 Everything in this marketplace so far serves the person writing the code. The work that decides

@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Read-only repo sweep in an isolated context - traces code, structure and conventions and returns an evidence-cited brief (max 500 words, every claim file:line), never file dumps. Use for /onboard, /map and /study sweeps, and any survey where the caller needs conclusions without paying for the reading.
+description: Read-only repo sweep in an isolated context - an evidence-cited brief, max 500 words, every claim file:line or INFERRED, never file dumps. Use for /onboard, /map and /study sweeps, and any survey where the caller needs conclusions without paying for the reading.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: examiner
-description: Quarantine reader for suspected prompt-injection content - reads a flagged file or pasted text in a disposable context and returns a verdict (benign-quote / suspicious / hostile) with quoted evidence, so instruction-shaped content never enters the calling session. Use for /scan's judgment step and any content the spotlight hook flagged.
+description: Quarantine reader for suspected prompt-injection content - Read and Grep only, no shell, no network, no writes. Returns a verdict per hit (benign-quote / suspicious / hostile) with the shortest quote that proves it. Use for /scan's judgment step and anything the spotlight hook flagged.
 tools: Read, Grep
 ---
 <!-- The tool list is the security boundary, and it is deliberately short. No WebFetch or
