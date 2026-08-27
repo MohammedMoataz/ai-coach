@@ -31,7 +31,7 @@ itself at session start — open a new session and try again.
    | via | What you do |
    |---|---|
    | copy / pandoc / markitdown | `INGEST convert <file>` — deterministic, no model involved |
-   | model-read (pdf, no markitdown) | Read the PDF with the Read tool's `pages` param, **20 pages per call, until finished**, preserving headings/tables/lists; hand the markdown to `INGEST write <slug> --source <path> --sha <hash from plan>` |
+   | model-read (pdf, no markitdown) | Spawn the `reader` agent this plugin ships, handing it the source path, slug, sha and the resolved `INGEST` command (an agent cannot expand `${CLAUDE_PLUGIN_ROOT}` itself) — it reads 20 pages per call to the end in its own context and hands the markdown to `INGEST write` via `--body-file`, so the pages never enter this session; it returns a receipt with page counts and anything that did not survive transcription. On a harness without custom agents: Read the pages yourself, 20 per call until finished, and know that a long document is the largest context spend this marketplace can cause |
    | defuddle (URL) | `defuddle parse <url> --md` (check `defuddle --help` if flags changed), pipe into `INGEST write <slug> --source <url> --converter defuddle` |
    | WebFetch (URL, no defuddle) | WebFetch it, then hand the markdown to `INGEST write <slug> --source <url>` |
    | unsupported | Report the type and stop. Don't guess a converter |

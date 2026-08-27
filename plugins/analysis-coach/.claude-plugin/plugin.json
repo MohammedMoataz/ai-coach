@@ -1,8 +1,8 @@
 {
   "name": "analysis-coach",
   "displayName": "Analysis Coach",
-  "version": "1.0.0",
-  "description": "The business-analyst half of building software: elicit requirements nobody can argue about later, turn data into an analysis with its own critique attached, and write the version an executive will actually read. Inward and evidence-first — competitors and industry rules belong to atlas-coach. Ships skills only.",
+  "version": "1.1.0",
+  "description": "The business-analyst half of building software: elicit requirements nobody can argue about later, turn data into an analysis with its own critique attached, and write the version an executive will actually read. Ships skills plus the critic agent — fresh-context review that has not seen the reasoning it grades. Inward and evidence-first; competitors and industry rules belong to atlas-coach.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",

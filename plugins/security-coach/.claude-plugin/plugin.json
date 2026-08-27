@@ -1,8 +1,8 @@
 {
   "name": "security-coach",
   "displayName": "Security Coach",
-  "version": "1.1.0",
-  "description": "Injection defense on every fetch, OWASP-grounded audits with the scanners you already have, and pentest-report triage. Ships skills only — the spotlight hook and the engine belong to ai-coach-core.",
+  "version": "1.2.0",
+  "description": "Injection defense on every fetch, OWASP-grounded audits with the scanners you already have, and pentest-report triage. Ships skills plus the examiner agent — suspected injection content is read in a quarantined context with no shell and no network, so it never enters your session.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",

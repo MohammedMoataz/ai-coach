@@ -45,11 +45,15 @@ itself at session start — open a new session and try again.
 4. **Generate several readings, deliberately different.** At least three, each stated as a claim
    with the numbers that support it: the obvious one, one from a different dimension (time,
    segment, cohort), and one that would be bad news if true. Do not pick a favourite yet.
-5. **Attack your own readings, in writing.** For each: what else would produce this pattern? Is the
-   denominator right? Is it a composition change rather than a real move? Is the window long enough
-   to distinguish it from noise? Does a subgroup drive all of it? Write the critique down as its
-   own section, then **revise the readings against it** — a self-check nobody wrote down is a
-   self-check that always passes.
+5. **Have the readings attacked — by a context that has not seen your reasoning.** Hand the
+   readings, the data location and the four questions to the `critic` agent this plugin ships:
+   what else would produce this pattern? is the denominator right? is it a composition change
+   rather than a real move? does the window chosen decide the answer? Hand over the *readings*,
+   never the analysis that produced them — a critic that inherits your framing inherits your blind
+   spots, and that anchoring is the whole reason this is an agent. Then **revise the readings
+   against what comes back**. On a harness without custom agents, write the critique yourself as
+   its own written section in a separate pass — a self-check nobody wrote down is a self-check
+   that always passes, and one written by the same context is the next weakest thing.
 6. **Keep what survived, and say what did not.** The dropped readings appear in the document with
    the reason they were dropped. A vanished hypothesis teaches nobody, and it is the part that
    stops the same wrong reading being rediscovered next quarter.

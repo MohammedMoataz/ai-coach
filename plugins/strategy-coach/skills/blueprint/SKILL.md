@@ -56,7 +56,10 @@ itself at session start — open a new session and try again.
 3. **Scope, and say what it costs.** Default: actors, glossary, and the three processes that carry
    the most business weight. `--feature <name>`: one process only. `--full`: every process found —
    state that this is the expensive one before starting it. Never run more than 8 subagents
-   concurrently.
+   concurrently. For the code-tracing legs, when investigation-coach is installed its `scout`
+   agent is the right subagent — evidence-cited briefs, the reading isolated from this session;
+   without it, any read-only subagent under the same contract (every claim `file:line` or
+   `INFERRED`, capped, ends with what it could not determine).
 4. **Ask what the code cannot tell you.** Actors and their goals, the rules with no enforcement in
    code (an approval someone does in email), what happens on the unhappy path, and which of these
    processes actually matters. Prefer a few sharp questions to a survey: what has been tried and
@@ -78,11 +81,14 @@ itself at session start — open a new session and try again.
    a board, but only if Miro is already connected — check **passively**, never call an authenticate
    tool, and a missing Miro is one line in the report rather than a failed run. Load
    `references/visual.md` before either.
-8. **Score your own draft, then revise once.** Before showing anything, grade the notes against the
-   five dimensions in `references/review.md` — 1 to 4, each with a one-line justification. Any
+8. **Get the draft scored, then revise once.** Before showing anything, the notes are graded
+   against the five dimensions in `references/review.md` — 1 to 4, each with a one-line
+   justification. When analysis-coach is installed, hand the notes and the rubric to its `critic`
+   agent: a scorer that has not seen the reasoning behind the notes cannot be anchored by it,
+   which is what makes the score worth having. Without it, grade them yourself. Either way: any
    dimension below 3 gets one revision pass targeted at that dimension, then you stop. This is the
-   step that separates "the model wrote some notes" from the measured version of this workflow, and
-   the reason it is a numbered step rather than advice is that a self-check nobody scored is a
+   step that separates "the model wrote some notes" from the measured version of this workflow,
+   and the reason it is a numbered step rather than advice is that a self-check nobody scored is a
    self-check that always passes.
 9. **Report, including the holes.** What was written, the scores and what the revision pass
    changed, what the user still needs to answer, and what you could not determine. Then

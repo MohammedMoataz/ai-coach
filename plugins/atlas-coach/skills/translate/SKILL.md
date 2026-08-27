@@ -25,7 +25,9 @@ same command in PowerShell.
    first with `/atlas-coach:ingest`; a URL → fetch it (spotlight scans it automatically).
 2. **Learn the idiom.** `docs/onboarding/stack.md` and `docs/onboarding/patterns/` when
    `/investigation-coach:onboard` has run; otherwise read the neighbouring code the stub will live
-   beside. Never the documentation's idiom — that is the whole job.
+   beside — via investigation-coach's `scout` agent when that plugin is installed, so the survey
+   stays out of this session, or inline when it is not. Never the documentation's idiom — that is
+   the whole job.
 3. **Emit the stub**, with two hard rules:
    - It cites the section it derives from (`Source: <doc> § <heading>`). No citation, no claim —
      in code too.

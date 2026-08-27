@@ -1,8 +1,8 @@
 {
   "name": "atlas-coach",
   "displayName": "Atlas Coach",
-  "version": "1.1.0",
-  "description": "Everything outside the repo: verified web research with an adversarial claim gate, documents-in-markdown-out ingestion with a searchable corpus, competitor and industry analysis, and documentation translated into this project's idiom. Ships skills, a CLI tool, and two agents any session can reuse.",
+  "version": "1.2.0",
+  "description": "Everything outside the repo: verified web research with an adversarial claim gate, documents-in-markdown-out ingestion with a searchable corpus, competitor and industry analysis, and documentation translated into this project's idiom. Ships skills, a CLI tool, and three agents any session can reuse — researcher, verifier, and the reader that keeps a 200-page PDF out of your context.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",
