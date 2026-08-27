@@ -13,7 +13,8 @@ not rudeness or length — it is a missing fact the reader had no way to supply:
 "working" looks like, what must not change.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Modes
 

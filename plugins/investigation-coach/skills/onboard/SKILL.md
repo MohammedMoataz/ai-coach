@@ -1,6 +1,6 @@
 ---
-description: Generate onboarding docs for this project - core features, setup, rules, stack, patterns, all evidence-cited. Use for "/onboard", "onboard a new team member", "document this project for newcomers".
-argument-hint: "[status] [--full] [--feature <name>] [--project] [--diagrams drawio]"
+description: Generates onboarding docs — core features, setup, rules, stack, patterns, all evidence-cited. Use for "/onboard", "onboard a new team member", "document this project for newcomers". Not for the business or a feature spec (see strategy-coach).
+argument-hint: "[status] [--full] [--feature <name>] [--project] [--diagrams drawio] [--tour]"
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,8 @@ code: expect a real token spend; scope with `--feature` to bound it. Heavy file 
 Explore subagents — keep their conclusions, don't re-read what they read.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Scope
 
@@ -78,8 +79,20 @@ docs/onboarding/
 - The glossary is mandatory. It is the section veterans skip because they don't need it.
 - Re-run = amend: regenerate stale generated files, leave the rest byte-for-byte.
 
+## `--tour` — all three, in the order that costs least
+
+`/investigation-coach:map` draws what this describes and `/investigation-coach:study` explains why,
+and both read the `stack.md` written here rather than sweeping the repo again. That makes the order
+matter, and it was documented in three places with no way to just run it. `--tour` runs this skill,
+then `map`, then `study`, carrying the same scope flags through and reusing what each step wrote.
+
+Say the total cost before starting — this is three code-reading skills back to back, the most
+expensive thing in the marketplace — and stop after any step the user asks to stop at. Skip a step
+whose output already exists and is current, and say which was skipped and why.
+
 ## Related
 
 `/investigation-coach:map` draws what this describes; `/investigation-coach:study` explains why.
-Both read the `stack.md` written here instead of sweeping the repo again, so running this one
-first makes the other two cheaper.
+`/strategy-coach:blueprint` answers a different question: this one is *what the code is*, that one
+is *what the business is*. The test — "how does X work here" → investigate; "what should we build
+and why" → strategize.

@@ -1,8 +1,8 @@
 {
   "name": "strategy-coach",
   "displayName": "Strategy Coach",
-  "version": "1.3.1",
-  "description": "Document what the business is, and specify what comes next: an Obsidian vault of actors, processes and rules mapped to code, plus feature specs with a definition of done and a plan a cheap model can execute — and, looking outward, the competitive gap, the industry's own rules, and how that industry already solved the gap you are stuck on. Ships skills only.",
+  "version": "1.4.0",
+  "description": "Document what the business is, and specify what comes next: an Obsidian vault of actors, processes and rules mapped to the code that implements them, plus feature specs with a definition of done and a plan a cheap model can execute. Inward-facing by design — looking outward is atlas-coach. Ships skills only.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",

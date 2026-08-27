@@ -1,6 +1,6 @@
 ---
-description: Documents in, markdown out - converts files (docx, pdf, html, txt, md) and web pages into ./docs with source provenance, then refines and indexes them. Use for "/ingest", "convert this PDF", "import these docs", "pull that page into the repo".
-argument-hint: "<file-or-url>... [--out <dir>] [--raw]"
+description: Documents in, markdown out — converts files (docx, pdf, html, md) and web pages into ./docs with source provenance, indexes them, and reports what the corpus covers. Use for "/ingest", "convert this PDF", "import these docs", "what do our docs cover".
+argument-hint: "<file-or-url>... [--out <dir>] [--raw] | stats"
 disable-model-invocation: true
 model: haiku
 effort: low
@@ -16,7 +16,8 @@ tool can, fetching a live page, and refining a rough conversion into something w
 `INGEST` means `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"` — the path arrives pre-resolved;
 same command in PowerShell. Output defaults to `./docs`.
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Steps
 
@@ -63,6 +64,21 @@ same command in PowerShell. Output defaults to `./docs`.
    `.gitignore`, which would discard every rule already in it). `INGEST reindex` rebuilds the index
    anywhere, so nothing is lost by leaving it out.
 
+## `stats` — what the corpus covers, and whether it still describes reality
+
+`INGEST stats`, rendered readable: documents and paragraphs indexed, tags, date range, what has
+gone stale (>90 days). One closing line on gaps only if the numbers show one ("12 docs, none newer
+than March") — never invented. Reading is read-only: `stats` on a repo with no corpus reports
+nothing and creates nothing.
+
+**The corpus rots in one specific way, and this is where it shows.** Deleting or renaming a `.md`
+leaves its paragraphs in the index — the index only rewrites chunks for a file it is currently
+writing. So `0 docs, 218 paragraphs` is not a puzzle: it is an index describing files that no
+longer exist, and a search will happily quote them. Whenever the paragraph count cannot be
+accounted for by the documents present, say so plainly and offer `INGEST reindex`, which rebuilds
+the index from what is actually on disk. Reporting both numbers without remarking on the
+contradiction is the one thing this mode must not do.
+
 ## Rules
 
 - A source is identified by its hash, not its filename — the same file under a new name is
@@ -78,4 +94,4 @@ same command in PowerShell. Output defaults to `./docs`.
 
 ## Related
 
-`/atlas-coach:research` cites this corpus. `/atlas-coach:analyze stats` reads its index.
+`/atlas-coach:research` cites this corpus. `/atlas-coach:translate` turns a document in it into code.

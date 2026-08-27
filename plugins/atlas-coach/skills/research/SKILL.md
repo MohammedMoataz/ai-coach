@@ -12,7 +12,8 @@ the report, REFUTED claims are dropped out loud, and what remains carries its so
 real tokens — several agents per run — and says so; a quick lookup doesn't need this skill.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 `INGEST` means `node "${CLAUDE_PLUGIN_ROOT}/tools/ingest.js"` — the path arrives pre-resolved;
 same command in PowerShell.
 
@@ -34,7 +35,8 @@ same command in PowerShell.
 4. **Claim gate.** Collect the non-obvious claims and send them (batched) to the `verifier`
    agent. REFUTED claims are dropped AND the drop is reported — a silently vanished claim
    teaches nobody. PLAUSIBLE claims stay, marked `(unverified)` inline. CONFIRMED claims carry
-   their evidence.
+   their evidence. The three verdicts are defined in `references/verdicts.md`; load it when a
+   verdict is contested, and when someone asks for one claim checked on its own.
 5. **Synthesize** into `./research/<slug>.md`: frontmatter (`question`, `date`, `tier`,
    `sources`, `dropped_refuted` — the count of claims the gate killed, which is a required field
    and reads `0` when nothing was refuted), findings first, contradictions as findings, a
@@ -66,5 +68,6 @@ the pipeline's internals.
 
 ## Related
 
-`/atlas-coach:analyze verify` is this skill's claim gate as a one-off. `/atlas-coach:ingest`
-turns what research found into corpus.
+One claim on its own is a one-question run of this skill — hand it to the `verifier` agent under
+the same contract; `references/verdicts.md` has the wording. `/atlas-coach:ingest` turns what
+research found into corpus, and `/atlas-coach:translate` turns a document into code.

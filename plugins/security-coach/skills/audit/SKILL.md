@@ -1,6 +1,6 @@
 ---
 description: Run the security scanners you already have (SAST, dependencies, secrets) and read the results against OWASP 2025. Use for "/audit", "security audit", "check dependencies for CVEs", "OWASP check".
-argument-hint: "[sast|deps|secrets|standards] [path]"
+argument-hint: "[sast|deps|secrets|standards] [path] [--triage]"
 disable-model-invocation: true
 model: haiku
 effort: low
@@ -14,7 +14,8 @@ whatever is installed, then reads the results the way a security team would: exp
 likely-exploited beats severe-on-paper. It never installs anything and never reimplements a scanner.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Modes
 
@@ -59,6 +60,11 @@ Exceptional Conditions.
   `/security-coach:triage ingest --source audit` — never auto-ingest scanner noise into the
   findings table. The `--source audit` matters: a scanner hit and a pentester's finding are not
   worth the same, and a finding that lies about where it came from is one nobody can weigh.
+- **`--triage` chains the two**: after the report, hand the findings the user confirms are worth
+  tracking straight to `/security-coach:triage ingest --source audit`, without asking them to
+  retype anything. It still validates each finding through triage's own gate and it still asks
+  before recording — the flag removes a retyped command, not a decision. Without the flag, the
+  hand-off stays an offer.
 
 Load `references/standards.md` only when the user asks for the reasoning, the tool comparison, or
 category detail.

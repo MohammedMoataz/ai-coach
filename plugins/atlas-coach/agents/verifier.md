@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: Adversarial verification in a fresh context - tries to REFUTE a claim, diff, or finding and demands evidence. Use as /research's claim gate, /analyze verify, and before declaring work done.
+description: Adversarial verification in a fresh context - tries to REFUTE a claim, diff, or finding and demands evidence. Use as /research's claim gate, for verifying a single claim, and before declaring work done.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 <!-- deliberately no model pin: the judge inherits the session model, so verification is never

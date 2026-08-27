@@ -1,5 +1,5 @@
 ---
-description: Publish what you concluded in this session - the business outcome, the technical decision, the evidence, and what is still unknown - so a teammate can pick the work up. Also lists and reads what teammates concluded. Use for "/debrief", "publish my conclusions", "write up what I found", "what did the team conclude".
+description: Publishes what you concluded — business outcome, technical decision, evidence, and what is still unknown — so a teammate can pick the work up; also lists and reads theirs. Use for "/debrief", "publish my conclusions", "what did the team conclude".
 argument-hint: "[--name <label>] | list [--author <email>] | show <key>"
 disable-model-invocation: true
 ---
@@ -13,7 +13,8 @@ final report has: written once, at the end, on purpose, and it is the whole prod
 Session summaries are not this. They are a one-line note to yourself and they stay on your machine.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Publish — the default
 

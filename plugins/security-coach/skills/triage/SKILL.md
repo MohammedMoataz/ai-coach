@@ -20,7 +20,8 @@ vulnerability written into a committed file is disclosure to everyone with repo 
 contains a `.ai-coach/security/` line and append it if missing.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Modes
 

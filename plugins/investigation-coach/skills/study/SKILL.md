@@ -13,7 +13,8 @@ code: expect a real token spend; pass an area argument to bound it. Sweeps go to
 subagents — keep conclusions, not file dumps.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Scope
 
@@ -57,9 +58,9 @@ docs/study/
 - Every pattern claim cites a real instance (`file:line`). No instance, no chapter.
 - Wikilinks between study notes and to `docs/onboarding/` notes — one vault under `docs/`, so
   these notes, onboarding and the business blueprint are all one graph. This is why the path is
-  `docs/study/` and not the repo root: `/strategy-coach:vault` links its hub at `[[study/index]]`
-  and `/strategy-coach:blueprint` reads `docs/study/` for what it must not re-derive. A root
-  `study/` was in neither.
+  `docs/study/` and not the repo root: `/strategy-coach:blueprint` scaffolds a hub that links
+  `[[study/index]]`, and reads `docs/study/` for what it must not re-derive. A root `study/` was in
+  neither.
 - Filenames: no `* " \ / : | ?`.
 - Re-run = amend, never silent overwrite of hand-written files.
 

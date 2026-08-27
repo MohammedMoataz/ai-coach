@@ -1,0 +1,14 @@
+{
+  "description": "Trigger accuracy for /strategy-coach:blueprint after it absorbed /vault. Two boundaries are tested: the vault-scaffolding phrasings that used to reach a separate skill, and the investigate-versus-strategize split that was previously buried in prose.",
+  "evals": [
+    { "prompt": "document the business rules this system implements", "expect": "blueprint" },
+    { "prompt": "map the processes and who does what", "expect": "blueprint" },
+    { "prompt": "set up the docs vault", "expect": "blueprint" },
+    { "prompt": "make docs Obsidian-ready", "expect": "blueprint" },
+    { "prompt": "what does this system actually do for the customer", "expect": "blueprint" },
+    { "prompt": "spec the next feature with a definition of done", "expect": "feature" },
+    { "prompt": "how does the auth middleware work here", "expect": "investigation-coach:map" },
+    { "prompt": "explain why the codebase uses this pattern", "expect": "investigation-coach:study" },
+    { "prompt": "onboard a new backend engineer", "expect": "investigation-coach:onboard" }
+  ]
+}

@@ -17,7 +17,8 @@ plan is not written until you have signed off on the spec. That gate is the whol
 AI-drafted spec that nobody read is how a wrong feature gets built fast.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Steps
 
@@ -42,7 +43,8 @@ AI-drafted spec that nobody read is how a wrong feature gets built fast.
    something existing already covers it — useful to a developer looking for a reference
    implementation and to a tester looking for the edge cases everyone hits. Load
    `references/prior-art.md`. Bounded: at most 4 researchers.
-5. **Write `spec.md`.** Format in `references/formats.md`. The definition of done is a table where
+5. **Write `spec.md`.** Load `references/formats.md` once, here — it carries the shape of both
+   documents this skill writes, so step 7 needs no second read. The definition of done is a table where
    every row names a command or an observable behaviour. Any row you cannot make checkable goes to
    Unknowns instead — an uncheckable criterion is a disagreement scheduled for later. The cost and
    benefit line is required: a specification nobody could decline is not a decision document.
@@ -50,7 +52,7 @@ AI-drafted spec that nobody read is how a wrong feature gets built fast.
    whole DoD table. Ask plainly whether it is right, and make declining an explicit option — a
    gate that only accepts is not a gate. **Do not write `plan.md` until the user answers.** If they
    change something, update `spec.md` and ask again.
-7. **Write `plan.md` for a reader who cannot ask.** Load `references/formats.md`. It restates the
+7. **Write `plan.md` for a reader who cannot ask**, to the skeleton already loaded at step 5. It restates the
    DoD as its success criteria, names files with `@path` and an exemplar to imitate, and says what
    comes back. Then check it: `ENGINE prompt-check "<the plan's task statement>"` — flags mean
    ambiguity a fresh session will hit. `/prompt-coach:dispatch` is the full contract.
@@ -82,7 +84,7 @@ AI-drafted spec that nobody read is how a wrong feature gets built fast.
 ## Related
 
 `/strategy-coach:blueprint` supplies the business context that makes a spec specific.
-`/strategy-coach:market --gap "<the gap>"` answers "how has this already been solved" before you
+`/atlas-coach:market --gap "<the gap>"` answers "how has this already been solved" before you
 specify a solution to it — reach for that first when the feature is filling a gap rather than
 adding a capability, and `--industry` for the rules this feature has to live inside.
 `/prompt-coach:dispatch` is the contract `plan.md` is written to — read it if the plan needs to be

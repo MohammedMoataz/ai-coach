@@ -15,7 +15,8 @@ the model writes is not a `UserPromptSubmit`, so nothing warns you. That is the 
 cover, and the reason step 5 runs the detectors by hand.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## 1. Resolve the ambiguity now — there is nobody to ask
 

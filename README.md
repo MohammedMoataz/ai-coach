@@ -42,25 +42,30 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | Plugin | What it is |
 |---|---|
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors. Everything else depends on it. |
-| **memory-coach** | Skills only: `recall`, `debrief`, `handoff`, `team`, `project`, `doctor`. |
+| **memory-coach** | Skills only: `recall` (search, and `--health`), `debrief`, `handoff`, `roster`. |
 | **prompt-coach** | Skills only: `prompt`, `prompt-stats`, `dispatch`. |
 | **security-coach** | Skills only: `scan`, `audit`, `triage`. |
 | **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
-| **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
-| **atlas-coach** | `research`, `ingest`, `analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
-| **strategy-coach** | Skills only: `vault`, `blueprint`, `feature`, `market` — document the business, specify what comes next, and look outward: competitors, industry rules, and how the industry already solved your gap. |
+| **investigation-coach** | Skills only: `onboard` (`--tour` runs all three), `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
+| **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus the marketplace's first two agents, `researcher` and `verifier`, reusable from any session. |
+| **strategy-coach** | Skills only: `blueprint` (which scaffolds the vault), `feature` — document the business, then specify what comes next. |
 | **ai-coach** | The bundle. Install this one. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
 [What you drive](#what-you-drive).
 
-Measured with `claude plugin details`, not estimated — **~1,317 always-on tokens** for the whole
-product as of v0.6.0: core and the bundle are 0, memory-coach ~298, prompt-coach ~114,
-security-coach ~201, harness-coach ~72, investigation-coach ~225, atlas-coach ~407 (three skills
-plus two agents). It has drifted: descriptions were rewritten in v1.0.0, and skills were added
-since — `debrief` in v1.1.0, `dispatch` in v1.2.0, and strategy-coach's four in v1.3.0 — so the
-figure is stale and understated by roughly seven descriptions, and strategy-coach is missing from
-the list entirely. The shape holds — what is always on is the descriptions, and nothing else.
+**~1,770 always-on tokens** for the whole product as of v1.6.0 — core and the bundle are 0,
+atlas-coach ~510 (four skills plus two agents), memory-coach ~320, investigation-coach ~260,
+prompt-coach ~200, security-coach ~200, strategy-coach ~210, harness-coach ~70. What is always on
+is the descriptions, and nothing else: every skill body, every reference file and every agent
+prompt is paid only when it runs.
+
+That number is counted from the descriptions themselves, calibrated against what
+`claude plugin details` reported for the shipped v1.5.0 — this repo is the source, and the
+marketplace's published copy is what the CLI can measure. Run `claude plugin details <plugin>`
+after a release for the authoritative figure. v1.6.0 went from 23 skills to 20 and from ~1,880
+tokens to ~1,770, while adding routing exclusions ("not for X — see Y") to the descriptions most
+likely to be confused for each other.
 
 ## What happens on its own
 
@@ -92,14 +97,13 @@ the list entirely. The shape holds — what is always on is the descriptions, an
 
 ## What you drive
 
-`/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` · `/memory-coach:team` ·
-`/memory-coach:project` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
-`/prompt-coach:prompt-stats` · `/prompt-coach:dispatch` · `/security-coach:scan` ·
-`/security-coach:audit` · `/security-coach:triage` · `/harness-coach:partners` ·
-`/investigation-coach:onboard` · `/investigation-coach:map` · `/investigation-coach:study` ·
-`/atlas-coach:research` · `/atlas-coach:ingest` · `/atlas-coach:analyze` ·
-`/strategy-coach:vault` · `/strategy-coach:blueprint` · `/strategy-coach:feature` ·
-`/strategy-coach:market`
+`/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` ·
+`/memory-coach:roster` · `/prompt-coach:prompt` · `/prompt-coach:prompt-stats` ·
+`/prompt-coach:dispatch` · `/security-coach:scan` · `/security-coach:audit` ·
+`/security-coach:triage` · `/harness-coach:partners` · `/investigation-coach:onboard` ·
+`/investigation-coach:map` · `/investigation-coach:study` · `/atlas-coach:research` ·
+`/atlas-coach:ingest` · `/atlas-coach:market` · `/atlas-coach:translate` ·
+`/strategy-coach:blueprint` · `/strategy-coach:feature`
 
 Two fire on their own. `recall`, so Claude reaches for memory unprompted when a question matches
 prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a follow-up — advice that
@@ -107,13 +111,14 @@ has to be remembered before it applies is advice that never applies. Everything 
 a skill with side effects should run when you say so, and neither of these has any.
 
 Every CLI-and-format skill is pinned to Haiku at low effort — that work should never bill at
-frontier rates (`ingest` and `vault` join that tier: routing, refinement and folder scaffolding are
-mechanical). The rest stay on the session model, deliberately: `recall` and `dispatch` run inside a
-real answer, never as a report of their own; investigation-coach's three, atlas-coach's
-`research`/`analyze`, and strategy-coach's `blueprint`, `feature` and `market` are real analysis —
-pinned down, the output reads like a file listing. Each of those says up front that it costs real
-tokens and takes a scoping flag to bound the spend. The hooks' own LLM calls (plan-mode review,
-session-end distillation) are hardcoded to Haiku too.
+frontier rates (`ingest` joins that tier: routing and refinement are mechanical). The rest stay on
+the session model, deliberately: `recall` and `dispatch` run inside a real answer, never as a report
+of their own; investigation-coach's three, atlas-coach's `research`, `market` and `translate`, and
+strategy-coach's `blueprint` and `feature` are real analysis — pinned down, the output reads like a
+file listing. `recall --health` is on the session model for the same reason: deciding that two
+memories cannot both be true is judgement, and it used to run on the cheap tier. Each of those says
+up front that it costs real tokens and takes a scoping flag to bound the spend. The hooks' own LLM
+calls (plan-mode review, session-end distillation) are hardcoded to Haiku too.
 
 ## What a teammate actually receives
 

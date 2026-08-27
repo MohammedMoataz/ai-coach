@@ -12,7 +12,8 @@ AI Coach ships coaching and nothing else. These partners are tools worth having 
 coach points at them instead of absorbing them. Nothing installs without the user's pick, ever.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Steps
 
@@ -51,4 +52,4 @@ coach points at them instead of absorbing them. Nothing installs without the use
 
 ## Related
 
-`/memory-coach:doctor` checks the coach's own health; this checks what's standing next to it.
+`/memory-coach:recall --health` checks the coach's own memory; this checks what's standing next to it.

@@ -1,7 +1,7 @@
 {
   "name": "ai-coach",
   "displayName": "AI Coach",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Install this one. Pulls in the engine and every coach released so far. Ships no components of its own, so it costs nothing at session start.",
   "author": {
     "name": "Moataz",
@@ -21,31 +21,31 @@
     },
     {
       "name": "memory-coach",
-      "version": "^1.2.1"
+      "version": "^1.3.0"
     },
     {
       "name": "prompt-coach",
-      "version": "^1.1.1"
+      "version": "^1.1.2"
     },
     {
       "name": "security-coach",
-      "version": "^1.0.1"
+      "version": "^1.1.0"
     },
     {
       "name": "harness-coach",
-      "version": "^1.0.3"
+      "version": "^1.0.4"
     },
     {
       "name": "investigation-coach",
-      "version": "^1.2.1"
+      "version": "^1.3.0"
     },
     {
       "name": "atlas-coach",
-      "version": "^1.0.1"
+      "version": "^1.1.0"
     },
     {
       "name": "strategy-coach",
-      "version": "^1.3.1"
+      "version": "^1.4.0"
     }
   ]
 }

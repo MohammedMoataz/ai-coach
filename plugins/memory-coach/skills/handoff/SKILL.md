@@ -13,7 +13,8 @@ the transport, so knowledge moves along the branch it belongs to, and it is revi
 request before it reaches anyone's database.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## First, know who is handing off
 
@@ -26,7 +27,7 @@ the moment to notice is now, not after it is committed.
 |---|---|---|
 | `email` | their git email | `git config user.email "<email>"` — this is the key everything joins on; without it a memory has no author at all |
 | `username` | their name | `git config user.name "<name>"` |
-| `role` | what they do on this project | `/memory-coach:team register` writes them into `.ai-coach/team.md` |
+| `role` | what they do on this project | `/memory-coach:roster register` writes them into `.ai-coach/team.md` |
 | `project name` | what this product is called | a `name:` line in `.ai-coach/project.md` |
 
 Ask for all of them in one question, not four. Never invent any of them, and never register
@@ -89,7 +90,7 @@ Full-trust memories join your ranked brief like your own. Memories from someone 
 
 Holding is a holding area, not a penalty box, and it is not a property of the memory — it is your
 current opinion of its author, worked out every time a row is read. Raise their trust with
-`/memory-coach:team` and everything of theirs you already hold moves up at once. **No re-import.**
+`/memory-coach:roster` and everything of theirs you already hold moves up at once. **No re-import.**
 
 ## Rules
 

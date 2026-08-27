@@ -3,6 +3,62 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.6.0 — Fewer, sharper skills (2026-08-27)
+
+Twenty-three skills, seven of them narrower than a skill needs to be: a folder-scaffolder whose
+whole job was to run immediately before another skill, a health report separated from the search it
+reports on, two thin wrappers around one engine command each, and a skill called `analyze` that did
+three unrelated things. Meanwhile `market` — competitor research, spawning atlas-coach's agents,
+sharing no file with anything beside it — sat in the plugin about documenting *this* business.
+
+Twenty skills now, and the always-on cost went from ~1,880 to ~1,770 tokens even after adding
+routing exclusions to the descriptions most likely to be mistaken for each other.
+
+**ai-coach-core 1.4.0 · memory-coach 1.3.0 · prompt-coach 1.1.2 · security-coach 1.1.0 ·
+harness-coach 1.0.4 · investigation-coach 1.3.0 · atlas-coach 1.1.0 · strategy-coach 1.4.0 ·
+ai-coach 1.6.0**
+
+### Where things moved
+
+| Was | Is | Why |
+|---|---|---|
+| `/strategy-coach:market` | `/atlas-coach:market` | It spawns atlas's agents and reads the outside world. atlas-coach *is* "everything outside the repo"; strategy-coach is now purely inward. |
+| `/strategy-coach:vault` | `/strategy-coach:blueprint` step 0, or `--scaffold-only` | Its entire documented job was to run immediately before blueprint. |
+| `/memory-coach:doctor` | `/memory-coach:recall --health` | The health of the memory belongs beside the search of it — and it moves off Haiku, because deciding two memories cannot both be true is analysis, not formatting. |
+| `/memory-coach:team` + `:project` | `/memory-coach:roster` | Two committed files answering one question: who we are, and what this project is. |
+| `/atlas-coach:analyze` | `/atlas-coach:translate`, plus `ingest stats` | Three unrelated verbs. `verify` was research's claim gate described a second time — it is now one line in `references/verdicts.md`; `stats` belongs to the skill that owns the corpus. |
+
+Old trigger phrases were kept on whichever skill absorbed the work, so "set up the docs vault" still
+reaches something and "check my memory" still runs the health report.
+
+### Two things a merge does not do
+
+`/investigation-coach:study` was on the cut list and stays. The reason to merge it was a broken path
+— it wrote `./study/` while four files read `docs/study/` — and v1.5.1 fixed that properly. What is
+left is a clean Diátaxis split (onboard = tutorial, map = the picture, study = explanation) with
+real hand-offs between the three, and merging it would have traded a working boundary for a smaller
+number. `/investigation-coach:onboard --tour` runs all three in the documented order instead.
+
+`prompt-coach` keeps its three. "Write me a prompt" and "which of my habits costs me the most" are
+different questions asked at different moments, and folding the second into the first would have
+saved ~50 always-on tokens at the cost of the trigger that finds it.
+
+### Descriptions that say what they are *not*
+
+The failure mode of a suite this size is two skills whose descriptions both plausibly match. The
+pairs that actually collide now carry exclusions — `recall` says it is not for editing the roster,
+`blueprint` says it is not for how the code works, `translate` says it is not for checking whether a
+claim is true — and the investigate-versus-strategize test ("how does X work here" → investigate,
+"what should we build" → strategize) moved out of one skill's closing prose into both descriptions.
+Three skills ship `evals/evals.json` files pinning those boundaries.
+
+### Two chains that were documented but not runnable
+
+`/security-coach:audit --triage` hands confirmed findings straight to triage instead of asking for a
+retyped command. `/investigation-coach:onboard --tour` runs onboard, then map, then study — the
+order three files already recommended, on the grounds that the later two read what the first wrote.
+Both still ask before doing anything with side effects; the flags remove typing, not decisions.
+
 ## v1.5.1 — Say what is true (2026-08-27)
 
 A settings table that a skill could not read, a switch documented as cosmetic that quietly deleted
