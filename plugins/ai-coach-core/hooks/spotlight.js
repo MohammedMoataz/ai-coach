@@ -39,7 +39,8 @@ process.stdin.on('end', () => {
     try {
       engine.useProject(data.cwd);
       repeat = engine.injectionSeen(data.session_id);
-      engine.observe(data.session_id, tool, target, 'INJ ' + r.flags.join(',') + (target ? ' ' + target : ''));
+      engine.observe(data.session_id, tool, target,
+        engine.INJ_PREFIX + r.flags.join(',') + (target ? ' ' + target : ''));
     } catch (err) { engine.log('spotlight-observe', err); }
 
     // Two channels, two audiences, never merged: the user gets a one-line hint; the model gets

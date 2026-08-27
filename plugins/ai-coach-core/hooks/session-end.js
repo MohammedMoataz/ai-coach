@@ -51,7 +51,10 @@ process.stdin.on('end', () => {
         }
       }
     }
-    engine.pruneObservations(30); // observations are session fuel, not knowledge
+    engine.pruneObservations(); // observations are session fuel, not knowledge
+    // …and a distilled memory nobody has ever recalled, 90 days on, is a guess that outlived its
+    // session. Nothing a person wrote and nothing imported is touched — see pruneStale().
+    engine.pruneStale();
     // No automatic export. A seed is published deliberately with /memory-coach:handoff — the same
     // rule a debrief follows. Exporting on every session end meant knowledge left the machine
     // before anyone had decided it was worth sharing, and it is what shipped the prompt-text leak.

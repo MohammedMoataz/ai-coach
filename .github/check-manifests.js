@@ -117,8 +117,119 @@ for (const [name, m] of manifests) {
   }
 }
 
+// ---- every SKILL.md has usable frontmatter ----
+// Descriptions are the ONLY thing this product puts in every session's context, so a missing or
+// bloated one is paid by every user on every session, forever.
+const DESCRIPTION_MAX = 1024; // platform.claude.com best-practice ceiling for a description
+let skillCount = 0;
+const skillNames = new Set();
+function eachSkill(fn) {
+  for (const name of manifests.keys()) {
+    const dir = path.join(root, 'plugins', name, 'skills');
+    if (!fs.existsSync(dir)) continue;
+    for (const skill of fs.readdirSync(dir)) {
+      const file = path.join(dir, skill, 'SKILL.md');
+      // Normalize line endings: a CRLF checkout is normal on Windows, and a frontmatter parser
+      // that only understands LF reports "no frontmatter" on a file that has perfectly good
+      // frontmatter — which is a false failure, the worst kind for a gate everyone has to pass.
+      if (fs.existsSync(file)) fn(name, skill, file, fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n'));
+    }
+  }
+}
+eachSkill((plugin, skill, file, text) => {
+  skillCount++;
+  skillNames.add(plugin + ':' + skill);
+  const rel = path.posix.join('plugins', plugin, 'skills', skill, 'SKILL.md');
+  const fm = text.startsWith('---\n') ? text.slice(4, text.indexOf('\n---', 4)) : '';
+  check(!!fm, `${rel}: no YAML frontmatter`);
+  const desc = (fm.match(/^description:\s*(.+)$/m) || [])[1] || '';
+  check(!!desc, `${rel}: no description — this is what routing matches on`);
+  check(desc.length <= DESCRIPTION_MAX,
+    `${rel}: description is ${desc.length} chars, over the ${DESCRIPTION_MAX} ceiling`);
+  check(!/[<>]/.test(desc), `${rel}: description contains angle brackets, which are not allowed`);
+  // Every skill has to be reachable by more than its own name.
+  check(/use for|use when|use before|use after/i.test(desc),
+    `${rel}: description names no trigger — say when to use it, not only what it is`);
+});
+
+// ---- the CLI surface is the cross-plugin ABI, and nothing guarded it ----
+// Skills reach the engine by shelling out to `ENGINE <verb>`. A renamed verb breaks them silently:
+// the skill still loads, the command still runs, and the user gets a usage line instead of an
+// answer. Compare what the skills call against what the CLI actually dispatches.
+{
+  const engine = fs.readFileSync(path.join(root, 'plugins', 'ai-coach-core', 'hooks', 'engine.js'), 'utf8');
+  const verbs = new Set();
+  for (const m of engine.matchAll(/^\s*case '([a-z][\w-]*)':/gm)) verbs.add(m[1]);
+  check(verbs.size > 10, 'could not read the engine CLI verbs — the ABI check is not running');
+  const called = new Map(); // verb -> where it was called from
+  const scan = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) { scan(p); continue; }
+      if (!entry.name.endsWith('.md')) continue;
+      const text = fs.readFileSync(p, 'utf8');
+      for (const m of text.matchAll(/ENGINE\s+([a-z][\w-]*)/g)) {
+        if (!called.has(m[1])) called.set(m[1], path.relative(root, p));
+      }
+    }
+  };
+  scan(path.join(root, 'plugins'));
+  for (const [verb, where] of called) {
+    check(verbs.has(verb), `${where}: calls \`ENGINE ${verb}\`, which the engine CLI does not dispatch`);
+  }
+}
+
+// ---- a cross-plugin reference has to name a skill that exists ----
+// `${CLAUDE_PLUGIN_ROOT}` cannot reach a sibling plugin, so these references are prose — which is
+// exactly why a rename leaves them pointing at nothing and no test notices.
+{
+  const scan = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) { scan(p); continue; }
+      if (!entry.name.endsWith('.md')) continue;
+      const text = fs.readFileSync(p, 'utf8');
+      for (const m of text.matchAll(/\/([a-z]+-coach):([a-z][\w-]*)/g)) {
+        const ref = m[1] + ':' + m[2];
+        if (skillNames.has(ref)) continue;
+        // A sentence that says a skill USED to exist is documentation, not a dangling link.
+        const line = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index));
+        if (/\b(was|used to be|absorbed|replaced|retired|merged)\b/i.test(line)) continue;
+        fail.push(`${path.relative(root, p)}: references /${ref}, which is not a skill in this marketplace`);
+      }
+    }
+  };
+  scan(path.join(root, 'plugins'));
+}
+
+// ---- a spec duplicated across plugins has to stay identical ----
+// `${CLAUDE_PLUGIN_ROOT}` cannot reach a sibling plugin, so the draw.io grid rules exist twice by
+// necessity. They had already drifted — one copy capped rows and boxes, the other only columns —
+// and a picture drawn to the looser copy overlaps itself. The numbers are the contract; check them.
+{
+  const copies = [
+    'plugins/investigation-coach/skills/map/references/drawio.md',
+    'plugins/strategy-coach/skills/blueprint/references/visual.md',
+  ];
+  // Each copy may phrase the geometry its own way (`160×60` or `width=160`), so the numbers are
+  // checked as numbers and the two ceilings as the phrases both copies must state verbatim.
+  const numbers = [160, 60, 240, 120];
+  const phrases = ['6 columns × 5 rows', '30 boxes'];
+  for (const f of copies) {
+    const t = fs.readFileSync(path.join(root, f), 'utf8');
+    for (const n of numbers) {
+      check(new RegExp('\\b' + n + '\\b').test(t),
+        `${f}: the draw.io grid spec does not mention ${n}, which its other copy uses`);
+    }
+    for (const p of phrases) {
+      check(t.includes(p), `${f}: the draw.io grid spec is missing "${p}", which its other copy states`);
+    }
+  }
+}
+
 if (fail.length) {
   console.error('manifest check FAILED:\n- ' + fail.join('\n- '));
   process.exit(1);
 }
-console.log(`manifest check OK: ${manifests.size} plugins, all sources, versions, dependencies and hook scripts resolve`);
+console.log(`manifest check OK: ${manifests.size} plugins, ${skillCount} skills — sources, versions, `
+  + 'dependencies, hook scripts, frontmatter, engine verbs and cross-plugin references all resolve');

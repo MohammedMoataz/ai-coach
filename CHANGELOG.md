@@ -3,6 +3,80 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.6.1 — Repo trust (2026-08-27)
+
+The tests were good at what they covered and silent about what they did not, and the gaps were not
+random: they were exactly the mechanisms nobody re-reads because they have always worked. Writing
+those tests found a performance fix that had never actually worked.
+
+**ai-coach-core 1.5.0 · ai-coach 1.6.1**
+
+### The optimization that was never applied
+
+v1.4.0 replaced two `git` spawns with direct reads of `.git`, and measured a 44% saving. Half of it
+was not real. `gitConfigValue` normalized a section header as it read it out of the file — quotes
+stripped, whitespace collapsed, lowercased — and then compared the result against the caller's
+`remote "origin"`, quotes and all. That comparison could never be true, so **every lookup of the
+origin URL fell through to spawning `git` anyway.** The fast path had never once returned a value,
+and nothing failed, because the fallback is correct: it was simply slow.
+
+Both sides are normalized now. Measured on Windows, median of 15 fresh processes resolving the
+origin of this repo, same machine, same payload:
+
+```
+before  median 242.6ms  (min 170.4, max 347.5)   spawns git
+after   median  79.4ms  (min  69.7, max  94.9)   reads .git/config
+n=15, saved 163.2ms/call (67% faster)
+```
+
+`observe.js` resolves the repository on every Edit, Write and Bash, so this is paid per tool call.
+
+### Tests for the things nobody re-reads
+
+- **`bootstrap()`** — every skill in seven plugins reaches the engine at one fixed path, and one
+  line puts it there. It had no test at all. Now: the copy lands, the schemas land beside it, a
+  stale copy is refreshed rather than left, and the installed copy runs where it lands.
+- **The git identity trio** — `gitPaths`, `originUrl`, `headBranch` across a repo with a remote, a
+  subdirectory, a detached HEAD, a worktree pointer file and a directory that is not a repository.
+  The CHANGELOG said these were verified by hand across those six shapes; the verification left
+  nothing behind, and the bug above is what that costs.
+- **`default_trust: workspace`** — the branch that inverts a SQL `NOT IN` into an `IN`. Never run.
+- **The schema stamp**, **`clampTs`**, and **log rotation** — the last of which was fixed once
+  because it broke, and then had no test to keep it fixed.
+- **`check-manifests.js` itself.** A lint that silently stops checking passes every time, so it now
+  has a suite that breaks the repo in seven specific ways in a throwaway copy and asserts the
+  checker notices each one.
+
+### What the checker checks now
+
+Frontmatter on every skill: a description exists, is under the 1,024-character ceiling, carries a
+trigger phrase, and has no angle brackets. **Every `ENGINE <verb>` a skill calls is dispatched by
+the CLI** — that surface is the real cross-plugin ABI and a rename broke it silently. Every
+`/plugin:skill` reference names a skill that exists, while a sentence about a *retired* skill is
+recognized as documentation rather than a dangling link. And the draw.io grid spec, which two
+plugins must each carry because neither can read the other's files, is checked constant by
+constant — the two copies had already drifted.
+
+CI gains the `permissions:` and `concurrency:` blocks it never had, and an explicit FTS5 probe that
+says what is wrong instead of failing three tests deep.
+
+### Dead weight
+
+`auto-seed` is gone — the command, the `seed_auto` setting, its manifest entry and its README row,
+all of which outlived by five releases the hook that used to call it. `memories.concepts`, declared
+in v0.1.0 and never written or read, is no longer created. `memories.uses` was the opposite problem:
+incremented on every read since v0.1.0 and used by nothing, so it now feeds a small saturating
+ranking bonus — worth about 20% at ten reads, never enough to outrank confidence.
+
+New: a distilled memory that nobody has ever recalled is deleted 90 days on. Deliberately narrow,
+because deleting knowledge is the one irreversible thing here — never a memory a person wrote,
+never one a teammate handed over, and never one that was recalled even once.
+
+Also: `FAIL ` and `INJ ` are constants rather than eight scattered literals, the log follows
+`AICOACH_DB` into an isolated tree, releases from v1.4.0 are tagged again, and the stale search
+index in this repo — 218 paragraphs from files that no longer existed — was rebuilt by the
+`reindex` its own `stats` mode now recommends.
+
 ## v1.6.0 — Fewer, sharper skills (2026-08-27)
 
 Twenty-three skills, seven of them narrower than a skill needs to be: a folder-scaffolder whose

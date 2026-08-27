@@ -368,19 +368,11 @@ const tamperFile = path.join(tmp, 'tampered.jsonl.enc');
 fs.writeFileSync(tamperFile, JSON.stringify(tampered));
 assert.throws(() => e.seedImport(tamperFile, encDir), /could not be decrypted/, 'GCM tag catches tampering');
 
-// auto-seed refreshes an existing seed only — it never creates one
-const autoDir = path.join(tmp, 'autoproj');
-fs.mkdirSync(path.join(autoDir, '.ai-coach'), { recursive: true });
-e.add('note', 'fact belonging to the auto-seed project', 0.7, autoDir, null);
-assert.strictEqual(e.autoSeed(autoDir), null, 'no seed file = nothing happens');
-fs.writeFileSync(path.join(autoDir, '.ai-coach', 'team-seed.jsonl'), '');
-const auto = e.autoSeed(autoDir);
-assert.ok(auto && auto.file === 'team-seed.jsonl', 'existing seed refreshed');
-assert.ok(fs.readFileSync(path.join(autoDir, '.ai-coach', 'team-seed.jsonl'), 'utf8').includes('auto-seed project'),
-  'refresh wrote this project\'s memories');
-process.env.AICOACH_SEED_AUTO = 'off';
-assert.strictEqual(e.autoSeed(autoDir), null, 'seed_auto off disables the refresh');
-delete process.env.AICOACH_SEED_AUTO;
+// `auto-seed` is gone: the hook that called it was removed in v1.1.0, and the command, the
+// `seed_auto` setting and its manifest entry outlived it by five releases. A seed is published
+// deliberately with /memory-coach:handoff — that is the only path, and this pins it.
+assert.strictEqual(typeof e.autoSeed, 'undefined', 'no autoSeed export survives');
+assert.ok(!e.SETTINGS.some((s) => s.key === 'seed_auto'), 'and no setting for a command that does not exist');
 
 // ---------- v0.6.0: a project may span several repositories ----------
 
@@ -1416,6 +1408,167 @@ assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows t
   assert.strictEqual(meta.seed, e.SEED_FORMAT, 'the format is the constant, not a literal');
   assert.strictEqual(meta.schema, e.SCHEMA_VERSION, 'and the schema version is the one that governs reading');
   assert.ok(!('engine' in meta), 'no hand-pasted marketplace version — this file cannot know it');
+}
+
+// ---------- bootstrap: the mechanism every other plugin depends on ----------
+{
+  // Skills across seven plugins reach the engine at one fixed path, and exactly one call site puts
+  // it there: session-start.js. It had no test at all — the single most load-bearing line in the
+  // architecture was verified only by the fact that people's sessions kept working.
+  const target = path.join(e.BIN_DIR, 'engine.js');
+  fs.rmSync(e.BIN_DIR, { recursive: true, force: true });
+  const n = e.bootstrap();
+  assert.ok(n >= 1, 'bootstrap installs at least the engine');
+  assert.ok(fs.existsSync(target), 'the copy lands at the documented path: ' + target);
+  assert.ok(fs.existsSync(path.join(e.ROOT, 'memory', 'schema.sql')), 'and the schemas beside it');
+  assert.ok(fs.existsSync(path.join(e.ROOT, 'memory', 'user-schema.sql')), 'both of them');
+  assert.strictEqual(fs.readFileSync(target, 'utf8'), fs.readFileSync(path.join(__dirname, 'engine.js'), 'utf8'),
+    'byte-identical to the engine that installed it');
+
+  // Drift: an older copy must be replaced, or an upgraded plugin leaves skills calling last
+  // release's engine forever.
+  fs.writeFileSync(target, '// stale\n');
+  e.bootstrap();
+  assert.strictEqual(fs.readFileSync(target, 'utf8'), fs.readFileSync(path.join(__dirname, 'engine.js'), 'utf8'),
+    'a stale copy is refreshed, not left in place');
+
+  // The copy has to work where it lands — it resolves its schemas from ROOT, not from __dirname.
+  const r = spawnEngine([], {});
+  assert.match(r.stdout + r.stderr, /usage: engine\.js/, 'the installed copy runs: ' + r.stdout + r.stderr);
+}
+
+// ---------- git identity read from files, with the spawn as fallback ----------
+{
+  // v1.4.0 replaced two `git` spawns with direct reads of .git, and the CHANGELOG says identity was
+  // verified identical across six repo shapes — by hand, leaving no test. A wrong answer here files
+  // memories under a different tenant, silently.
+  const repo = path.join(tmp, 'gitshapes');
+  fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
+  fs.writeFileSync(path.join(repo, '.git', 'HEAD'), 'ref: refs/heads/feat/some-branch\n');
+  fs.writeFileSync(path.join(repo, '.git', 'config'),
+    '[core]\n\trepositoryformatversion = 0\n[remote "origin"]\n\turl = git@github.com:acme/shop.git\n');
+  assert.strictEqual(e.headBranch(repo), 'feat/some-branch', 'branch read from .git/HEAD');
+  assert.match(String(e.originUrl(repo)), /acme\/shop/, 'origin read from .git/config');
+
+  // A subdirectory resolves to the same repo — the walk up is what makes a memory land in the
+  // right tenant when a skill runs from a nested folder.
+  const nested = path.join(repo, 'src', 'deep');
+  fs.mkdirSync(nested, { recursive: true });
+  assert.strictEqual(e.headBranch(nested), 'feat/some-branch', 'a subdirectory finds the same HEAD');
+  assert.strictEqual(e.gitPaths(nested).root, repo, 'and the same root');
+
+  // Detached HEAD is a sha, not a ref line: it must not be reported as a branch named "ref:".
+  fs.writeFileSync(path.join(repo, '.git', 'HEAD'), '9f2a1c4e5b6d7a8f9012345678901234567890ab\n');
+  const detached = e.headBranch(repo);
+  assert.ok(!detached || !detached.startsWith('ref:'), 'detached HEAD is not a branch called ref: ' + detached);
+
+  // A .git FILE is a worktree or submodule — it points elsewhere, so the parser must not treat the
+  // pointer text as a repository.
+  const wt = path.join(tmp, 'worktree');
+  fs.mkdirSync(wt, { recursive: true });
+  fs.writeFileSync(path.join(wt, '.git'), 'gitdir: ' + path.join(repo, '.git', 'worktrees', 'wt') + '\n');
+  assert.doesNotThrow(() => e.headBranch(wt), 'a .git file falls through to git rather than throwing');
+
+  // A directory that is not a repository at all has no identity, and must not borrow one.
+  const bare = path.join(tmp, 'not-a-repo-at-all');
+  fs.mkdirSync(bare, { recursive: true });
+  assert.doesNotThrow(() => e.originUrl(bare), 'a non-repo answers rather than throwing');
+}
+
+// ---------- default_trust: workspace inverts the SQL, and that branch was never run ----------
+{
+  const KEY = 'AICOACH_DEFAULT_TRUST';
+  const before = process.env[KEY];
+  const open = e.notHeldSql('author');
+  assert.ok(!/ IN \(/.test(open.sql) || / NOT IN \(/.test(open.sql),
+    'default full: the clause excludes named people, it does not admit a list');
+
+  process.env[KEY] = 'workspace';
+  const closed = e.notHeldSql('author');
+  assert.match(closed.sql, / IN \(/, 'default workspace: the question inverts to who is admitted');
+  assert.ok(!/ NOT IN \(/.test(closed.sql), 'and it is an allow-list, not a deny-list');
+  assert.ok(closed.params.includes(''), "rows written before a git identity existed stay visible");
+  if (before === undefined) delete process.env[KEY]; else process.env[KEY] = before;
+}
+
+// ---------- the schema stamp: v1.4.0's whole point ----------
+{
+  // open() skips the schema exec and migrate()'s probes when the stamp is current. Nothing asserted
+  // the stamp existed, so the fast path could have regressed to "slow but correct" unnoticed.
+  const probe = e.db();
+  const stamped = probe.prepare('PRAGMA user_version').get();
+  assert.strictEqual(Object.values(stamped)[0], e.SCHEMA_VERSION,
+    'an opened database carries the current schema stamp');
+}
+
+// ---------- clampTs: five query families trust another machine's clock through it ----------
+{
+  assert.match(e.clampTs('2020-01-02 03:04:05'), /^2020-01-02 03:04:05$/, 'a past timestamp is kept');
+  const future = e.clampTs('2999-01-01 00:00:00');
+  assert.ok(future < '2999', 'a future timestamp is clamped to now, or a teammate with a wrong clock outranks everyone forever');
+  assert.ok(e.clampTs('') && e.clampTs(null) && e.clampTs(undefined), 'empty clamps to now rather than to nothing');
+}
+
+// ---------- log rotation: fixed once because it broke, never tested ----------
+{
+  const logFile = path.join(tmp, 'rotate.jsonl');
+  const prev = process.env.AICOACH_LOG;
+  process.env.AICOACH_LOG = logFile;
+  // The engine caches nothing about the log path, but it read AICOACH_LOG at require time — so
+  // rotation is exercised through a fresh process, which is also how it happens in real life.
+  const script = 'const e=require(' + JSON.stringify(path.join(__dirname, 'engine.js')) + ');'
+    + 'require("fs").writeFileSync(process.env.AICOACH_LOG, "x".repeat(600*1024));'
+    + 'e.log("rotate-test", new Error("boom"));';
+  const r = require('node:child_process').spawnSync('node', ['-e', script],
+    { encoding: 'utf8', env: { ...process.env }, timeout: 20000 });
+  assert.strictEqual(r.status, 0, 'logging never throws: ' + r.stderr);
+  assert.ok(fs.statSync(logFile).size < 600 * 1024, 'the log rotated instead of growing forever');
+  assert.match(fs.readFileSync(logFile, 'utf8'), /rotate-test/, 'and the new entry is in the fresh file');
+  if (prev === undefined) delete process.env.AICOACH_LOG; else process.env.AICOACH_LOG = prev;
+}
+
+// ---------- reads earn a small ranking bonus, and a stale guess expires ----------
+{
+  const rankProj = path.join(tmp, 'rankproj');
+  fs.mkdirSync(rankProj, { recursive: true });
+  e.useProject(rankProj);
+  e.add('note', 'kestrel telemetry pipeline retries twice', 0.7, rankProj);
+  e.add('note', 'kestrel telemetry pipeline uses a queue', 0.7, rankProj);
+  // Read one of them repeatedly; same confidence, same age, so only `uses` can separate them.
+  for (let i = 0; i < 12; i++) e.search('retries twice', { limit: 1 });
+  const ranked = e.search('kestrel telemetry pipeline', { full: true });
+  assert.match(ranked[0].text, /retries twice/,
+    'a memory that keeps being recalled ranks above an equally confident one that never is');
+
+  // …and the bonus is a nudge, not a lever: confidence still decides.
+  e.add('note', 'kestrel telemetry pipeline drops nothing', 0.95, rankProj);
+  const byConfidence = e.search('kestrel telemetry pipeline', { full: true });
+  assert.match(byConfidence[0].text, /drops nothing/, 'read count never outranks confidence');
+}
+
+// ---------- pruneStale: narrow on purpose, because deleting knowledge is irreversible ----------
+{
+  const staleProj = path.join(tmp, 'staleproj');
+  fs.mkdirSync(staleProj, { recursive: true });
+  e.useProject(staleProj);
+  const old = '2020-01-01 00:00:00';
+  e.add('learning', 'a guess a model made and nobody ever used', 0.6, staleProj, 's1',
+    { provenance: 'distilled', created: old });
+  e.add('learning', 'a guess a model made that someone did recall', 0.6, staleProj, 's1',
+    { provenance: 'distilled', created: old });
+  e.add('learning', 'quokka deployments need a manual approval', 0.6, staleProj, null, { created: old });
+  e.add('learning', 'quokka staging shares one database', 0.6, staleProj, null,
+    { provenance: 'imported', created: old });
+  e.search('someone did recall', { limit: 1 }); // one read is enough to keep it
+
+  const removed = e.pruneStale();
+  assert.strictEqual(removed, 1, 'exactly one row qualified: ' + removed);
+  const left = e.search('guess a model made', { full: true }).map((r) => r.text).join(' | ');
+  assert.ok(!left.includes('nobody ever used'), 'the unrecalled distilled guess is gone');
+  assert.ok(left.includes('someone did recall'), 'a distilled memory that was recalled survives');
+  const survivors = e.search('quokka', { full: true }).map((r) => r.text).join(' | ');
+  assert.match(survivors, /manual approval/, 'nothing a person wrote is ever pruned by age');
+  assert.match(survivors, /shares one database/, 'and nothing a teammate handed over is either');
 }
 
 console.log('engine.test.js: ALL PASS');

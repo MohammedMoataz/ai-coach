@@ -92,6 +92,15 @@ likely to be confused for each other.
   off its own alarm.
 - **Guarded reads of repo files**: everything the engine reads from `.ai-coach/` goes through a
   symlink-refusing, size-capped read — a planted link to `~/.ssh/id_rsa` cannot flow into context.
+
+**What the guard and the spotlight do not cover, stated plainly.** Both are wired to named tools:
+the guard to `Bash`, `WebFetch`, `Read`, `Write`, `Edit` and `NotebookEdit`, the spotlight to
+`WebFetch`, `WebSearch` and `Read`. An MCP server's tools are neither. A credential handed to an
+MCP tool is not checked, and a page fetched by one is not scanned — MCP tool names are per-install,
+so a matcher here would be a list that is wrong on everyone else's machine. Two things follow, and
+they are the honest version rather than a fix: prefer the built-in tools for anything carrying a
+secret, and treat `/security-coach:scan` as the on-demand check for content that arrived some other
+way.
 - **One partners note, once**: a single session-start line pointing at `/harness-coach:partners`,
   gone forever after the first run. Nothing ever installs without your pick.
 
@@ -252,12 +261,16 @@ the record on the next session start.
 | `guard` | `on` | Blocks tool calls carrying real credentials. The one hook allowed to stop a call. |
 | `spotlight` | `on` | Injection-marker scan on fetched content. Warn-only, no model call. |
 | `partners` | `on` | The one-time `/harness-coach:partners` note. |
-| `seed_auto` | `on` | Whether `auto-seed` may refresh an existing seed in place. |
 | `default_trust` | `full` | Trust for a teammate you have not rated: `full` or `workspace`. |
 
 `coach` controls the coach *line*; `corrections` controls whether failures are recorded at all.
 They are separate on purpose — silencing a display line should not quietly empty the evidence
 `/prompt-coach:prompt-stats` measures against.
+
+Every setting in the table above also has an environment twin — `brief_chars` is
+`AICOACH_BRIEF_CHARS`, `coach` is `AICOACH_COACH`, and so on for all nine. The twin wins over the
+plugin setting and over the recorded snapshot, and it lasts for exactly one shell. `config` names
+which of the three answered.
 
 ### Environment variables that are not settings
 

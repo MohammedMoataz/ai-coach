@@ -74,7 +74,9 @@ function migrate(d, tables) {
   const add = (t, c, decl) => { if (!has(t, c)) d.exec(`ALTER TABLE ${t} ADD COLUMN ${c} ${decl}`); };
   add('memories', 'repo', 'TEXT');
   add('memories', 'provenance', "TEXT DEFAULT 'human'");
-  add('memories', 'concepts', 'TEXT');
+  // `concepts` is deliberately NOT added any more. It was declared in v0.1.0, written by nothing
+  // and read by nothing ever since; new databases do not get it, and an existing one keeps its
+  // empty column rather than paying a table rebuild to remove a column that costs nothing.
   if (tables !== 'user') {
     add('sessions', 'name', 'TEXT');
     add('sessions', 'name_source', "TEXT DEFAULT 'auto'");
@@ -152,6 +154,16 @@ const SCHEMA_VERSION = 2;
 // the "newer than this engine" warning on import — and they had to be changed together with nothing
 // saying so. See seedExport() for the compatibility rule this number governs.
 const SEED_FORMAT = 3;
+
+// Observation digests are prefixed, and four separate features match those prefixes with LIKE:
+// promptStats' outcome count, the session digest's failure block, injectionSeen(), and the outcome
+// number a seed carries. They were eight string literals spread across this file plus two more in
+// the hooks that write them, so renaming a prefix would have silently zeroed the readers instead of
+// failing anywhere. observe.js and spotlight.js import these.
+const FAIL_PREFIX = 'FAIL ';
+const INJ_PREFIX = 'INJ ';
+const FAIL_LIKE = `'${FAIL_PREFIX}%'`;
+const INJ_LIKE = `'${INJ_PREFIX}%'`;
 
 function open(file, schemaPath, kind) {
   const { DatabaseSync } = requireSqlite();
@@ -288,8 +300,6 @@ const SETTINGS = [
     what: 'Scan fetched content and out-of-repo reads for prompt-injection markers. Warn-only, no model call.' },
   { key: 'partners', def: 'on', type: 'boolean',
     what: 'The one-time session note suggesting /harness-coach:partners. Disappears after the first run.' },
-  { key: 'seed_auto', def: 'on', type: 'boolean',
-    what: 'Allow the `auto-seed` command to refresh an existing .ai-coach/team-seed.jsonl in place. No hook ever exports on its own.' },
   { key: 'default_trust', def: 'full', type: 'string',
     what: 'Trust for a teammate you have not rated: `full` ranks their memories like your own, `workspace` holds them privately.' },
 ];
@@ -453,15 +463,22 @@ function gitPaths(cwd) {
 
 // Minimal git-config reader: enough for `[remote "origin"] url`, and nothing more. Deliberately
 // ignores include/includeIf — a caller that needs those falls back to git.
+// Section names are normalized on BOTH sides. They used to be normalized only as they were read
+// out of the file — quotes stripped, whitespace collapsed, lowercased — and then compared against
+// the caller's `remote "origin"`, quotes and all. That comparison could never be true, so every
+// lookup fell through to spawning `git`: the file-reading fast path this function exists to provide
+// had never once returned a value.
+const gitSection = (s) => String(s).replace(/"/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 function gitConfigValue(file, section, key) {
+  const want = gitSection(section);
   let cur = '';
   for (const line of safeRead(file, 256 * 1024).split('\n')) {
     const s = line.trim();
     if (!s || s.startsWith('#') || s.startsWith(';')) continue;
     const head = s.match(/^\[([^\]]+)\]$/);
-    if (head) { cur = head[1].replace(/"/g, '').replace(/\s+/g, ' ').trim().toLowerCase(); continue; }
+    if (head) { cur = gitSection(head[1]); continue; }
     const kv = s.match(/^([\w.-]+)\s*=\s*(.*)$/);
-    if (kv && cur === section && kv[1].toLowerCase() === key) return kv[2].trim() || null;
+    if (kv && cur === want && kv[1].toLowerCase() === key) return kv[2].trim() || null;
   }
   return null;
 }
@@ -893,10 +910,20 @@ function ageDays(row) { // decay from created only — reading a memory must not
 }
 // type-based decay: durable knowledge fades slower than perishable pointers
 const DECAY_DAYS = { learning: 90, pattern: 90, reference: 45 }; // default 30 (notes etc.)
+// A memory that keeps coming back in searches has earned a little of its decay back. `uses` was
+// incremented on every surviving hit since v0.1.0 and then read by nothing at all — the counter
+// was kept and the signal thrown away. The bonus is deliberately small and saturating: at 10 reads
+// it is worth about 20%, and it can never outrank confidence or turn a stale note into a fresh one.
+const USE_BONUS_CAP = 0.2;
+function useBonus(row) {
+  const n = Number(row && row.uses);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return 1 + USE_BONUS_CAP * (n / (n + 10));
+}
 function score(row) {
   // effConfidence(), not row.confidence: the cap on a held teammate's memory is applied here,
   // at read time, so it tracks your current trust instead of whatever it was at import.
-  return effConfidence(row) * Math.exp(-ageDays(row) / (DECAY_DAYS[row.type] || 30));
+  return effConfidence(row) * Math.exp(-ageDays(row) / (DECAY_DAYS[row.type] || 30)) * useBonus(row);
 }
 
 // Searches this project plus your global memories — the environment traps that belong to
@@ -933,7 +960,9 @@ function search(q, opts) {
   for (const d of scopes) {
     let hit = [];
     try { hit = d.prepare(sql).all(...params); } catch (err) { log('search', err); continue; }
-    const bump = d.prepare('UPDATE memories SET uses = uses + 1 WHERE id = ?'); // counter only; never ranking
+    // Read count feeds a small ranking bonus (see useBonus) — not the decay clock, which stays
+    // tied to when the memory was written. Reading a fact must never make it younger.
+    const bump = d.prepare('UPDATE memories SET uses = uses + 1 WHERE id = ?');
     const isUser = d === userDb();
     for (const r of hit) {
       const k = r.text_key || norm(r.text);
@@ -1304,7 +1333,7 @@ function injectionSeen(sessionId) {
   if (!sessionId) return false;
   try {
     return !!db().prepare(
-      "SELECT 1 FROM observations WHERE session_id = ? AND digest LIKE 'INJ %' LIMIT 1"
+      `SELECT 1 FROM observations WHERE session_id = ? AND digest LIKE ${INJ_LIKE} LIMIT 1`
     ).get(sessionId);
   } catch { return false; } // never let a bookkeeping query suppress a security warning
 }
@@ -1503,7 +1532,7 @@ function promptStats(opts) {
             COALESCE(s.outcomes,
               (SELECT COUNT(*) FROM corrections c WHERE c.session_id = ps.session_id)
               + (SELECT COUNT(*) FROM observations o WHERE o.session_id = ps.session_id
-                   AND o.digest LIKE 'FAIL %')) AS bad
+                   AND o.digest LIKE ${FAIL_LIKE})) AS bad
        FROM prompt_signals ps
        LEFT JOIN sessions s ON s.id = ps.session_id
       WHERE ps.created >= datetime('now', ?)${scope}`
@@ -1534,10 +1563,14 @@ function promptStats(opts) {
   return { total, clean: cleanCount, cleanRate, days: Number(days) || 30, team: !!team, authors, signals };
 }
 
+// How long an observation is kept. It was a bare `30` at the one call site, which made "how long
+// does this remember what I did?" a question you answered by reading session-end.js.
+const OBSERVATION_DAYS = 30;
+
 function pruneObservations(days) { // observations are session fuel, not knowledge — they expire
   // `days || 30` would turn an explicit 0 into 30, because 0 is falsy — so "prune everything"
   // silently became "prune nothing recent". Check for absence, not for falsiness.
-  const keep = days == null || Number.isNaN(Number(days)) ? 30 : Number(days);
+  const keep = days == null || Number.isNaN(Number(days)) ? OBSERVATION_DAYS : Number(days);
   // Sign has to be built, not string-concatenated: '-' + -1 yields '--1 days', which SQLite
   // ignores silently, and the prune then deletes nothing while reporting success. A negative
   // window means "everything, including rows written this second" — which is also the only
@@ -1547,6 +1580,28 @@ function pruneObservations(days) { // observations are session fuel, not knowled
     .run(cutoff).changes;
   // prompt signals expire on the same clock and for the same reason
   db().prepare("DELETE FROM prompt_signals WHERE created < datetime('now', ?)").run(cutoff);
+  return n;
+}
+
+// A distilled memory nobody ever recalled, months after a model wrote it, is not knowledge — it is
+// a guess that outlived its session. Decay already sinks it in the ranking; this removes it, so it
+// stops costing a row in every scan and stops being something a brief could still surface on a
+// quiet day.
+//
+// Deliberately narrow, because deleting knowledge is the one irreversible thing here:
+// `provenance = 'distilled'` only (a person's memory and a teammate's import are never touched),
+// `uses = 0` only (recalled even once means someone found it useful), and older than the window.
+const STALE_DISTILLED_DAYS = 90;
+function pruneStale(days) {
+  const keep = days == null || Number.isNaN(Number(days)) ? STALE_DISTILLED_DAYS : Number(days);
+  const cutoff = (keep < 0 ? '+' : '-') + Math.abs(keep) + ' days';
+  let n = 0;
+  for (const d of [db(), userDb()]) {
+    try {
+      n += d.prepare("DELETE FROM memories WHERE provenance = 'distilled'"
+        + " AND COALESCE(uses, 0) = 0 AND created < datetime('now', ?)").run(cutoff).changes;
+    } catch (err) { log('pruneStale', err); }
+  }
   return n;
 }
 
@@ -1682,7 +1737,7 @@ function sessionDigest(id, opts) {
   if (!s) return { text: 'no session found', page: 1, pages: 1, total: 0 };
 
   const total = db().prepare('SELECT COUNT(*) AS n FROM observations WHERE session_id = ?').get(s.id).n;
-  const fails = db().prepare("SELECT COUNT(*) AS n FROM observations WHERE session_id = ? AND digest LIKE 'FAIL %'").get(s.id).n;
+  const fails = db().prepare(`SELECT COUNT(*) AS n FROM observations WHERE session_id = ? AND digest LIKE ${FAIL_LIKE}`).get(s.id).n;
   const corr = corrections({ sessionId: s.id, limit: 200 });
 
   // the tail is the last N by id; everything before it is the body that gets collapsed
@@ -1704,7 +1759,7 @@ function sessionDigest(id, opts) {
     blocks.push('## Corrections\n' + corr.map((c) => '- [' + c.signal + '] ' + String(c.message).replace(/\s+/g, ' ').slice(0, 200)).join('\n'));
   }
   const failRows = db().prepare(
-    "SELECT tool, target, digest FROM observations WHERE session_id = ? AND digest LIKE 'FAIL %' AND id < ? ORDER BY id"
+    `SELECT tool, target, digest FROM observations WHERE session_id = ? AND digest LIKE ${FAIL_LIKE} AND id < ? ORDER BY id`
   ).all(s.id, tailCut);
   if (failRows.length) {
     blocks.push('## Failures (verbatim — this is the evidence)\n'
@@ -1712,7 +1767,7 @@ function sessionDigest(id, opts) {
   }
   const routine = db().prepare(
     "SELECT tool, COALESCE(NULLIF(target,''), substr(digest,1,60)) AS what, COUNT(*) AS n, MAX(id) AS last"
-    + " FROM observations WHERE session_id = ? AND id < ? AND digest NOT LIKE 'FAIL %'"
+    + ` FROM observations WHERE session_id = ? AND id < ? AND digest NOT LIKE ${FAIL_LIKE}`
     + ' GROUP BY tool, what ORDER BY last'
   ).all(s.id, tailCut);
   if (routine.length) {
@@ -1944,7 +1999,7 @@ function seedExport(file, opts) {
         COALESCE(outcomes, 0)
         + (SELECT COUNT(*) FROM corrections c WHERE c.session_id = sessions.id)
         + (SELECT COUNT(*) FROM observations o WHERE o.session_id = sessions.id
-             AND o.digest LIKE 'FAIL %') AS outcomes
+             AND o.digest LIKE ${FAIL_LIKE}) AS outcomes
        FROM sessions
        WHERE ended IS NOT NULL`;
     const sp = [];
@@ -2145,19 +2200,6 @@ function seedImport(file, dir) {
   return { ...c, encrypted };
 }
 
-// Keeps an existing seed current on /compact, /clear and after a commit. Never creates the
-// file — running /handoff once is the opt-in — and never touches git state.
-function autoSeed(cwd) {
-  if (!optOn('seed_auto', 'on')) return null;
-  const dir = String(cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd());
-  const plain = path.join(dir, '.ai-coach', 'team-seed.jsonl');
-  const enc = plain + '.enc';
-  const target = fs.existsSync(enc) ? enc : (fs.existsSync(plain) ? plain : null);
-  if (!target) return null;
-  useProject(dir);
-  const r = seedExport(target, { dir, encrypt: target === enc });
-  return { file: path.basename(target), ...r };
-}
 
 // ---------- CLI ----------
 
@@ -2383,12 +2425,6 @@ function dispatch(cmd, a, flagValue) {
       if (r.seed > SEED_FORMAT) console.log('  this seed is format ' + r.seed + ', newer than this engine — upgrade ai-coach');
       break;
     }
-    case 'auto-seed': {
-      const r = autoSeed(a[0]);
-      console.log(r ? `refreshed ${r.file}: ${r.memories} memories / ${r.sessions} sessions${r.encrypted ? ' (encrypted)' : ''}`
-        : 'no seed file in this project — run /handoff once to opt in');
-      break;
-    }
     case 'name': {
       // This read a[0] as a SESSION ID while every caller passed a label, so it updated 0 rows
       // and printed success anyway. A skill cannot see its own session id — resolve it here.
@@ -2600,7 +2636,7 @@ function dispatch(cmd, a, flagValue) {
     default:
       console.log('usage: engine.js <init|add|forget|search|brief|stats|session-start|session-end|name|observe|prune|'
         + 'debrief-publish|debriefs|debrief-show|session-digest|'
-        + 'seed-export|seed-import|auto-seed|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|'
+        + 'seed-export|seed-import|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|'
         + 'prompt-stats|prompt-check|injection-scan|finding-add|finding-update|findings|partners-seen>');
   }
 }
@@ -2612,11 +2648,11 @@ module.exports = {
   correction, corrections, correctionSignal, markCorrectionsRecorded,
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,
   safeRead, strings, injectionScan, INJECTION_MARKERS, findingAdd, findingUpdate, findingList,
-  seedExport, seedImport, autoSeed, project, repo, projectDecl, projectFile, registerRepo,
+  seedExport, seedImport, project, repo, projectDecl, projectFile, registerRepo,
   repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn, optResolve, SETTINGS,
   saveSettings, savedSettings, briefChars, trustDefault, SETTINGS_PATH,
   BRIEF_CHARS_DEFAULT, BRIEF_CHARS_MIN, BRIEF_CHARS_MAX, DEFAULT_CONFIDENCE, SEED_FORMAT,
-  INJECTION_SCAN_CAP,
+  INJECTION_SCAN_CAP, FAIL_PREFIX, INJ_PREFIX, pruneStale, OBSERVATION_DAYS, STALE_DISTILLED_DAYS,
   DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, PARTNERS_SEEN, author, username,
   task, taskSlug, roster, roleOf, setTrust, trustList, trustLevel,
   ensureAuthor, authorMap, authorName, whoLabel, isHeld, effConfidence, notHeldSql, HELD_CONFIDENCE,

@@ -8,7 +8,7 @@
   "license": "MIT",
   "keywords": ["research", "ingest", "verification", "sources", "citations"],
   "dependencies": [
-    { "name": "ai-coach-core", "version": "^1.4.0" },
+    { "name": "ai-coach-core", "version": "^1.5.0" },
     { "name": "security-coach", "version": "^1.1.0" }
   ]
 }

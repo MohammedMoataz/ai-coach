@@ -73,8 +73,15 @@ XML comment is the overwrite marker, same rule as every generated file here.
 slugs for ids so a diff says which box moved.
 
 **There is no auto-layout, so do not invent coordinates.** Boxes are `160×60`, columns step `240`
-(x = 80, 320, 560, 800), rows step `120` (y = 80, 200, 320, 440), one process stage per column and
-at most six columns. Past that it is two diagrams. Styles worth knowing: actor
+(x = 80, 320, 560, 800), rows step `120` (y = 80, 200, 320, 440), one process stage per column, and
+**at most 6 columns × 5 rows — more than 30 boxes is two diagrams**, split by area.
+
+<!-- These five numbers are duplicated in investigation-coach/skills/map/references/drawio.md and
+     checked against it by .github/check-manifests.js. A plugin cannot read a sibling plugin's
+     files, so the copy is forced; the check is what stops the two copies drifting, which they
+     already had — this file said "at most six columns" while the other capped the rows too. -->
+
+Styles worth knowing: actor
 `shape=umlActor;verticalLabelPosition=bottom;html=1;`, datastore
 `shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;`, manual or `NOT IN CODE` step
 `rounded=0;whiteSpace=wrap;html=1;dashed=1;`, and an unproven edge dashed and grey

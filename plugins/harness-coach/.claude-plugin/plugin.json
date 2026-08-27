@@ -8,6 +8,6 @@
   "license": "MIT",
   "keywords": ["tools", "setup", "partners", "onboarding"],
   "dependencies": [
-    { "name": "ai-coach-core", "version": "^1.4.0" }
+    { "name": "ai-coach-core", "version": "^1.5.0" }
   ]
 }

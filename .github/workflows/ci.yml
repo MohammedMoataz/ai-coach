@@ -4,6 +4,17 @@ on:
   push:
   pull_request:
 
+# Read-only by default. A workflow that can write to the repository is a workflow an injected
+# dependency can write to the repository with, and nothing here needs more than checkout.
+permissions:
+  contents: read
+
+# A second push to the same branch cancels the first: the older run is answering a question about
+# code nobody is looking at any more.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     strategy:
@@ -20,6 +31,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      # FTS5 is the one build-level assumption every search here rests on, and it was only ever
+      # checked implicitly — by the test suite failing somewhere further in, with an error that
+      # named a query rather than the missing feature. Assert it first, and say what is wrong.
+      - name: FTS5 is present in this Node's SQLite
+        shell: bash
+        run: |
+          node -e "
+            const { DatabaseSync } = require('node:sqlite');
+            const db = new DatabaseSync(':memory:');
+            try { db.exec(\"CREATE VIRTUAL TABLE t USING fts5(x)\"); }
+            catch (err) {
+              console.error('This Node build has node:sqlite WITHOUT FTS5 — every search in AI Coach depends on it.');
+              console.error(process.version + ': ' + err.message);
+              process.exit(1);
+            }
+            console.log('FTS5 available on ' + process.version);
+          "
       - run: node plugins/ai-coach-core/hooks/engine.test.js
       - run: node plugins/ai-coach-core/hooks/hooks.test.js
       - run: node plugins/atlas-coach/tools/ingest.test.js
@@ -31,4 +59,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+      # Manifests, frontmatter, versions, and the ENGINE verbs every skill calls — the checker is
+      # the lint, and it has its own test so a broken checker cannot pass by finding nothing.
+      - run: node .github/check-manifests.test.js
       - run: node .github/check-manifests.js
