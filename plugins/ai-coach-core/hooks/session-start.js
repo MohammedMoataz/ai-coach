@@ -45,6 +45,16 @@ process.stdin.on('end', () => {
     const cap = engine.briefChars(); // the setting, clamped to the range plugin.json declares
     const brief = engine.brief(compacted ? Math.min(1000, Math.floor(cap / 4)) : cap, data.cwd);
     if (brief.trim()) out.push('## AI Coach brief\n' + brief);
+    // After a compaction, hand back the working state PreCompact wrote down. The brief above is
+    // memory — durable facts — and deliberately not this: which files this session was in and what
+    // broke ten minutes ago is exactly what a summary drops and what the next turn needs.
+    // Read-and-delete, so it belongs to this one restart.
+    if (compacted) {
+      try {
+        const snap = engine.takeSnapshot(data.session_id);
+        if (snap) out.push(snap);
+      } catch { /* continuity is a bonus, never a reason to fail a session start */ }
+    }
     // The nudges below are onboarding, not continuity — after a compact they are pure noise.
     if (!compacted) {
       // teammate seed committed in this repo? point at it — deterministic, zero tokens

@@ -1408,6 +1408,71 @@ function sessionActivity(id, maxRows) {
     .all(id, maxRows || 40).reverse();
   return { session: s, observations: obs };
 }
+// ---------- compaction snapshot ----------
+// Compaction summarizes a session's context away, and what it discards first is the boring
+// continuity nobody would think to keep: which files this session has been in, what broke, what is
+// still open. The brief that fires afterwards is memory — durable facts — and cannot substitute,
+// because none of this is durable enough to be a memory and all of it is needed ten seconds later.
+//
+// Deterministic and cheap: this is rows the engine already has, formatted. No model call, so it
+// cannot fail, cost anything, or be wrong in an interesting way. A file rather than a table,
+// because the whole point is that it is scratch — written on PreCompact, read once by the
+// SessionStart that follows, and deleted as it is read.
+const SNAPSHOT_DIR = path.join(ROOT, 'snapshots');
+const SNAPSHOT_FILES = 8;
+function snapshotPath(sessionId) {
+  const safe = String(sessionId || 'unknown').replace(/[^\w.-]/g, '_').slice(0, 120);
+  return path.join(SNAPSHOT_DIR, safe + '.md');
+}
+function compactSnapshot(sessionId, cwd) {
+  if (cwd) useProject(cwd);
+  const lines = [];
+  const t = task(null, cwd);
+  if (t) lines.push('- branch: `' + t + '`');
+  const act = sessionActivity(sessionId, 60);
+  // Files, most recently touched first, deduped: "where was I" in one line each.
+  const seen = new Set();
+  for (const o of act.observations.slice().reverse()) {
+    const target = String(o.target || '').trim();
+    if (!target || seen.has(target)) continue;
+    seen.add(target);
+    if (seen.size > SNAPSHOT_FILES) break;
+  }
+  if (seen.size) lines.push('- files this session touched: ' + [...seen].map((f) => '`' + f + '`').join(', '));
+  const fails = act.observations.filter((o) => String(o.digest || '').startsWith(FAIL_PREFIX));
+  if (fails.length) {
+    lines.push('- last failure: ' + String(fails[fails.length - 1].digest).slice(FAIL_PREFIX.length, 200));
+  }
+  try {
+    const open = corrections({ unrecordedOnly: true, limit: 3 });
+    if (open.length) {
+      lines.push('- open corrections: ' + open.map((c) => '#' + c.id + ' ' + String(c.message).replace(/\s+/g, ' ').slice(0, 60)).join(' · '));
+    }
+  } catch (err) { log('compactSnapshot.corrections', err); }
+  if (!lines.length) return null;
+  return ['## Before this was compacted', '',
+    'Working state the summary above may have dropped — not memory, just where you were:', '',
+    ...lines].join('\n');
+}
+function writeSnapshot(sessionId, cwd) {
+  const text = compactSnapshot(sessionId, cwd);
+  if (!text) return null;
+  try {
+    fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+    fs.writeFileSync(snapshotPath(sessionId), text);
+    return text;
+  } catch (err) { log('writeSnapshot', err); return null; }
+}
+// Read-and-delete: a snapshot is for the one session start that follows the compaction that wrote
+// it. Left behind, it would reappear on a resume days later and describe a session nobody is in.
+function takeSnapshot(sessionId) {
+  const f = snapshotPath(sessionId);
+  let text = null;
+  try { text = safeRead(f, 64 * 1024); } catch { return null; }
+  try { fs.rmSync(f, { force: true }); } catch { /* it has been read; a stale file is harmless */ }
+  return text && text.trim() ? text : null;
+}
+
 // ---------- prompt signals ----------
 // Deterministic detectors over the prompt string. They live here rather than in the hook so the
 // hook, the stats query and the tests all read one table, and so a rule can be unit-tested without
@@ -2653,6 +2718,7 @@ module.exports = {
   saveSettings, savedSettings, briefChars, trustDefault, SETTINGS_PATH,
   BRIEF_CHARS_DEFAULT, BRIEF_CHARS_MIN, BRIEF_CHARS_MAX, DEFAULT_CONFIDENCE, SEED_FORMAT,
   INJECTION_SCAN_CAP, FAIL_PREFIX, INJ_PREFIX, pruneStale, OBSERVATION_DAYS, STALE_DISTILLED_DAYS,
+  compactSnapshot, writeSnapshot, takeSnapshot, SNAPSHOT_DIR,
   DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, PARTNERS_SEEN, author, username,
   task, taskSlug, roster, roleOf, setTrust, trustList, trustLevel,
   ensureAuthor, authorMap, authorName, whoLabel, isHeld, effConfidence, notHeldSql, HELD_CONFIDENCE,

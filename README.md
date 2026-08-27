@@ -45,7 +45,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **memory-coach** | Skills only: `recall` (search, and `--health`), `debrief`, `handoff`, `roster`. |
 | **prompt-coach** | Skills only: `prompt`, `prompt-stats`, `dispatch`. |
 | **security-coach** | Skills only: `scan`, `audit`, `triage`. |
-| **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
+| **harness-coach** | Skills only: `partners`, `context` — what is installed next to the coach, and what is filling this session. |
 | **investigation-coach** | Skills only: `onboard` (`--tour` runs all three), `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
 | **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus the marketplace's first two agents, `researcher` and `verifier`, reusable from any session. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the vault), `feature` — document the business, then specify what comes next. |
@@ -54,9 +54,9 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
 [What you drive](#what-you-drive).
 
-**~1,770 always-on tokens** for the whole product as of v1.6.0 — core and the bundle are 0,
+**~1,870 always-on tokens** for the whole product as of v1.7.0 — core and the bundle are 0,
 atlas-coach ~510 (four skills plus two agents), memory-coach ~320, investigation-coach ~260,
-prompt-coach ~200, security-coach ~200, strategy-coach ~210, harness-coach ~70. What is always on
+prompt-coach ~200, security-coach ~200, strategy-coach ~210, harness-coach ~170 (two skills). What is always on
 is the descriptions, and nothing else: every skill body, every reference file and every agent
 prompt is paid only when it runs.
 
@@ -65,7 +65,7 @@ That number is counted from the descriptions themselves, calibrated against what
 marketplace's published copy is what the CLI can measure. Run `claude plugin details <plugin>`
 after a release for the authoritative figure. v1.6.0 went from 23 skills to 20 and from ~1,880
 tokens to ~1,770, while adding routing exclusions ("not for X — see Y") to the descriptions most
-likely to be confused for each other.
+likely to be confused for each other; v1.7.0 added one skill and ~100 tokens back.
 
 ## What happens on its own
 
@@ -93,6 +93,12 @@ likely to be confused for each other.
 - **Guarded reads of repo files**: everything the engine reads from `.ai-coach/` goes through a
   symlink-refusing, size-capped read — a planted link to `~/.ssh/id_rsa` cannot flow into context.
 
+- **A snapshot before compaction**: which files this session has been in, what broke last, what is
+  still open. A brief is memory — durable facts — and that is deliberately not this. Handed back
+  once by the session start that follows the compaction, then deleted. No model call.
+- **One partners note, once**: a single session-start line pointing at `/harness-coach:partners`,
+  gone forever after the first run. Nothing ever installs without your pick.
+
 **What the guard and the spotlight do not cover, stated plainly.** Both are wired to named tools:
 the guard to `Bash`, `WebFetch`, `Read`, `Write`, `Edit` and `NotebookEdit`, the spotlight to
 `WebFetch`, `WebSearch` and `Read`. An MCP server's tools are neither. A credential handed to an
@@ -101,15 +107,14 @@ so a matcher here would be a list that is wrong on everyone else's machine. Two 
 they are the honest version rather than a fix: prefer the built-in tools for anything carrying a
 secret, and treat `/security-coach:scan` as the on-demand check for content that arrived some other
 way.
-- **One partners note, once**: a single session-start line pointing at `/harness-coach:partners`,
-  gone forever after the first run. Nothing ever installs without your pick.
 
 ## What you drive
 
 `/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` ·
 `/memory-coach:roster` · `/prompt-coach:prompt` · `/prompt-coach:prompt-stats` ·
 `/prompt-coach:dispatch` · `/security-coach:scan` · `/security-coach:audit` ·
-`/security-coach:triage` · `/harness-coach:partners` · `/investigation-coach:onboard` ·
+`/security-coach:triage` · `/harness-coach:partners` · `/harness-coach:context` ·
+`/investigation-coach:onboard` ·
 `/investigation-coach:map` · `/investigation-coach:study` · `/atlas-coach:research` ·
 `/atlas-coach:ingest` · `/atlas-coach:market` · `/atlas-coach:translate` ·
 `/strategy-coach:blueprint` · `/strategy-coach:feature`

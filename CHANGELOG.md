@@ -3,6 +3,43 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.7.0 — Context economics (2026-08-27)
+
+Context is the one resource a session spends continuously, that everything draws on, and that
+nothing reports until it runs out. Then the session compacts, the thread gets vaguer, and the model
+gets blamed. Nothing in this marketplace owned that — it was the largest gap in the suite and the
+one with no obvious home, which is usually the same thing.
+
+**ai-coach-core 1.6.0 · harness-coach 1.1.0 · ai-coach 1.7.0**
+
+### `/harness-coach:context`
+
+Itemizes the bill. It reads the live `/context` breakdown rather than estimating it, names the
+largest line instead of the easiest one — for most sessions that is tool results, not conversation
+— and answers the question people actually have, which is whether to `/clear` or let it compact.
+The table is four rows because there are four real situations, and the underused answer is `/clear`
+when the next task is unrelated to this one.
+
+`--plugins` itemizes always-on cost per installed plugin via `claude plugin details`, worst first,
+including this marketplace's own. A plugin whose description you cannot connect to work you do is a
+plugin to uninstall, and this suite is not exempt from that test.
+
+It never runs `/clear` itself. That discards the user's session, so it says when it is right and
+lets them decide.
+
+### The working state a summary drops
+
+Compaction re-fires SessionStart, and since v1.4.0 that hands back a quarter-size brief. But a
+brief is *memory* — durable facts, ranked. What compaction actually discards first is the boring
+continuity nobody would think to keep: which files this session has been in, what broke ten minutes
+ago, what is still open. None of that is durable enough to be a memory, and all of it is needed on
+the very next turn.
+
+A new `PreCompact` hook writes it down, and the SessionStart that follows hands it back — once, then
+deletes it, because a snapshot that survives belongs to a session nobody is in any more. It is rows
+the engine already has, formatted: no model call, so it cannot fail, cost anything, or be wrong in
+an interesting way.
+
 ## v1.6.1 — Repo trust (2026-08-27)
 
 The tests were good at what they covered and silent about what they did not, and the gaps were not

@@ -430,4 +430,39 @@ assert.ok(r.stdout.includes('partners nudge dismissed'), 'partners-seen confirms
 r = run('session-start.js', { session_id: 'pn3', cwd: '/demo/proj' });
 assert.ok(!r.stdout.includes('/harness-coach:partners'), 'marker kills the nudge for good');
 
+
+// ---------- PreCompact: the working state a summary drops, handed back once ----------
+// Compaction re-fires SessionStart, which gets a quarter-size brief — durable memory. What it
+// cannot give back is where the session actually was, because that is not memory. This is.
+{
+  const cProj = path.join(tmp, 'compactproj');
+  fs.mkdirSync(cProj, { recursive: true });
+  run('session-start.js', { session_id: 'compact-1', cwd: cProj, source: 'startup' });
+  run('observe.js', { session_id: 'compact-1', cwd: cProj, tool_name: 'Edit',
+    tool_input: { file_path: path.join(cProj, 'src', 'orders', 'total.ts') } });
+  run('observe.js', { session_id: 'compact-1', cwd: cProj, tool_name: 'Bash',
+    hook_event_name: 'PostToolUseFailure', tool_input: { command: 'npm test -- rounding' } });
+
+  let r = run('precompact.js', { session_id: 'compact-1', cwd: cProj });
+  assert.strictEqual(r.status, 0, 'precompact exits 0');
+  assert.strictEqual(r.stdout.trim(), '', 'and says nothing to the user: ' + r.stdout);
+
+  r = run('session-start.js', { session_id: 'compact-1', cwd: cProj, source: 'compact' });
+  const ctx = JSON.parse(r.stdout || '{}').hookSpecificOutput.additionalContext;
+  assert.match(ctx, /Before this was compacted/, 'the snapshot comes back after a compaction: ' + ctx);
+  assert.match(ctx, /total\.ts/, 'including where the session was working');
+  assert.match(ctx, /npm test -- rounding/, 'and what had just broken');
+
+  // Read-and-delete: a second start must not replay a snapshot for a compaction that is over.
+  r = run('session-start.js', { session_id: 'compact-1', cwd: cProj, source: 'compact' });
+  const again = JSON.parse(r.stdout || '{}').hookSpecificOutput?.additionalContext || '';
+  assert.ok(!again.includes('Before this was compacted'), 'the snapshot is taken once, not replayed');
+
+  // A normal start never carries one, whatever is on disk.
+  run('precompact.js', { session_id: 'compact-1', cwd: cProj });
+  r = run('session-start.js', { session_id: 'compact-1', cwd: cProj, source: 'startup' });
+  const fresh = JSON.parse(r.stdout || '{}').hookSpecificOutput?.additionalContext || '';
+  assert.ok(!fresh.includes('Before this was compacted'), 'a fresh session is not a resumed one');
+}
+
 console.log('hooks.test.js: ALL PASS');
