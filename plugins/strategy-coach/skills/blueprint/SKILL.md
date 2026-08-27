@@ -81,11 +81,14 @@ itself at session start — open a new session and try again.
    a board, but only if Miro is already connected — check **passively**, never call an authenticate
    tool, and a missing Miro is one line in the report rather than a failed run. Load
    `references/visual.md` before either.
-8. **Score your own draft, then revise once.** Before showing anything, grade the notes against the
-   five dimensions in `references/review.md` — 1 to 4, each with a one-line justification. Any
+8. **Get the draft scored, then revise once.** Before showing anything, the notes are graded
+   against the five dimensions in `references/review.md` — 1 to 4, each with a one-line
+   justification. When analysis-coach is installed, hand the notes and the rubric to its `critic`
+   agent: a scorer that has not seen the reasoning behind the notes cannot be anchored by it,
+   which is what makes the score worth having. Without it, grade them yourself. Either way: any
    dimension below 3 gets one revision pass targeted at that dimension, then you stop. This is the
-   step that separates "the model wrote some notes" from the measured version of this workflow, and
-   the reason it is a numbered step rather than advice is that a self-check nobody scored is a
+   step that separates "the model wrote some notes" from the measured version of this workflow,
+   and the reason it is a numbered step rather than advice is that a self-check nobody scored is a
    self-check that always passes.
 9. **Report, including the holes.** What was written, the scores and what the revision pass
    changed, what the user still needs to answer, and what you could not determine. Then
