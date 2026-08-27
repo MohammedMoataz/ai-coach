@@ -54,7 +54,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus three agents: `researcher`, `verifier`, and `reader`, which keeps a 200-page PDF out of your context. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the docs vault), `feature` — document the business, then specify what comes next. Inward by design; looking outward is atlas-coach. |
 | **analysis-coach** | `elicit`, `insight`, `story` — the business-analyst half — plus the `critic` agent: fresh-context review that has not seen the reasoning it grades. |
-| **ai-coach** | The bundle. Install this one. |
+| **ai-coach** | The bundle. Install this one. Also ships the three cross-plugin commands: `/ai-coach:start`, `/ai-coach:wrap`, `/ai-coach:sitrep`. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
 [What you drive](#what-you-drive).
@@ -128,7 +128,15 @@ that arrived some other way.
 `/atlas-coach:translate` · `/strategy-coach:blueprint` · `/strategy-coach:feature` ·
 `/analysis-coach:elicit` · `/analysis-coach:insight` · `/analysis-coach:story`
 
-Two of the twenty-four fire on their own. `recall`, so Claude reaches for memory unprompted when a
+Three commands ship in the bundle, because only the bundle knows all nine coaches exist:
+`/ai-coach:start` (day one — identity, project, then the onboarding tour, each step keeping its
+own questions), `/ai-coach:wrap` (debrief then handoff, the ordering the docs already require,
+with every gate intact), and `/ai-coach:sitrep` (the morning read: memory health, the context
+bill, open findings, unrecorded failures — read-only end to end, worst first). Commands are
+user-only and sequence skills rather than replacing them; a step whose plugin is not installed is
+skipped by name, never a failure.
+
+Two of the twenty-four skills fire on their own. `recall`, so Claude reaches for memory unprompted when a
 question matches prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a
 follow-up — advice that has to be remembered before it applies is advice that never applies.
 Everything else waits for you: a skill with side effects should run when you say so, and neither

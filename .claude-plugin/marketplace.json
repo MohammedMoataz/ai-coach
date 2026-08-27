@@ -6,7 +6,7 @@
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "plugins": [
     {
       "name": "ai-coach-core",
@@ -117,7 +117,7 @@
     {
       "name": "ai-coach",
       "source": "./plugins/ai-coach",
-      "description": "Install this one. Pulls in the engine and every coach released so far.",
+      "description": "Install this one. Pulls in the engine and every coach released so far, plus /start, /wrap and /sitrep — the sequences that span the coaches, typed once.",
       "category": "productivity",
       "tags": [
         "bundle",

@@ -3,6 +3,56 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.10.0 — Three commands (2026-08-28)
+
+Twenty-two of the twenty-four skills are user-only, so almost everything here was already a
+command with a better body. What nothing owned was the *sequences* — the chains that span
+plugins, documented in prose and typed as two, three, four namespaced invocations by exactly the
+people least likely to know the names. Chains inside one plugin became flags releases ago
+(`--tour`, `--triage`, `--scaffold-only`); the cross-plugin ones had no home, because no coach
+can own another coach's skills. One plugin knows all nine exist: the bundle, which until now
+shipped nothing.
+
+**ai-coach 1.10.0**
+
+### /ai-coach:wrap
+
+`handoff`'s own documentation orders the ending of a piece of work — debrief first, "or the seed
+carries attribution without the reasoning behind it". That ordering is now typed once. It adds no
+behaviour: the debrief draft is still shown before publishing, `whoami` still stops the export
+over a missing identity, declining either gate is an outcome the command reports rather than
+argues with, and it closes by printing the one command it will never run for you —
+`git add .ai-coach/team-seed.jsonl && git commit` — because knowledge enters git when a person
+decides it does.
+
+### /ai-coach:start
+
+Day one was four invocations across three plugins in a documented order: who you are, what the
+product is, the onboarding tour, optionally the business blueprint. The command is the sequence
+and nothing else — every step keeps its own questions, the cost is stated before anything runs,
+`blueprint` stays behind `--with-blueprint` because defaulting into it would double the bill
+uninvited, and a repo that already has current docs shrinks the whole thing to identity plus a
+pointer.
+
+### /ai-coach:sitrep
+
+The morning read: memory health, the context bill, open security findings oldest-first, and the
+`ENGINE stats` line verbatim. One page, worst first — ordered by the same priority ladder the
+coach line uses, because it is the same judgement. **Read-only is absolute**: every
+recommendation is a command the user could paste, never an action taken, and two sections that
+disagree are reported as their own finding rather than papered over.
+
+### The bundle's claim, restated honestly
+
+"Ships no components, costs nothing at session start" was the bundle's one line, and it changes:
+it ships three commands now. The cost claim survives because commands are user-only — no command
+description enters the model's context — and the checker enforces that rather than trusting it:
+`disable-model-invocation: true` is required on every command, along with frontmatter, the
+description ceiling, and a partial-install line, since a command that sequences three plugins has
+to say what happens when one is missing. The checker also resolves `/plugin:name` references
+against commands now, not just skills — it caught its own gap the first time a command referenced
+another one.
+
 ## v1.9.0 — Four more agents (2026-08-27)
 
 The marketplace had two agents and one argument for them: some work is better done by a context
