@@ -4,7 +4,8 @@
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
 One focus per release: memory, prompts, security, your toolbox, onboarding, the world outside
-the repo, the context bill, and the analysis that decides what to build.</p>
+the repo, the context bill, the analysis that decides what to build — then the agents that read
+so your session doesn't pay for it, and the commands that tie the coaches together.</p>
 
 ---
 
@@ -36,8 +37,9 @@ claude plugin marketplace add MohammedMoataz/ai-coach
 claude plugin install ai-coach@ai-coach
 ```
 
-That one command installs the engine and every coach released so far. The bundle itself ships no
-components, so it costs nothing at session start.
+That one command installs the engine and every coach released so far, plus the three cross-plugin
+commands. The bundle's own components are user-only, so it still adds nothing to the model's
+context at session start.
 
 Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-coach-core` with it.
 
