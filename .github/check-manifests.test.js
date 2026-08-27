@@ -60,8 +60,12 @@ const versionOf = (dir, plugin) =>
 {
   const dir = fixture('floor-ahead');
   const file = path.join(dir, 'plugins', 'memory-coach', '.claude-plugin', 'plugin.json');
-  const core = versionOf(dir, 'ai-coach-core');
-  edit(file, '"version": "^' + core + '"', '"version": "^' + core.split('.')[0] + '.99.9"');
+  // Read the floor that is actually declared — a plugin may pin an older minor than the one that
+  // ships, which is legitimate, and a test that assumed otherwise would break on every core bump.
+  const declared = (JSON.parse(fs.readFileSync(file, 'utf8')).dependencies || [])
+    .find((d) => d.name === 'ai-coach-core').version;
+  edit(file, '"version": "' + declared + '"',
+    '"version": "^' + declared.replace(/^[\^~]/, '').split('.')[0] + '.99.9"');
   const r = run(dir);
   assert.ok(!r.ok, 'an unsatisfiable floor is caught: ' + r.out);
   assert.match(r.out, /ahead of/, 'and explained: ' + r.out);
