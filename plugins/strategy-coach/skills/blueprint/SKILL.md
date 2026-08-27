@@ -56,7 +56,10 @@ itself at session start — open a new session and try again.
 3. **Scope, and say what it costs.** Default: actors, glossary, and the three processes that carry
    the most business weight. `--feature <name>`: one process only. `--full`: every process found —
    state that this is the expensive one before starting it. Never run more than 8 subagents
-   concurrently.
+   concurrently. For the code-tracing legs, when investigation-coach is installed its `scout`
+   agent is the right subagent — evidence-cited briefs, the reading isolated from this session;
+   without it, any read-only subagent under the same contract (every claim `file:line` or
+   `INFERRED`, capped, ends with what it could not determine).
 4. **Ask what the code cannot tell you.** Actors and their goals, the rules with no enforcement in
    code (an approval someone does in email), what happens on the unhappy path, and which of these
    processes actually matters. Prefer a few sharp questions to a survey: what has been tried and

@@ -10,7 +10,7 @@ An architecture doc is a set of claims about who calls whom. This skill traces t
 the code — every edge carries `file:line` evidence or is marked **INFERRED** — then renders one
 model three ways: a shareable artifact page, markdown diagrams that render on GitHub, and an
 Obsidian canvas. It reads a lot of code: expect a real token spend; scope with `--feature` to
-bound it. Tracing goes to Explore subagents — keep conclusions, not file dumps.
+bound it. Tracing goes to `scout` agents — keep conclusions, not file dumps.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
@@ -30,7 +30,9 @@ do, and the reason not to reach for a subscription whiteboard instead.
 
 ## Steps
 
-1. **Trace** via Explore subagents: services, components, and the call/data edges between them.
+1. **Trace** via `scout` agents (shipped with this plugin — evidence-cited briefs, one per area;
+   a harness without custom agents falls back to its generic read-only subagent under the same
+   contract): services, components, and the call/data edges between them.
    `docs/onboarding/stack.md` (written by `/investigation-coach:onboard`) is discovery already
    done — when it exists, take the roots and areas from it and sweep only the edges, one agent per
    area, instead of rediscovering the structure. When it does not, discover the structure in the
