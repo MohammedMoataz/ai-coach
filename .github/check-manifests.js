@@ -171,6 +171,30 @@ for (const name of manifests.keys()) {
   }
 }
 
+// Commands are the user-typed macros. They must stay user-only — the bundle's claim of costing
+// nothing at session start rests on no command description entering the model's context — and a
+// command that sequences skills across plugins has to say what a partial install does.
+let commandCount = 0;
+for (const name of manifests.keys()) {
+  const dir = path.join(root, 'plugins', name, 'commands');
+  if (!fs.existsSync(dir)) continue;
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.md')) continue;
+    commandCount++;
+    const rel = path.posix.join('plugins', name, 'commands', f);
+    const text = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\r\n/g, '\n');
+    const fm = text.startsWith('---\n') ? text.slice(4, text.indexOf('\n---', 4)) : '';
+    check(!!fm, `${rel}: no YAML frontmatter`);
+    const desc = (fm.match(/^description:\s*(.+)$/m) || [])[1] || '';
+    check(!!desc && desc.length <= DESCRIPTION_MAX,
+      `${rel}: description missing or over the ${DESCRIPTION_MAX} ceiling (${desc.length})`);
+    check(/^disable-model-invocation:\s*true$/m.test(fm),
+      `${rel}: commands must be user-only — the bundle's zero-cost claim depends on it`);
+    check(/not installed|missing|skipped/i.test(text),
+      `${rel}: a cross-plugin command must say what a partial install does`);
+  }
+}
+
 eachSkill((plugin, skill, file, text) => {
   skillCount++;
   skillNames.add(plugin + ':' + skill);
@@ -224,9 +248,11 @@ eachSkill((plugin, skill, file, text) => {
       if (entry.isDirectory()) { scan(p); continue; }
       if (!entry.name.endsWith('.md')) continue;
       const text = fs.readFileSync(p, 'utf8');
-      for (const m of text.matchAll(/\/([a-z]+-coach):([a-z][\w-]*)/g)) {
+      for (const m of text.matchAll(/\/([a-z]+(?:-coach)?):([a-z][\w-]*)/g)) {
         const ref = m[1] + ':' + m[2];
         if (skillNames.has(ref)) continue;
+        // A /plugin:name may be a command as well as a skill — the bundle ships those.
+        if (fs.existsSync(path.join(root, 'plugins', m[1], 'commands', m[2] + '.md'))) continue;
         // A sentence that says a skill USED to exist is documentation, not a dangling link.
         const line = text.slice(text.lastIndexOf('\n', m.index) + 1, text.indexOf('\n', m.index));
         if (/\b(was|used to be|absorbed|replaced|retired|merged)\b/i.test(line)) continue;
@@ -266,5 +292,6 @@ if (fail.length) {
   console.error('manifest check FAILED:\n- ' + fail.join('\n- '));
   process.exit(1);
 }
-console.log(`manifest check OK: ${manifests.size} plugins, ${skillCount} skills, ${agentCount} agents — sources, `
-  + 'versions, dependencies, hook scripts, frontmatter, engine verbs and cross-plugin references all resolve');
+console.log(`manifest check OK: ${manifests.size} plugins, ${skillCount} skills, ${agentCount} agents, `
+  + `${commandCount} commands — sources, versions, dependencies, hook scripts, frontmatter, engine verbs `
+  + 'and cross-plugin references all resolve');
