@@ -176,6 +176,19 @@ one to another. An agent is not an approval boundary.
 emails and roles. Whom you trust lives only on your machine, never in the shared file and never in a
 seed.
 
+**A person is stated once.** A memory, a session and a debrief record an email; the name and the
+role are a join away, in one `authors` row per person. The consequence is deliberate: `--role qa`
+means "written by people who are QA now", so correcting a line in `team.md` corrects every row that
+person ever wrote. There is no role history, and that is the trade for having one editable truth.
+
+**Whether you hold a teammate's memory back is not a property of the memory.** It is your current
+trust in its author, so it is worked out as the row is read. Raise someone's trust and everything of
+theirs you already have moves up — no re-import, which was the step everybody forgot.
+
+**One name per session.** Claude Code already names every session and shows it in the status line;
+AI Coach adopts that name at session start and checks again at session end, so a rename in between
+is caught. A name someone typed is never overwritten by a derived one.
+
 **Git is the transport.** `/handoff` writes `.ai-coach/team-seed.jsonl`; commit it and knowledge
 moves with the branch, reviewable in a pull request before it touches anyone's database. Optionally
 AES-256-GCM sealed.
@@ -192,14 +205,63 @@ the databases at a path that never moves.
 
 ## Configuration
 
-Plugin settings on `ai-coach-core`, or the matching `AICOACH_*` env var to override one
-(`coach` → `AICOACH_COACH=off`):
-`brief_chars` (4000) · `coach` (on) · `corrections` (on) · `learn` (on) · `plan_review` (on) ·
-`guard` (on) · `spotlight` (on) · `partners` (on) · `seed_auto` (on) · `default_trust` (`full`).
+**See everything, including what it was originally:**
+
+```bash
+node "$HOME/.ai-coach/bin/engine.js" config          # table: now, default, and who set it
+node "$HOME/.ai-coach/bin/engine.js" config --json   # the same, with descriptions
+```
+
+```
+setting        now    default  set by
+-------------  -----  -------  ------
+brief_chars    1500   4000     env (AICOACH_BRIEF_CHARS)   <- changed
+coach          off    on       plugin (CLAUDE_PLUGIN_OPTION_coach)   <- changed
+corrections    on     on       default
+...
+2 of 10 differ from the default: brief_chars, coach
+```
+
+The `set by` column is the useful part: putting a setting back is a different action depending on
+which of the three sources decided it.
+
+**To change one** — `/plugin` → `ai-coach-core` → the setting. That persists.
+**To override for one shell** — `AICOACH_<KEY>=<value>`, which wins over the plugin setting.
+**To reset one** — clear it in `/plugin`, or unset the env var. There is no "reset all": the
+defaults are what you get when nothing is set anywhere, and `config` shows you exactly what is.
+
+| Setting | Default | What it governs |
+|---|---|---|
+| `brief_chars` | `4000` | Ceiling on the memory injected at session start. Ranking happens before the cap, so raising it surfaces more — it does not change what wins. |
+| `coach` | `on` | The coach line, and hints on vague prompts. **Display only.** |
+| `corrections` | `on` | Whether failures are recorded at all. |
+| `learn` | `on` | One Haiku call at session end distils a summary and up to 3 learnings. |
+| `plan_review` | `on` | In plan mode only: one Haiku call scores the prompt. |
+| `guard` | `on` | Blocks tool calls carrying real credentials. The one hook allowed to stop a call. |
+| `spotlight` | `on` | Injection-marker scan on fetched content. Warn-only, no model call. |
+| `partners` | `on` | The one-time `/harness-coach:partners` note. |
+| `seed_auto` | `on` | Whether `auto-seed` may refresh an existing seed in place. |
+| `default_trust` | `full` | Trust for a teammate you have not rated: `full` or `workspace`. |
 
 `coach` controls the coach *line*; `corrections` controls whether failures are recorded at all.
 They are separate on purpose — silencing a display line should not quietly empty the evidence
 `/prompt-coach:prompt-stats` measures against.
+
+### Environment variables that are not settings
+
+These have no plugin equivalent. Most exist for tests and scripts; the last three are the ones a
+person might reach for.
+
+| Variable | Effect |
+|---|---|
+| `AICOACH_DB` | Path to the user-scope database. Tenants live beside it under `projects/`, so pointing this at a temp file gives you a whole isolated tree. |
+| `AICOACH_LOG` | Where failures append. Defaults to `~/.ai-coach/log.jsonl`. |
+| `AICOACH_INNER` | Set to `1` inside spawned `claude -p` children so hooks do not recurse. |
+| `AICOACH_CLAUDE_BIN` | The `claude` binary to shell out to for the two Haiku calls. |
+| `AICOACH_SEED_KEY` | Passphrase for an encrypted seed, instead of `.ai-coach/seed.key`. |
+| `AICOACH_OFF` | Silences the "your Node is too old" message on stderr. It does not disable anything else. |
+| `AICOACH_AUTHOR` / `AICOACH_USERNAME` / `AICOACH_ROLE` | Override the identity read from git and the roster. |
+| `AICOACH_PROJECT` / `AICOACH_TASK` | Override the resolved project key and the branch a memory files under. |
 
 ## Uninstall
 

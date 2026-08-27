@@ -15,6 +15,26 @@ request before it reaches anyone's database.
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
 
+## First, know who is handing off
+
+`ENGINE whoami` prints your identity and a `missing` list. **If `missing` is not empty, stop and
+ask for what it names, before exporting anything.** A seed is a file other people read: work that
+arrives with no name, no email and no project attached to it is work nobody can ask you about, and
+the moment to notice is now, not after it is committed.
+
+| Missing | Ask for | Then |
+|---|---|---|
+| `email` | their git email | `git config user.email "<email>"` — this is the key everything joins on; without it a memory has no author at all |
+| `username` | their name | `git config user.name "<name>"` |
+| `role` | what they do on this project | `/memory-coach:team register` writes them into `.ai-coach/team.md` |
+| `project name` | what this product is called | a `name:` line in `.ai-coach/project.md` |
+
+Ask for all of them in one question, not four. Never invent any of them, and never register
+someone else on their behalf.
+
+`whoami` also reports `branchOk`. If it carries a message, say it once: memories and sessions file
+under the branch name, so a branch called `my-stuff` hands over work nobody can group later.
+
 ## Hand off — the default
 
 1. `ENGINE seed-export .ai-coach/team-seed.jsonl`
@@ -33,8 +53,10 @@ request before it reaches anyone's database.
    runs this skill and commits it, which is the same rule a debrief follows. If the session's work
    deserves a conclusion, say so: `/memory-coach:debrief` before exporting, or the seed carries
    attribution without the reasoning behind it.
-4. Unnamed session? `ENGINE name "<label>"` first. The label is how a teammate refers to the work,
-   and it is half of every debrief key.
+4. The session already has a name — Claude Code's own, the one in the status line, adopted at
+   session start and re-checked at session end. That label is how a teammate refers to the work and
+   half of every debrief key, so rename the session itself (`/rename`) if it does not describe the
+   work; there is nothing to set here.
 
 ## Pick up — `/handoff import`
 
@@ -58,11 +80,12 @@ write a decrypted copy back into the repo.
 ## Where an imported memory lands
 
 Full-trust memories join your ranked brief like your own. Memories from someone you trust at
-`workspace` level stay on your machine: confidence capped, never auto-injected, never re-exported,
-but findable in `/memory-coach:recall` marked `[workspace]`.
+`workspace` level are **held**: confidence reads capped, never auto-injected, but findable in
+`/memory-coach:recall` marked `[held]`.
 
-Workspace is a holding area, not a penalty box — raise their trust with `/memory-coach:team`,
-re-import, and their memories move up with their confidence restored.
+Holding is a holding area, not a penalty box, and it is not a property of the memory — it is your
+current opinion of its author, worked out every time a row is read. Raise their trust with
+`/memory-coach:team` and everything of theirs you already hold moves up at once. **No re-import.**
 
 ## Rules
 

@@ -20,6 +20,17 @@ CREATE TABLE IF NOT EXISTS projects (
   created TEXT DEFAULT (datetime('now'))
 );
 
+-- Shape-identical to the tenant `authors` table for the same reason `memories` is: one insert
+-- path serves both scopes. In practice it holds one row — you — because a global memory is
+-- yours by definition and no seed ever lands here.
+CREATE TABLE IF NOT EXISTS authors (
+  email    TEXT PRIMARY KEY,
+  username TEXT,
+  role     TEXT,
+  created  TEXT DEFAULT (datetime('now')),
+  updated  TEXT DEFAULT (datetime('now'))
+);
+
 -- Global memories: knowledge that belongs to you rather than to a product. An environment quirk
 -- or a tool trap is worth carrying into every project you open. Shape-identical to the tenant
 -- table so one code path serves both.
@@ -34,11 +45,8 @@ CREATE TABLE IF NOT EXISTS memories (
   project    TEXT,                      -- always NULL here; kept so rows are shape-identical
   repo       TEXT,
   source     TEXT,
-  author     TEXT,
-  username   TEXT,
-  role       TEXT,
+  author     TEXT REFERENCES authors(email),
   task       TEXT,
-  workspace  INTEGER DEFAULT 0,
   created    TEXT DEFAULT (datetime('now')),
   uses       INTEGER DEFAULT 0
 );
@@ -59,3 +67,4 @@ END;
 
 CREATE INDEX IF NOT EXISTS idx_memories_text_key ON memories(text_key);
 CREATE INDEX IF NOT EXISTS idx_memories_created  ON memories(created);
+CREATE INDEX IF NOT EXISTS idx_memories_author   ON memories(author);

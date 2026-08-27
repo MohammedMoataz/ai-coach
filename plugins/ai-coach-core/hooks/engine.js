@@ -59,26 +59,65 @@ function strings(v, out) {
 // schema.sql is CREATE ... IF NOT EXISTS throughout, so a new COLUMN in it is silently
 // ignored on a database that already exists. Every added column must also land here, or
 // upgrading installs keep the old shape and every insert naming the column throws.
+//
+// Columns REMOVED in schema.sql need the mirror treatment for the opposite reason: the file
+// stops creating them, but an existing database still has them, and identity would then live in
+// two places on the same install. So the v2 pass below backfills `authors` out of the columns
+// it is about to remove, and only then drops them.
 function migrate(d, tables) {
-  const has = (t, c) => d.prepare(`PRAGMA table_info(${t})`).all().some((r) => r.name === c);
+  const cols = (t) => { try { return d.prepare(`PRAGMA table_info(${t})`).all().map((r) => r.name); } catch { return []; } };
+  const has = (t, c) => cols(t).includes(c);
   const add = (t, c, decl) => { if (!has(t, c)) d.exec(`ALTER TABLE ${t} ADD COLUMN ${c} ${decl}`); };
-  add('memories', 'username', 'TEXT');
-  add('memories', 'role', 'TEXT');
   add('memories', 'repo', 'TEXT');
   add('memories', 'provenance', "TEXT DEFAULT 'human'");
   add('memories', 'concepts', 'TEXT');
   if (tables !== 'user') {
-    add('sessions', 'username', 'TEXT');
-    add('sessions', 'role', 'TEXT');
     add('sessions', 'name', 'TEXT');
+    add('sessions', 'name_source', "TEXT DEFAULT 'auto'");
     add('sessions', 'repo', 'TEXT');
     add('sessions', 'outcomes', 'INTEGER');
   }
+
+  // ---- v1 -> v2: identity normalizes onto `authors`, and `workspace` becomes derived ----
+  // Backfill first: every name and role currently sitting on a memory, session or debrief is the
+  // only record of who an imported teammate is, and dropping the columns without reading them
+  // would turn every one of them into a bare email address.
+  const owners = tables === 'user' ? ['memories'] : ['memories', 'sessions', 'debriefs'];
+  for (const t of owners) {
+    const c = cols(t);
+    if (!c.includes('author')) continue;
+    // MAX() over TEXT ignores NULLs, so a person who has one named row and ten anonymous ones
+    // still lands with their name. COALESCE then keeps the first non-null found across tables.
+    const un = c.includes('username') ? 'MAX(username)' : 'NULL';
+    const rl = c.includes('role') ? 'MAX(role)' : 'NULL';
+    try {
+      d.exec(`INSERT INTO authors(email, username, role)
+              SELECT lower(author), ${un}, ${rl} FROM ${t}
+              WHERE author IS NOT NULL AND trim(author) <> ''
+              GROUP BY lower(author)
+              ON CONFLICT(email) DO UPDATE SET
+                username = COALESCE(authors.username, excluded.username),
+                role     = COALESCE(authors.role, excluded.role),
+                updated  = datetime('now')`);
+    } catch (err) { log('migrate.authors.' + t, err); }
+  }
+  // DROP COLUMN needs SQLite >= 3.35, which every supported Node ships. Per column, and
+  // per-column try/catch: on a build that refuses, the column simply stays behind unread rather
+  // than the whole open() failing and taking the session's memory with it.
+  const drop = (t, c) => {
+    if (!has(t, c)) return;
+    try { d.exec(`ALTER TABLE ${t} DROP COLUMN ${c}`); } catch (err) { log(`migrate.drop.${t}.${c}`, err); }
+  };
+  for (const c of ['username', 'role', 'workspace']) drop('memories', c);
+  if (tables !== 'user') {
+    for (const c of ['username', 'role']) { drop('sessions', c); drop('debriefs', c); }
+  }
 }
 
-// Every tenant-owned table, in the order rekey moves them. memories_fts is omitted on purpose:
-// it is a shadow of memories and the triggers rebuild it on insert.
-const REKEY_TABLES = ['repos', 'sessions', 'memories', 'observations', 'corrections', 'prompt_signals', 'findings', 'debriefs'];
+// Every tenant-owned table, in the order rekey moves them. `authors` leads because everything
+// else references it, so a foreign-key-enforcing destination needs the parents in place first.
+// memories_fts is omitted on purpose: it is a shadow of memories and the triggers rebuild it.
+const REKEY_TABLES = ['authors', 'repos', 'sessions', 'memories', 'observations', 'corrections', 'prompt_signals', 'findings', 'debriefs'];
 
 // node:sqlite is the hard requirement, and it takes TWO things to be usable, verified in CI
 // against real Node builds rather than assumed:
@@ -103,7 +142,7 @@ function requireSqlite() {
 // current number is known to have every table and column already, so open() can skip both the
 // schema exec and migrate()'s PRAGMA probes. That work was being redone on every hook process —
 // and observe.js is a fresh process on every Edit, Write and Bash.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 function open(file, schemaPath, kind) {
   const { DatabaseSync } = requireSqlite();
@@ -112,7 +151,11 @@ function open(file, schemaPath, kind) {
   d.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
   let stamped = 0;
   try { stamped = Number(d.prepare('PRAGMA user_version').get().user_version) || 0; } catch { /* treat as 0 */ }
-  if (stamped >= SCHEMA_VERSION) return d; // already current — nothing to create, nothing to widen
+  // A declared foreign key that nothing enforces is a comment. It is switched on AFTER migrate(),
+  // never during: SQLite's own guidance is to migrate with enforcement off, and the v2 pass drops
+  // columns out from under tables that reference each other. Existing rows are not re-checked when
+  // it comes on — only writes from here forward, which is what ensureAuthor() guarantees.
+  if (stamped >= SCHEMA_VERSION) { fkOn(d); return d; } // current — nothing to create, nothing to widen
   try {
     d.exec(fs.readFileSync(schemaPath, 'utf8')); // creates anything missing
   } catch (err) {
@@ -124,8 +167,10 @@ function open(file, schemaPath, kind) {
   // Stamp last: a throw above leaves the database unstamped, so the next open retries the whole
   // setup rather than trusting a half-built schema.
   try { d.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`); } catch (err) { log('open.stamp', err); }
+  fkOn(d);
   return d;
 }
+function fkOn(d) { try { d.exec('PRAGMA foreign_keys=ON'); } catch (err) { log('open.fk', err); } }
 
 // ---------- the fixed home ----------
 // A plugin directory is explicitly ephemeral: ${CLAUDE_PLUGIN_ROOT} changes on every update and
@@ -207,14 +252,48 @@ function active() {
 }
 
 
+// Every knob in one place. "What can I change, and what was it before I changed it?" had no answer
+// short of reading the source: the defaults lived at each call site, the descriptions lived in
+// plugin.json, and nothing printed what was actually in effect. `engine.js config` joins all three,
+// and a test asserts this table against plugin.json's userConfig so they cannot drift apart.
+const SETTINGS = [
+  { key: 'brief_chars', def: '4000', type: 'number',
+    what: 'Ceiling on the memory injected at session start. Ranking happens before the cap, so raising it surfaces more — it does not change what wins.' },
+  { key: 'coach', def: 'on', type: 'boolean',
+    what: 'The coach line in the brief, and one-line hints on vague prompts. Display only — turning it off does not stop failures being recorded.' },
+  { key: 'corrections', def: 'on', type: 'boolean',
+    what: 'Record that a failure surfaced, and what was being asked. This is the evidence /prompt-coach:prompt-stats measures against.' },
+  { key: 'learn', def: 'on', type: 'boolean',
+    what: 'One Haiku call at session end distils a summary and up to 3 learnings. Needs `claude` on PATH; degrades quietly without it.' },
+  { key: 'plan_review', def: 'on', type: 'boolean',
+    what: 'In plan mode only: one Haiku call scores the prompt and suggests a rewrite.' },
+  { key: 'guard', def: 'on', type: 'boolean',
+    what: 'Block tool calls carrying real credentials, and ask before secret-ish payloads. The one hook allowed to stop a call.' },
+  { key: 'spotlight', def: 'on', type: 'boolean',
+    what: 'Scan fetched content and out-of-repo reads for prompt-injection markers. Warn-only, no model call.' },
+  { key: 'partners', def: 'on', type: 'boolean',
+    what: 'The one-time session note suggesting /harness-coach:partners. Disappears after the first run.' },
+  { key: 'seed_auto', def: 'on', type: 'boolean',
+    what: 'Allow the `auto-seed` command to refresh an existing .ai-coach/team-seed.jsonl in place. No hook ever exports on its own.' },
+  { key: 'default_trust', def: 'full', type: 'string',
+    what: 'Trust for a teammate you have not rated: `full` ranks their memories like your own, `workspace` holds them privately.' },
+];
+
 // option lookup: AICOACH_<KEY> env (power-user override) > plugin userConfig
-// (CLAUDE_PLUGIN_OPTION_<key>, set by Claude Code from plugin.json userConfig) > default
-function opt(key, fallback) {
-  const v = process.env['AICOACH_' + key.toUpperCase()]
-    ?? process.env['CLAUDE_PLUGIN_OPTION_' + key]
-    ?? process.env['CLAUDE_PLUGIN_OPTION_' + key.toUpperCase()];
-  return v == null || v === '' ? fallback : v;
+// (CLAUDE_PLUGIN_OPTION_<key>, set by Claude Code from plugin.json userConfig) > default.
+// Split out from opt() so `config` can report WHERE a value came from without re-deriving the
+// order and getting it subtly wrong — the resolution rule exists once.
+function optResolve(key, fallback) {
+  const names = ['AICOACH_' + key.toUpperCase(),
+    'CLAUDE_PLUGIN_OPTION_' + key, 'CLAUDE_PLUGIN_OPTION_' + key.toUpperCase()];
+  let via = null, v;
+  for (const n of names) { if (process.env[n] != null) { via = n; v = process.env[n]; break; } }
+  // An empty value is not a setting. This matches the original `?? … : fallback` chain exactly:
+  // first non-null name wins, and an empty one falls all the way through to the default.
+  if (v == null || v === '') return { value: fallback, source: 'default', via: null };
+  return { value: v, source: via.startsWith('AICOACH_') ? 'env' : 'plugin', via };
 }
+function opt(key, fallback) { return optResolve(key, fallback).value; }
 function optOn(key, def) { // boolean options; 'off'/'false'/'0' all mean off
   const v = String(opt(key, def)).toLowerCase();
   return !(v === 'off' || v === 'false' || v === '0' || v === 'no');
@@ -390,6 +469,45 @@ function taskSlug(t) { // branch names contain slashes; filenames must not
   return String(t).replace(/[^\w.-]+/g, '-');
 }
 
+// ---------- branch convention ----------
+//
+// `task` is the branch, and the branch is how memories, sessions and debriefs group. That only
+// works if branch names say what kind of work they are: `feat/checkout` and `fix/checkout-tax`
+// group; `my-stuff` and `test2` do not, and neither does a teammate reading them a month later.
+//
+// The project's own convention wins, declared in the committed .ai-coach/project.md:
+//     branches: feat/ fix/ chore/ docs/ refactor/ test/ perf/
+// With nothing declared, the widely used Conventional-Commits-shaped prefixes are the default.
+// This is a CONVENTION, not a gate: nothing is ever blocked, because a branch name is not worth
+// failing someone's session over. It is said once, at session start, and then dropped.
+const DEFAULT_BRANCHES = ['feat/', 'fix/', 'chore/', 'docs/', 'refactor/', 'test/', 'perf/', 'hotfix/', 'release/'];
+const MAINLINE = new Set(['main', 'master', 'develop', 'dev', 'trunk', 'HEAD']);
+function branchStrategy(cwd) {
+  try {
+    for (const line of safeRead(projectFile(cwd)).split('\n')) {
+      const m = line.match(/^\s*branches:\s*(.+?)\s*$/i);
+      if (!m) continue;
+      const list = m[1].split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+      if (list.length) return { prefixes: list, declared: true };
+    }
+  } catch { /* undeclared — the defaults below are the convention */ }
+  return { prefixes: DEFAULT_BRANCHES, declared: false };
+}
+// null when there is nothing to say — mainline, a detached head, or a branch that already
+// matches. A string is the one-line note worth showing.
+function branchCheck(cwd) {
+  // task(), not the raw head: this must judge the exact string that ends up in the `task` column,
+  // including an explicit AICOACH_TASK override, or it would lecture about a name nothing stores.
+  const b = task(null, cwd);
+  if (!b || MAINLINE.has(b)) return null;
+  const { prefixes, declared } = branchStrategy(cwd);
+  if (prefixes.some((p) => b.toLowerCase().startsWith(p.toLowerCase()))) return null;
+  return `branch "${b}" does not match ${declared ? "this project's" : 'the default'} branch convention `
+    + `(${prefixes.slice(0, 6).join(' ')}) — memories and sessions file under the branch name, so a `
+    + `prefix is what makes them groupable later.`
+    + (declared ? '' : ' Declare your own with a `branches:` line in .ai-coach/project.md.');
+}
+
 // project identity is portable: the git remote URL when there is one (same repo = same
 // project on every teammate's machine), else the repo-root path. Raw-cwd identity broke
 // imports (teammate's absolute path never matched yours) and Windows case differences.
@@ -489,6 +607,66 @@ function roleOf(email, cwd) {
   return (r && r.role) || null;
 }
 
+// ---------- authors: the one place a name and a role live ----------
+
+// Every row that names an author is a foreign key into this table, and enforcement is on, so a
+// write that stamps an email must make sure the email exists first. Memoized per database
+// because a hook process writes for exactly one person, and this would otherwise be an extra
+// statement on the path observe.js runs on every Edit, Write and Bash.
+const _authorSeen = new WeakMap();
+function ensureAuthor(d, email, un, rl) {
+  const e = canon(email);
+  if (!e) return null;
+  let seen = _authorSeen.get(d);
+  if (!seen) { seen = new Set(); _authorSeen.set(d, seen); }
+  const key = JSON.stringify([e, un || '', rl || '']);
+  if (seen.has(key)) return e;
+  try {
+    // COALESCE on the excluded side, not the stored side: a later sighting that knows nothing new
+    // must not erase a name we already have, which is what a bare `SET username = excluded.username`
+    // does the first time someone shows up through a seed row that carried no name.
+    d.prepare(`INSERT INTO authors(email, username, role) VALUES(?,?,?)
+       ON CONFLICT(email) DO UPDATE SET
+         username = COALESCE(excluded.username, authors.username),
+         role     = COALESCE(excluded.role, authors.role),
+         updated  = datetime('now')`).run(e, un || null, rl || null);
+    seen.add(key);
+  } catch (err) { log('ensureAuthor', err); }
+  return e;
+}
+
+// Display identity for a set of emails, resolved once per call rather than per row. Returns a
+// Map so callers can label a whole result set without an N+1 query — the shape brief() and
+// /recall both need.
+function authorMap(d, emails) {
+  const want = [...new Set((emails || []).map(canon).filter(Boolean))];
+  const out = new Map();
+  if (!want.length) return out;
+  try {
+    const rows = d.prepare(`SELECT email, username, role FROM authors WHERE email IN (${want.map(() => '?').join(',')})`).all(...want);
+    for (const r of rows) out.set(r.email, r);
+  } catch (err) { log('authorMap', err); }
+  return out;
+}
+// One row's display name, with the email as the honest fallback: a teammate who is in no roster
+// and whose seed carried no name is still a real person, and their email is who they are.
+function whoLabel(row, map) {
+  const e = canon(row && row.author);
+  const a = e && map ? map.get(e) : null;
+  return (a && a.username) || e || 'unknown';
+}
+// Single-email version for the places that print one row at a time (a debrief label, a session
+// digest header). Memoized per process: the same handful of people recur all over one brief.
+const _nameCache = new Map();
+function authorName(email) {
+  const e = canon(email);
+  if (!e) return null;
+  if (_nameCache.has(e)) return _nameCache.get(e);
+  const n = whoLabel({ author: e }, authorMap(db(), [e]));
+  _nameCache.set(e, n);
+  return n;
+}
+
 // Trust lives in USER scope, not in a tenant: you rate a person once, and that judgment
 // holds in every project you share with them.
 const TRUST_LEVELS = new Set(['full', 'workspace']);
@@ -497,17 +675,65 @@ function setTrust(email, level, note) {
   userDb().prepare(`INSERT INTO trust(email, level, note, updated) VALUES(?,?,?,datetime('now'))
      ON CONFLICT(email) DO UPDATE SET level = excluded.level, note = excluded.note, updated = datetime('now')`)
     .run(String(email).toLowerCase(), lvl, note || null);
+  _trustCache.delete(String(email).toLowerCase()); // the decision is live now, not next process
   return lvl;
 }
 function trustList() { return userDb().prepare('SELECT * FROM trust ORDER BY email').all(); }
 
 // Your private table wins; absent an entry, the configured default applies. Trust is never
 // read from the shared roster — that file is a directory of people, not a set of judgments.
+const _trustCache = new Map();
 function trustLevel(email) {
   const fallback = String(opt('default_trust', 'full')).toLowerCase();
   if (!email) return fallback;
-  const row = userDb().prepare('SELECT level FROM trust WHERE email = ?').get(String(email).toLowerCase());
-  return row ? row.level : fallback;
+  const e = String(email).toLowerCase();
+  if (_trustCache.has(e)) return _trustCache.get(e);
+  const row = userDb().prepare('SELECT level FROM trust WHERE email = ?').get(e);
+  const lvl = row ? row.level : fallback;
+  _trustCache.set(e, lvl);
+  return lvl;
+}
+
+// ---------- held memories: derived from trust, never stored ----------
+//
+// A memory you hold but do not rank is not a property of the memory. It is your current opinion
+// of its author, and opinions change: the flag used to be frozen onto the row at import, so
+// raising a teammate's trust did nothing at all until you re-imported their seed — the one step
+// people forget. Computed here instead, so `/team trust` takes effect on rows you already have.
+//
+// Your own rows are never held. Neither is an authorless row: those are yours by definition.
+function isHeld(email) {
+  const e = canon(email);
+  if (!e || e === canon(author())) return false;
+  return trustLevel(e) === 'workspace';
+}
+// The same rule as a SQL fragment, so a query filters in the database instead of loading rows to
+// throw them away. Both directions are covered because `default_trust` may itself be `workspace`,
+// which inverts the question from "who is excluded" to "who is admitted".
+function notHeldSql(col) {
+  const me = canon(author()) || '';
+  const def = String(opt('default_trust', 'full')).toLowerCase();
+  let rows = [];
+  try { rows = userDb().prepare('SELECT email, level FROM trust').all(); } catch (err) { log('notHeldSql', err); }
+  const lower = ` lower(COALESCE(${col},''))`;
+  if (def === 'workspace') {
+    const ok = rows.filter((r) => String(r.level).toLowerCase() !== 'workspace').map((r) => canon(r.email));
+    ok.push(me, ''); // yourself, and rows written before a git identity existed
+    return { sql: ` AND${lower} IN (${ok.map(() => '?').join(',')})`, params: ok };
+  }
+  const held = rows.filter((r) => String(r.level).toLowerCase() === 'workspace')
+    .map((r) => canon(r.email)).filter((e) => e && e !== me);
+  if (!held.length) return { sql: '', params: [] };
+  return { sql: ` AND${lower} NOT IN (${held.map(() => '?').join(',')})`, params: held };
+}
+// Held memories are still findable — that is the whole point of holding rather than refusing —
+// but they must not out-rank work you vouched for, so the cap that used to be written into the
+// row at import is applied when the row is read instead.
+const HELD_CONFIDENCE = 0.3;
+function effConfidence(row) {
+  const c = Number(row && row.confidence);
+  const n = Number.isFinite(c) ? c : 0.7;
+  return isHeld(row && row.author) ? Math.min(n, HELD_CONFIDENCE) : n;
 }
 
 // ---------- memories ----------
@@ -529,25 +755,26 @@ function add(type, text, confidence, proj, source, extra) {
   const r = x.repo !== undefined ? x.repo : (proj ? repo(proj) : null);
   const target = p ? openTenant(p) : userDb();
   if (p) registerRepoIn(target, r);
+  // The author row must exist before the memory that points at it. For a locally written memory
+  // the name and role come from git and the roster; for an imported one the caller passes what
+  // the seed carried, so a teammate who is in nobody's roster still gets a name.
+  ensureAuthor(target, au,
+    x.username !== undefined ? x.username : username(),
+    x.role !== undefined ? x.role : roleOf(au, proj));
   // `created` is normally the default, but an IMPORTED memory keeps the age it was written at.
   // Age is a property of the knowledge, not of when you received it: score() decays confidence
   // against it, so re-stamping an import to today made a teammate's three-month-old lesson
   // outrank your own equally old one — and every relay hop refreshed it again, so a circulating
   // memory could never age at all. COALESCE keeps the default for a locally written row.
-  target.prepare('INSERT INTO memories(type,text,text_key,confidence,provenance,project,repo,source,author,username,role,task,workspace,created)'
-    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(?, datetime('now')))")
+  target.prepare('INSERT INTO memories(type,text,text_key,confidence,provenance,project,repo,source,author,task,created)'
+    + " VALUES(?,?,?,?,?,?,?,?,?,?,COALESCE(?, datetime('now')))")
     .run(TYPES.has(type) ? type : 'note', String(text), norm(text),
       confidence == null ? 0.7 : Number(confidence),
       // who actually produced this line. A model-distilled memory must never be able to pass
       // for a human judgment: brief and /recall both show it, and nothing promotes it.
       PROVENANCE.has(x.provenance) ? x.provenance : 'human',
       p, r, source || null, au,
-      x.username !== undefined ? x.username : username(),
-      // snapshot the role: grouping by "what the testers found" must not shift when
-      // someone's role later changes in the roster
-      x.role !== undefined ? x.role : roleOf(au, proj),
       x.task !== undefined ? x.task : task(null, proj),
-      x.workspace ? 1 : 0,
       x.created ? clampTs(x.created) : null);
 }
 function registerRepoIn(d, r) {
@@ -592,7 +819,9 @@ function ageDays(row) { // decay from created only — reading a memory must not
 // type-based decay: durable knowledge fades slower than perishable pointers
 const DECAY_DAYS = { learning: 90, pattern: 90, reference: 45 }; // default 30 (notes etc.)
 function score(row) {
-  return (row.confidence == null ? 0.5 : row.confidence)
+  // effConfidence(), not row.confidence: the cap on a held teammate's memory is applied here,
+  // at read time, so it tracks your current trust instead of whatever it was at import.
+  return (row.confidence == null ? 0.5 : effConfidence(row))
     * Math.exp(-ageDays(row) / (DECAY_DAYS[row.type] || 30));
 }
 
@@ -606,13 +835,18 @@ function search(q, opts) {
   const cap = full ? Infinity : limit;
   const fq = ftsQuery(q);
   if (!fq) return [];
-  let sql = `SELECT m.* FROM memories_fts f JOIN memories m ON m.id = f.rowid
+  // LEFT JOIN, not JOIN: a memory written before any git identity existed has a NULL author and
+  // must still be findable. --role and --user now filter on the author's CURRENT name and role,
+  // because that is where they live; see the note above `authors` in schema.sql.
+  let sql = `SELECT m.*, a.username AS username, a.role AS role
+     FROM memories_fts f JOIN memories m ON m.id = f.rowid
+     LEFT JOIN authors a ON a.email = lower(m.author)
      WHERE memories_fts MATCH ?`;
   const params = [fq];
   if (t) { sql += ' AND m.task = ?'; params.push(t); }
-  if (au) { sql += ' AND m.author = ?'; params.push(au); }
-  if (rl) { sql += ' AND lower(m.role) = ?'; params.push(String(rl).toLowerCase()); }
-  if (un) { sql += ' AND lower(m.username) = ?'; params.push(String(un).toLowerCase()); }
+  if (au) { sql += ' AND lower(m.author) = ?'; params.push(canon(au)); }
+  if (rl) { sql += ' AND lower(a.role) = ?'; params.push(String(rl).toLowerCase()); }
+  if (un) { sql += ' AND lower(a.username) = ?'; params.push(String(un).toLowerCase()); }
   if (rp) { sql += ' AND lower(m.repo) = ?'; params.push(String(rp).toLowerCase()); }
   sql += ' ORDER BY rank';
   if (Number.isFinite(cap)) { sql += ' LIMIT ?'; params.push(cap); }
@@ -649,7 +883,10 @@ function provTag(r) {
 }
 function shortLine(r) {
   const t = r.text.length > 100 ? r.text.slice(0, 100) + '...' : r.text;
-  return `${memId(r)} [${r.type}]${r.workspace ? ' [workspace]' : ''}${provTag(r)} ${t} (conf ${Number(r.confidence).toFixed(2)})`;
+  const held = isHeld(r.author);
+  // Show the capped number, not the stored one: the confidence printed beside a row must be the
+  // confidence it actually ranks with, or the ordering looks broken.
+  return `${memId(r)} [${r.type}]${held ? ' [held]' : ''}${provTag(r)} ${t} (conf ${effConfidence(r).toFixed(2)})`;
 }
 
 const BRANCH_SHARE = 0.4; // reserved slice of the cap — general memories must not crowd out
@@ -680,10 +917,12 @@ function brief(maxChars, proj) {
   try {
     const me = author();
     const last = db().prepare(
-      `SELECT id, name, project, author, username, first_prompt, summary, created FROM sessions
-       WHERE project = ? AND (author IS NULL OR lower(author) = ?)
-         AND (summary IS NOT NULL OR first_prompt IS NOT NULL)
-       ORDER BY created DESC, rowid DESC LIMIT 1`
+      `SELECT s.id, s.name, s.project, s.author, a.username AS username,
+              s.first_prompt, s.summary, s.created
+       FROM sessions s LEFT JOIN authors a ON a.email = lower(s.author)
+       WHERE s.project = ? AND (s.author IS NULL OR lower(s.author) = ?)
+         AND (s.summary IS NOT NULL OR s.first_prompt IS NOT NULL)
+       ORDER BY s.created DESC, s.rowid DESC LIMIT 1`
     ).get(p, canon(me) || '');
     if (last) {
       push(`Last session here (${sessionLabel(last)}, ${String(last.created).slice(0, 16)}): `
@@ -721,14 +960,17 @@ function brief(maxChars, proj) {
     // reading every session and memory of a long-lived branch to then print a handful of them
     // was work whose cost grew forever while its output stayed the same size.
     const prior = db().prepare(
-      `SELECT id, project, name, username, author, role, summary, first_prompt, outcomes, created FROM sessions
-       WHERE project = ? AND task = ?
-       ORDER BY created DESC, rowid DESC LIMIT 60`
+      `SELECT s.id, s.project, s.name, s.author, a.username AS username, a.role AS role,
+              s.summary, s.first_prompt, s.outcomes, s.created
+       FROM sessions s LEFT JOIN authors a ON a.email = lower(s.author)
+       WHERE s.project = ? AND s.task = ?
+       ORDER BY s.created DESC, s.rowid DESC LIMIT 60`
     ).all(p, t);
+    const held = notHeldSql('author');
     const branchMem = db().prepare(
-      `SELECT * FROM memories WHERE workspace IS NOT 1 AND project = ? AND task = ?
+      `SELECT * FROM memories WHERE project = ? AND task = ?${held.sql}
        ORDER BY created DESC, id DESC LIMIT 200`
-    ).all(p, t);
+    ).all(p, t, ...held.params);
     if (prior.length || branchMem.length) {
       // Clamped: the share is a slice OF the cap, not an allowance on top of it. Unclamped,
       // a brief that was already 60% full could finish 1.4x over the caller's char budget.
@@ -737,7 +979,7 @@ function brief(maxChars, proj) {
       // debriefs on this branch first — a conclusion outranks the session that produced it
       try {
         for (const d of debriefList({ task: t, limit: 3 })) {
-          if (!push(`- debrief ${d.key} · ${d.username || d.author} · ${String(d.business).slice(0, 110)}`, budget)) break;
+          if (!push(`- debrief ${d.key} · ${authorName(d.author)} · ${String(d.business).slice(0, 110)}`, budget)) break;
         }
       } catch (err) { log('brief.branchDebriefs', err); }
       for (const s of prior) {
@@ -756,7 +998,7 @@ function brief(maxChars, proj) {
   } catch (err) { log('brief.branch', err); }
 
   // Affine ranking within the project: your own repo outranks a sibling service, which
-  // outranks your global knowledge. Workspace rows never enter.
+  // outranks your global knowledge. Rows held under `workspace` trust never enter.
   // Every memory is a candidate — nothing is excluded from ranking before it has been
   // scored, so an old but strong memory can still win. The character cap is the only
   // limit on what reaches the session, and it applies after ranking, not before.
@@ -766,17 +1008,20 @@ function brief(maxChars, proj) {
   // in one scope, which is far beyond what prune leaves standing. Raise it, or make ranking
   // incremental, if a real corpus ever reaches it.
   const RANK_SCAN_CAP = 5000;
-  const window = `SELECT * FROM memories WHERE workspace IS NOT 1
-     ORDER BY created DESC, id DESC LIMIT ${RANK_SCAN_CAP}`;
+  const notHeld = notHeldSql('author');
+  const window = `SELECT m.*, a.username AS username FROM memories m
+     LEFT JOIN authors a ON a.email = lower(m.author)
+     WHERE 1=1${notHeld.sql}
+     ORDER BY m.created DESC, m.id DESC LIMIT ${RANK_SCAN_CAP}`;
   // `shown` holds TENANT ids only, so only tenant rows may be filtered by it: ids restart at 1
   // in every database, and filtering the concatenation dropped global memories that happened
   // to share an id with a branch memory already printed above.
   let rows = [];
   try {
-    rows = db().prepare(window).all().filter((m) => !shown.has(m.id))
+    rows = db().prepare(window).all(...notHeld.params).filter((m) => !shown.has(m.id))
       // global memories travel into every project; `_g` keeps their ids distinguishable from
       // the tenant's, which start at 1 in the same way
-      .concat(userDb().prepare(window).all().map((m) => Object.assign(m, { _g: true })))
+      .concat(userDb().prepare(window).all(...notHeld.params).map((m) => Object.assign(m, { _g: true })))
       .sort((a, b) => w(b) - w(a));
   } catch (err) { log('brief.memories', err); }
   if (rows.length) push('Top memories:');
@@ -830,8 +1075,9 @@ function coachLine(p, t) {
     if (t) {
       const me = author();
       const others = db().prepare(
-        `SELECT DISTINCT COALESCE(username, author) AS who FROM sessions
-         WHERE project = ? AND task = ? AND author IS NOT NULL AND author <> COALESCE(?, '')`
+        `SELECT DISTINCT COALESCE(a.username, s.author) AS who FROM sessions s
+         LEFT JOIN authors a ON a.email = lower(s.author)
+         WHERE s.project = ? AND s.task = ? AND s.author IS NOT NULL AND s.author <> COALESCE(?, '')`
       ).all(p, t, me).map((x) => x.who).filter(Boolean);
       if (others.length) {
         return `this branch was worked by ${others.slice(0, 2).join(' and ')} — you are picking up their work, not starting fresh.`;
@@ -857,19 +1103,26 @@ function coachLine(p, t) {
 
 // ---------- sessions & observations ----------
 
+// A name can arrive as a bare string (someone typed it) or as { name, source }, which is how the
+// hooks hand over what Claude Code itself calls this session.
 function sessionStart(id, proj, name) {
   if (!id) return null;
   if (proj) useProject(proj);
+  const offered = typeof name === 'string' ? { name, source: 'user' } : (name || null);
   const existing = db().prepare('SELECT name FROM sessions WHERE id = ?').get(id);
   if (existing) { // resumed or mid-session call — never re-stamp identity
-    if (name) return nameSession(id, name);
+    if (offered && offered.name) return adoptName(id, offered.name, offered.source);
     return existing.name;
   }
   const p = project(proj), r = repo(proj), au = author(), t = task(null, proj);
-  const label = name || autoName(p, t);
+  const label = (offered && offered.name) || autoName(p, t);
   registerRepoIn(db(), r); // the project learns its own shape as repos show up
-  db().prepare('INSERT INTO sessions(id, project, repo, author, username, role, name, task) VALUES(?,?,?,?,?,?,?,?)')
-    .run(id, p, r, au, username(), roleOf(au, proj), label, t);
+  // Session start is also when identity is refreshed from the shared roster: .ai-coach/team.md is
+  // the source of truth for names and roles, and this is the one hook that runs once per session
+  // rather than once per tool call, so it is where the copy is allowed to cost something.
+  ensureAuthor(db(), au, username(), roleOf(au, proj));
+  db().prepare('INSERT INTO sessions(id, project, repo, author, name, name_source, task) VALUES(?,?,?,?,?,?,?)')
+    .run(id, p, r, au, label, (offered && offered.name) ? nameRank.src(offered.source) : 'auto', t);
   return label;
 }
 
@@ -884,10 +1137,62 @@ function autoName(p, t) {
   while (taken.includes(base + '-' + n)) n++;
   return base + '-' + n;
 }
-function nameSession(id, label) {
+// Claude Code already names every session, shows that name in the status line, and lets people
+// rename it. Two names for one session is one too many, so AI Coach adopts that one whenever it
+// is at least as authoritative as what is stored — checked on every session start AND at session
+// end, which is when a mid-session rename would otherwise be missed. This is why there is no
+// skill for naming a session: the name is already somewhere, and it gets read.
+const nameRank = {
+  order: { auto: 1, claude: 2, user: 3 },
+  src(s) { return Object.prototype.hasOwnProperty.call(this.order, s) ? s : 'user'; },
+  of(s) { return this.order[this.src(s)]; },
+};
+function adoptName(id, label, source) {
   const l = String(label).trim().slice(0, 80);
-  db().prepare('UPDATE sessions SET name = ? WHERE id = ?').run(l, id);
+  if (!l) return null;
+  const src = nameRank.src(source);
+  const row = db().prepare('SELECT name, name_source FROM sessions WHERE id = ?').get(id);
+  if (!row) return null;
+  // `>=` not `>`: re-reading the same source must be able to pick up a rename within it, which is
+  // the whole point of checking again at session end.
+  if (row.name && nameRank.of(row.name_source) > nameRank.of(src)) return row.name;
+  db().prepare('UPDATE sessions SET name = ?, name_source = ? WHERE id = ?').run(l, src, id);
   return l;
+}
+function nameSession(id, label) { return adoptName(id, label, 'user'); }
+
+// What Claude Code itself calls this session. Not in any hook payload — it lives in Claude Code's
+// own session metadata, whose layout is internal — so this is best-effort and never fatal. Read at
+// session start AND at session end, which is what catches a rename made in between.
+function claudeSessionName(id) {
+  if (!id) return null;
+  try {
+    const dir = path.join(os.homedir(), '.claude', 'sessions');
+    // Newest first, and only the newest few: the session we were just handed is by definition one
+    // of the most recently touched, and a long-lived install accumulates thousands of these files.
+    // Reading all of them cost a session start proportional to how long you had used it.
+    const files = fs.readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => {
+        const p = path.join(dir, f);
+        let mtime = 0;
+        try { mtime = fs.statSync(p).mtimeMs; } catch { /* vanished mid-scan */ }
+        return { p, mtime };
+      })
+      .sort((a, b) => b.mtime - a.mtime)
+      .slice(0, 25);
+    for (const { p } of files) {
+      try {
+        const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+        if (j && j.sessionId === id && j.name) {
+          // `nameSource: "derived"` is Claude Code's own guess; anything else means a person typed
+          // it, and a typed name must never be overwritten by a later derived one.
+          return { name: String(j.name), source: j.nameSource === 'derived' ? 'claude' : 'user' };
+        }
+      } catch { /* one unreadable file must not stop the scan */ }
+    }
+  } catch { /* directory absent or the layout changed — our own name stands */ }
+  return null;
 }
 // two teammates may pick the same label; the name is a label, not a key, so disambiguate
 // on display rather than refusing the name
@@ -905,7 +1210,12 @@ function sessionLabel(row) {
     ).get(row.project, row.name, row.author);
     _clashCache.set(key, clash);
   }
-  return clash ? `${row.name}@${row.username || row.author || 'unknown'}` : row.name;
+  if (!clash) return row.name;
+  // Only a clash needs a name, so the lookup happens here rather than on every row: two teammates
+  // picking the same label is the rare case, and it is the only one where the label alone is
+  // ambiguous. A row that already carries a joined username uses it and skips the query.
+  const who = row.username || whoLabel(row, authorMap(db(), [row.author]));
+  return `${row.name}@${who}`;
 }
 function firstPrompt(id, prompt) {
   if (!id || !prompt) return;
@@ -1302,7 +1612,7 @@ function sessionDigest(id, opts) {
   const tailCut = cut == null ? Number.MAX_SAFE_INTEGER : cut;
 
   const head = [
-    '# ' + sessionLabel(s) + ' · ' + (s.username || s.author || 'unknown') + (s.task ? ' · ' + s.task : ''),
+    '# ' + sessionLabel(s) + ' · ' + (authorName(s.author) || 'unknown') + (s.task ? ' · ' + s.task : ''),
     (s.created ? String(s.created).slice(0, 16) : '?') + ' → ' + (s.ended ? String(s.ended).slice(0, 16) : 'open'),
     total + ' tool calls · ' + fails + ' failed · ' + corr.length + ' correction(s) recorded',
   ];
@@ -1411,8 +1721,6 @@ function debriefPublish(x) {
     session_id: sess ? sess.id : null,
     name,
     author: au,
-    username: o.username !== undefined ? o.username : (sess ? sess.username : username()),
-    role: o.role !== undefined ? o.role : (sess ? sess.role : roleOf(au)),
     task: o.task !== undefined ? o.task : (sess ? sess.task : task()),
     provenance: o.provenance === 'imported' ? 'imported' : 'human',
     created,
@@ -1422,7 +1730,12 @@ function debriefPublish(x) {
   }
 
   const had = db().prepare('SELECT id FROM debriefs WHERE key = ?').get(key);
-  const cols = ['key', 'project', 'repo', 'session_id', 'name', 'author', 'username', 'role', 'task',
+  // A debrief may be published by someone who has never had a session in this database — an
+  // imported one always is — so its author is registered here rather than assumed to exist.
+  ensureAuthor(db(), au,
+    o.username !== undefined ? o.username : (o.session === undefined ? username() : null),
+    o.role !== undefined ? o.role : (o.session === undefined ? roleOf(au) : null));
+  const cols = ['key', 'project', 'repo', 'session_id', 'name', 'author', 'task',
     'business', 'technical', 'evidence', 'unknowns', 'provenance', 'created'];
   // Re-publishing the same work on the same day is a correction, not a second conclusion: replace
   // it, and SAY so, because a silent overwrite is how two genuinely distinct conclusions lose one.
@@ -1473,7 +1786,7 @@ function debriefGet(ref) {
 }
 
 function debriefLabel(d) {
-  return d.name + ' · ' + (d.username || d.author) + ' · ' + String(d.created).slice(0, 10);
+  return d.name + ' · ' + authorName(d.author) + ' · ' + String(d.created).slice(0, 10);
 }
 
 function debriefRender(d) {
@@ -1505,18 +1818,27 @@ function seedExport(file, opts) {
   // top-level `text` is ingested as a memory by an old reader. Memory rows may have `text`;
   // NOTHING ELSE EVER MAY. That is why a debrief's body lives in four named section fields.
   const lines = [JSON.stringify({
-    kind: 'meta', seed: 2, by: canon(author()), project: active().project, engine: '1.1.0',
+    kind: 'meta', seed: 3, by: canon(author()), project: active().project, engine: '1.5.0',
   })]; // no timestamp: it would rewrite the file's bytes on every export and churn git
 
-  // A workspace row is one you hold privately because you have not rated its author yet. It got
-  // into your database by already being in this shared file, so relaying it exposes nothing new —
-  // while DROPPING it deletes a teammate's contribution from the channel for everyone who has not
-  // imported yet. Your private trust decision must not censor the shared file. It still stays out
-  // of your own brief; that is what the workspace flag does, independently of export.
-  // Your OWN rows are never workspace-held, so this filter only ever governed other people's.
-  let sql = 'SELECT type, text, confidence, project, repo, source, author, username, role, task, provenance, created FROM memories'
-    + " WHERE (workspace IS NOT 1 OR lower(COALESCE(author,'')) <> ?)";
-  const params = [canon(author()) || ''];
+  // seed 3: identity travels ONCE, as `author` rows, and every other row carries only the email.
+  // The same normalization the database went through, applied to the wire — the previous format
+  // repeated a person's name and role on every memory, session and debrief they had ever written,
+  // which made a seed both larger and internally disagreeable once someone changed role.
+  //
+  // These rows carry no `text` key, so an older importer walks past them (see the note above) and
+  // still reads every memory. It renders teammates by email instead of by name until it upgrades.
+  for (const a of db().prepare('SELECT email, username, role FROM authors ORDER BY email').all()) {
+    lines.push(JSON.stringify({ kind: 'author', ...a }));
+  }
+
+  // Held rows travel. One you hold privately got into your database by already being in this
+  // shared file, so relaying it exposes nothing new — while DROPPING it would delete a teammate's
+  // contribution from the channel for everyone who has not imported yet. Your private trust
+  // decision must not censor the shared file; it governs your own brief, which is a separate
+  // question and now a separately computed one.
+  let sql = 'SELECT type, text, confidence, project, repo, source, author, task, provenance, created FROM memories WHERE 1=1';
+  const params = [];
   if (o.task) { sql += ' AND task = ?'; params.push(o.task); }
   if (o.repo) { sql += ' AND lower(repo) = ?'; params.push(String(o.repo).toLowerCase()); }
   sql += ' ORDER BY id';
@@ -1535,7 +1857,7 @@ function seedExport(file, opts) {
     //
     // `outcomes` is computed at export time rather than shipped raw: the corrections and failed
     // tool calls behind the number carry message text, and only counts are allowed to travel.
-    let ssql = `SELECT id, name, username, author, role, repo, task, summary, created, ended,
+    let ssql = `SELECT id, name, author, repo, task, summary, created, ended,
         COALESCE(outcomes, 0)
         + (SELECT COUNT(*) FROM corrections c WHERE c.session_id = sessions.id)
         + (SELECT COUNT(*) FROM observations o WHERE o.session_id = sessions.id
@@ -1572,7 +1894,7 @@ function seedExport(file, opts) {
     }
 
     // The payload. No `text` key anywhere in here, by construction (see the note at the top).
-    let dsql = 'SELECT key, name, author, username, role, repo, task, business, technical, evidence, unknowns, created FROM debriefs WHERE 1=1';
+    let dsql = 'SELECT key, name, author, repo, task, business, technical, evidence, unknowns, created FROM debriefs WHERE 1=1';
     const dp = [];
     if (o.task) { dsql += ' AND task = ?'; dp.push(o.task); }
     if (o.repo) { dsql += ' AND lower(repo) = ?'; dp.push(String(o.repo).toLowerCase()); }
@@ -1609,8 +1931,8 @@ function seedImport(file, dir) {
     try { rows.push(JSON.parse(line)); } catch { /* one bad line must not abort an import */ }
   }
 
-  const find = db().prepare('SELECT id, author, workspace FROM memories WHERE text_key = ? LIMIT 1');
-  const c = { added: 0, dup: 0, workspace: 0, promoted: 0, sessions: 0, sessionsDup: 0,
+  const find = db().prepare('SELECT id, author, confidence FROM memories WHERE text_key = ? LIMIT 1');
+  const c = { added: 0, dup: 0, held: 0, repaired: 0, authors: 0, sessions: 0, sessionsDup: 0,
     signals: 0, signalsDup: 0, orphans: 0, debriefs: 0, debriefsDup: 0, unknown: 0, seed: 1 };
 
   // ONE transaction. Before this, a throw mid-loop left a half-applied seed on disk-committed
@@ -1620,9 +1942,31 @@ function seedImport(file, dir) {
   try {
     // ---- pass 1: meta and sessions. A row that references a session must find it, so sessions
     // land first and ordering inside the file stops mattering.
+    // ---- pass 0: people. Every later row is a foreign key into `authors`, and enforcement is on,
+    // so nobody may be referenced before they exist. A seed 3 file states them outright; a seed 2
+    // file carries the same facts smeared across its memory, session and debrief rows, so those
+    // are harvested here too and the older format keeps importing with names intact.
+    // The committed .ai-coach/team.md outranks whatever a seed says about a person: it is the
+    // project's shared directory, and a seed may have been exported before someone's role changed.
+    // It is also the only source for a seed 3 file, which states an email and nothing more when
+    // the exporting machine never knew the person's name either.
+    const who = roster(dir);
+    const seedAuthor = (email, un, rl) => {
+      const e = canon(email);
+      if (!e) return null;
+      const r = who[e] || {};
+      if (!d.prepare('SELECT 1 FROM authors WHERE email = ?').get(e)) c.authors++;
+      return ensureAuthor(d, e, r.name || un || null, r.role || rl || null);
+    };
+    for (const r of rows) {
+      if (r.kind === 'author') seedAuthor(r.email, r.username, r.role);
+      else if (r.author) seedAuthor(r.author, r.username, r.role);
+    }
+
     const skeyToId = new Map();
     for (const r of rows) {
       if (r.kind === 'meta') { c.seed = Number(r.seed) || 1; c.by = canon(r.by); continue; }
+      if (r.kind === 'author') continue;
       if (r.kind !== 'session') continue;
       // A session's identity on the wire is skey (date/author/name), not the authoring machine's
       // uuid. Locally it still needs a primary key, so derive a stable one from the skey.
@@ -1633,8 +1977,8 @@ function seedImport(file, dir) {
       if (existing) {
         c.sessionsDup++;
       } else {
-        d.prepare('INSERT OR IGNORE INTO sessions(id, project, repo, author, username, role, name, task, summary, outcomes, created, ended) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
-          .run(localId, here, r.repo || null, canon(r.author), r.username || null, r.role || null,
+        d.prepare('INSERT OR IGNORE INTO sessions(id, project, repo, author, name, task, summary, outcomes, created, ended) VALUES(?,?,?,?,?,?,?,?,?,?)')
+          .run(localId, here, r.repo || null, canon(r.author),
             r.name || null, r.task || null, r.summary || null,
             r.outcomes == null ? null : Number(r.outcomes),
             clampTs(r.created), clampTs(r.ended || r.created));
@@ -1648,7 +1992,7 @@ function seedImport(file, dir) {
 
     // ---- pass 2: everything that references a session, then memories
     for (const r of rows) {
-      if (r.kind === 'meta' || r.kind === 'session') continue;
+      if (r.kind === 'meta' || r.kind === 'session' || r.kind === 'author') continue;
 
       if (r.kind === 'prompt_signal' || r.kind === 'psignal') {
         // A signal is a flag string and a length; its ENTIRE value is the join, because that is
@@ -1674,7 +2018,7 @@ function seedImport(file, dir) {
         try {
           const before = d.prepare('SELECT id FROM debriefs WHERE key = ?').get(r.key);
           debriefPublish({
-            key: r.key, name: r.name, author: r.author, username: r.username, role: r.role,
+            key: r.key, name: r.name, author: r.author,
             repo: r.repo, task: r.task, created: r.created, session: skeyToId.get(r.skey) || null,
             business: r.business, technical: r.technical, evidence: r.evidence, unknowns: r.unknowns,
             provenance: 'imported',
@@ -1687,27 +2031,28 @@ function seedImport(file, dir) {
       if (!r.text) { if (r.kind) c.unknown++; continue; }
 
       const au = canon(r.author);
-      const w = trustLevel(au) === 'workspace';
       const conf = r.confidence == null ? 0.7 : Number(r.confidence);
       const row = find.get(norm(r.text));
       if (row) {
         c.dup++;
-        // trust changed since the last import? apply it to the existing row (both directions)
-        if (row.author && au && canon(row.author) === au && !!row.workspace !== w) {
-          d.prepare('UPDATE memories SET workspace = ?, confidence = ? WHERE id = ?')
-            .run(w ? 1 : 0, w ? Math.min(conf, 0.3) : conf, row.id);
-          if (w) c.workspace++; else c.promoted++;
+        // Confidence is stored as the seed states it, not capped by trust — the cap is applied
+        // when the row is read now. A row imported by an older engine WAS capped on disk, and
+        // would stay capped forever with no way back, so a re-import repairs it.
+        if (row.author && au && canon(row.author) === au && Number(row.confidence) < conf) {
+          d.prepare('UPDATE memories SET confidence = ? WHERE id = ?').run(conf, row.id);
+          c.repaired++;
         }
         continue;
       }
       // pass identity explicitly: r.project is a stored key, never a path, so it must not
       // be handed to add() as a working directory (that shelled out to git on every row)
       // `imported` is finally written, not just declared — a distilled row stays distilled.
-      add(r.type || 'note', r.text, w ? Math.min(conf, 0.3) : r.confidence, null, r.source,
-        { project: here, repo: r.repo || null, author: au, username: r.username || null,
-          role: r.role || null, task: r.task || null, workspace: w, created: r.created,
+      add(r.type || 'note', r.text, r.confidence, null, r.source,
+        { project: here, repo: r.repo || null, author: au,
+          username: r.username || null, role: r.role || null,
+          task: r.task || null, created: r.created,
           provenance: r.provenance === 'distilled' ? 'distilled' : 'imported' });
-      c.added++; if (w) c.workspace++;
+      c.added++; if (isHeld(au)) c.held++;
     }
     d.exec('COMMIT');
   } catch (err) {
@@ -1778,7 +2123,7 @@ function cli() {
       const rows = search(rest.join(' '), flags); // --full returns every match
       if (!rows.length) console.log('no matches');
       for (const r of rows) console.log(flags.full
-        ? `${memId(r)} [${r.type}]${r.workspace ? ' [workspace]' : ''}${provTag(r)} (conf ${r.confidence}) ${r.author ? '@' + r.author + ' ' : ''}${r.source ? '<' + r.source + '> ' : ''}${r.text}`
+        ? `${memId(r)} [${r.type}]${isHeld(r.author) ? ' [held]' : ''}${provTag(r)} (conf ${effConfidence(r).toFixed(2)}) ${r.author ? '@' + r.author + ' ' : ''}${r.source ? '<' + r.source + '> ' : ''}${r.text}`
         : r._display);
       break;
     }
@@ -1910,8 +2255,9 @@ function cli() {
         + (r.debriefs ? ` / ${r.debriefs} debriefs` : '')
         + (r.sessions ? ` / ${r.sessions} sessions` : '')
         + (r.signals ? ` / ${r.signals} prompt signals` : '')
-        + (r.workspace ? ` / ${r.workspace} to workspace` : '')
-        + (r.promoted ? ` / ${r.promoted} promoted` : '')
+        + (r.authors ? ` / ${r.authors} people` : '')
+        + (r.held ? ` / ${r.held} held (workspace trust)` : '')
+        + (r.repaired ? ` / ${r.repaired} confidence repaired` : '')
         + (r.encrypted ? ' (decrypted)' : ''));
       // Say what was skipped. Silence here reads as "the seed carried nothing".
       const skips = [];
@@ -1921,7 +2267,7 @@ function cli() {
       if (r.orphans) skips.push(r.orphans + ' orphan signals rejected (no session to attribute them to)');
       if (r.unknown) skips.push(r.unknown + ' rows this version does not understand (skipped, left in the file)');
       if (skips.length) console.log('  ' + skips.join(' · '));
-      if (r.seed > 2) console.log('  this seed is format ' + r.seed + ', newer than this engine — upgrade ai-coach');
+      if (r.seed > 3) console.log('  this seed is format ' + r.seed + ', newer than this engine — upgrade ai-coach');
       break;
     }
     case 'auto-seed': {
@@ -2008,12 +2354,61 @@ function cli() {
       }
       break;
     }
-    case 'whoami':
-      console.log(JSON.stringify({
-        username: username(), author: author(), role: roleOf(author(), a[0]),
-        project: active().project, repo: active().repo, task: task(null, a[0]),
-      }, null, 2));
+    // Every setting, what it is now, what it was born as, and which of the three sources decided.
+    // The source column is the point: "turn it back" is a different action for a plugin setting
+    // than for an environment variable, and guessing which one is in play is how people end up
+    // changing the wrong thing twice.
+    case 'config': {
+      const rows = SETTINGS.map((s) => {
+        const r = optResolve(s.key, s.def);
+        return { key: s.key, type: s.type, value: String(r.value), default: s.def,
+          changed: String(r.value) !== s.def, source: r.source, via: r.via, description: s.what };
+      });
+      if (a.includes('--json')) { console.log(JSON.stringify(rows, null, 2)); break; }
+      const w = (f, min) => Math.max(min, ...rows.map((r) => String(r[f]).length));
+      const wk = w('key', 7), wv = w('value', 5), wd = w('default', 7);
+      console.log(`${'setting'.padEnd(wk)}  ${'now'.padEnd(wv)}  ${'default'.padEnd(wd)}  set by`);
+      console.log(`${'-'.repeat(wk)}  ${'-'.repeat(wv)}  ${'-'.repeat(wd)}  ------`);
+      for (const r of rows) {
+        console.log(`${r.key.padEnd(wk)}  ${r.value.padEnd(wv)}  ${r.default.padEnd(wd)}  `
+          + (r.source === 'default' ? 'default' : `${r.source} (${r.via})`)
+          + (r.changed ? '   <- changed' : ''));
+      }
+      const changed = rows.filter((r) => r.changed);
+      console.log(`\n${changed.length} of ${rows.length} differ from the default`
+        + (changed.length ? ': ' + changed.map((r) => r.key).join(', ') : ''));
+      console.log('\nTo change one:   /plugin  ->  ai-coach-core  ->  the setting  (persists)');
+      console.log('             or:   AICOACH_<KEY>=<value>       (this shell only, wins over the above)');
+      console.log('To reset one:    clear it in /plugin, or unset AICOACH_<KEY>');
+      console.log('Descriptions:    engine.js config --json');
+      // Values come from THIS process's environment. Claude Code passes plugin settings to its own
+      // hook processes, so a bare terminal legitimately sees fewer of them than a session does —
+      // say so, rather than let a `default` here be read as "not configured anywhere".
+      if (!Object.keys(process.env).some((k) => k.startsWith('CLAUDE_PLUGIN_OPTION_'))) {
+        console.log('\nNote: no plugin settings are visible to this process. Claude Code passes them to its'
+          + '\nown hooks, so run this from inside a session to see what your hooks actually see.');
+      }
       break;
+    }
+    case 'whoami': {
+      // `missing` exists so a skill does not have to re-derive what an incomplete identity is.
+      // Handing work to a teammate with no name and no email on it produces a seed nobody can
+      // attribute, and the moment to notice that is before the export, not after the commit.
+      const who = {
+        username: username(), author: author(), role: roleOf(author(), a[0]),
+        project: active().project, projectDeclared: !!projectDecl(a[0] || process.cwd()).name,
+        repo: active().repo, task: task(null, a[0]),
+        branchOk: branchCheck(a[0]),
+      };
+      who.missing = [
+        !who.username && 'username (git config user.name)',
+        !who.author && 'email (git config user.email)',
+        !who.role && 'role (add yourself to .ai-coach/team.md)',
+        !who.projectDeclared && 'project name (.ai-coach/project.md)',
+      ].filter(Boolean);
+      console.log(JSON.stringify(who, null, 2));
+      break;
+    }
     case 'project': {
       if (a[0] === 'register') { registerRepo(a[1] || active().repo, a[2]); console.log('repo registered:', a[1] || active().repo); break; }
       const decl = projectDecl(active().cwd || process.cwd());
@@ -2046,6 +2441,10 @@ function cli() {
       // cannot delete rows that were never inserted.
       const moved = {};
       dst.exec('BEGIN'); src.exec('BEGIN');
+      // Foreign keys are deferred to COMMIT for the duration: the source is emptied table by
+      // table, so `authors` is briefly gone while the sessions that reference it are not. Both
+      // sides are consistent again by COMMIT, which is when the check now happens.
+      try { dst.exec('PRAGMA defer_foreign_keys=ON'); src.exec('PRAGMA defer_foreign_keys=ON'); } catch (err) { log('rekey.defer', err); }
       try {
         for (const table of REKEY_TABLES) {
           // An INTEGER PRIMARY KEY is reassigned by the destination; a TEXT one (sessions.id,
@@ -2096,10 +2495,12 @@ module.exports = {
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,
   safeRead, strings, injectionScan, INJECTION_MARKERS, findingAdd, findingUpdate, findingList,
   seedExport, seedImport, autoSeed, project, repo, projectDecl, projectFile, registerRepo,
-  repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn,
+  repoList, projectList, tenantDir, tenantSlug, normalizeRemote, opt, optOn, optResolve, SETTINGS,
   DB_PATH, ROOT, PROJECTS_DIR, LOG_PATH, PARTNERS_SEEN, author, username,
   task, taskSlug, roster, roleOf, setTrust, trustList, trustLevel,
-  nameSession, sessionLabel, autoName, seal, unseal, isSealed, seedKey,
+  ensureAuthor, authorMap, authorName, whoLabel, isHeld, effConfidence, notHeldSql, HELD_CONFIDENCE,
+  branchStrategy, branchCheck, DEFAULT_BRANCHES,
+  nameSession, adoptName, claudeSessionName, sessionLabel, autoName, seal, unseal, isSealed, seedKey,
   canon, clampTs, REKEY_TABLES, latestSession, sessionDigest,
   debriefKey, debriefPublish, debriefList, debriefGet, debriefLabel, debriefRender, DEBRIEF_FIELDS,
 };

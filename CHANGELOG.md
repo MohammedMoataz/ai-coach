@@ -3,6 +3,87 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.5.0 — One place per fact (2026-08-24)
+
+Identity was recorded three times. A memory carried an email, a name and a role; so did a session;
+so did a debrief; and the seed that moved them between machines repeated all three on every row.
+Change your role and the database disagreed with itself for as long as the old rows lived. Whether
+a teammate's memory was held back was stored on the row too, frozen at import — so raising someone's
+trust did nothing until you remembered to re-import their seed, which is the step everybody forgets.
+
+**ai-coach-core 1.3.0 · memory-coach 1.2.0 · investigation-coach 1.2.0 · ai-coach 1.5.0**
+
+Schema version 2. Existing databases migrate when they are next opened: the names and roles sitting
+on those rows are read into `authors` first, and only then are the columns dropped. A `PRAGMA
+table_info` check and a per-column `try` mean a build that refuses `DROP COLUMN` leaves the column
+behind unread rather than failing the open and taking the session's memory with it.
+
+### A person is stated once
+
+New `authors` table, keyed on the git email — the one identifier that is stable across machines.
+`memories.author`, `sessions.author` and `debriefs.author` are foreign keys into it, both of the
+hot ones indexed, and **the foreign keys are enforced**: `PRAGMA foreign_keys=ON` after migration,
+never during. A declared constraint that nothing checks is a comment, so every write path that
+stamps an email now registers the person first. The suite proves it by having caught a test that
+wrote an unregistered author.
+
+`.ai-coach/team.md` stays the shared source of truth and now genuinely is one: session start
+refreshes `authors` from it, and an import prefers it over whatever the seed claimed.
+
+**The trade, stated plainly: role is current, not historical.** `/recall --role qa` used to mean
+"written while they were QA" because the role was snapshotted onto every row. It now means "written
+by people who are QA now". Correcting one line in `team.md` corrects every row that person ever
+wrote — that is the point — but dated role history is gone. If it is ever wanted back, the
+normalized answer is an `author_roles(email, role, from, to)` table, not a column back on memories.
+
+### Holding a teammate's memory is a fact about your trust, not about the memory
+
+The `workspace` column is gone. Whether a row is held is computed from your trust in its author as
+the row is read, which fixes the behaviour the old design could not: `/memory-coach:team trust
+<email> full` now lifts everything of theirs you already hold, immediately, with no re-import. The
+confidence cap moved with it — stored confidence is what the seed said, and the cap is applied at
+read time, so it tracks your current opinion instead of the one you held at import.
+
+The label in `/recall` is `[held]`, not `[workspace]`. A re-import still repairs a confidence that
+an older engine wrote capped onto the disk, since that number had no way back otherwise.
+
+### Seed format 3
+
+Authors travel as their own `kind: 'author'` rows and every other row carries the email alone. Those
+rows carry no `text` key, so the compatibility rule that governs this format still holds: an older
+importer walks past them and reads every memory exactly as before, rendering teammates by email
+instead of by name until it upgrades. In the other direction a format-2 seed still imports with
+names intact — the inline fields it repeats on every row are harvested into `authors` on the way in.
+
+### The branch is what groups the work, so the branch name has to mean something
+
+`task` is the branch, and a memory filed under `my-stuff` is one nobody finds next month. A project
+declares its convention in the committed `.ai-coach/project.md`:
+
+```markdown
+branches: feat/ fix/ chore/ docs/ refactor/
+```
+
+With no line declared, the common prefixes are the default. A branch that matches neither is
+mentioned **once**, at session start, and then recorded as it is — this is a convention, not a gate,
+and nothing is ever blocked over a branch name. `/investigation-coach:onboard` detects what a repo
+already does and offers to write the line; it will not invent a convention nobody agreed to.
+
+### One name per session, and no skill to set it
+
+Claude Code names every session, shows that name in the status line, and lets you rename it. AI
+Coach adopts it at session start — it already did — and now checks again at session end, which is
+what catches a rename made in between. A new `name_source` column ranks `user` over `claude` over
+our own branch-and-author fallback, so a name someone typed is never overwritten by a derived one.
+`ENGINE name` survives as an escape hatch; the step telling `/handoff` to call it is gone, because
+there is nothing left for it to do.
+
+### /handoff asks who you are before it exports
+
+`ENGINE whoami` now returns a `missing` list — email, name, role, project name — and `/handoff`
+stops and asks for whatever is on it. A seed is a file other people read, and work that arrives with
+no name and no email attached is work nobody can ask you about. It reports the branch check too.
+
 ## v1.4.0 — Hooks that get out of the way (2026-08-23)
 
 Every hook here runs as a fresh process, and `observe.js` runs on every Edit, Write and Bash. That
