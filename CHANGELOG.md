@@ -10,7 +10,7 @@ Everything in this marketplace so far serves the person writing the code. The wo
 reading data without describing it, and writing the version a decision-maker will actually read —
 had no home here.
 
-**analysis-coach 1.0.0 · ai-coach 1.8.0**
+**analysis-coach 1.0.0 · ai-coach-core 1.6.1 · ai-coach 1.8.0**
 
 Three skills, one plugin, no code: `elicit`, `insight`, `story`. Inward and evidence-first —
 competitors and industry rules belong to `/atlas-coach:market`, and that boundary is in the
@@ -54,6 +54,20 @@ claim the source does not carry, and it never drops a caveat to make the story c
 the specific way this task fails and it fails silently, because the result reads better than the
 honest version. Under 150 words by default; if the finding cannot be made honest at that length,
 the length rule loses.
+
+### A real failure, found while building this
+
+Writing these skills meant running the engine, and one of those runs failed to store what it had
+learned: `table memories has no column named workspace`. The cause is a genuine hazard rather than
+a one-off. The engine copy at `~/.ai-coach/bin/` comes from whichever plugin build last ran
+SessionStart, so an installed plugin and a repo checkout can disagree about the schema — and
+v1.5.0's migration **drops** columns an older build still writes. The older engine then fails on
+every write, with an error that reads like a corrupt database.
+
+`open()` now checks the stamp in the other direction: a database written by a newer AI Coach than
+the running engine says so once, on stderr, naming both versions and how to fix it, and then opens
+anyway. Reads mostly work, and refusing to open would take a session's whole memory away over a
+version number. If you are seeing that error today, the fix is `claude plugin update ai-coach`.
 
 ### On sources
 

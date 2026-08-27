@@ -176,6 +176,25 @@ function open(file, schemaPath, kind) {
   // never during: SQLite's own guidance is to migrate with enforcement off, and the v2 pass drops
   // columns out from under tables that reference each other. Existing rows are not re-checked when
   // it comes on — only writes from here forward, which is what ensureAuthor() guarantees.
+  // A database written by a NEWER AI Coach than this one. It happens for real: the engine copy at
+  // ~/.ai-coach/bin/ comes from whichever plugin build last ran SessionStart, so a repo checkout
+  // and an installed plugin can disagree — and the v2 migration DROPS columns an older build still
+  // writes. The failure without this is `SQLITE_ERROR: table memories has no column named
+  // workspace`, thrown from an INSERT, which reads as a corrupt database rather than as an old
+  // engine. Say which, once, on stderr, and carry on: reads mostly work, and refusing to open would
+  // take the whole session's memory away over a version number.
+  if (stamped > SCHEMA_VERSION) {
+    if (!open._warned) {
+      open._warned = true;
+      const msg = `ai-coach: ${path.basename(file)} was written by a newer AI Coach (database v${stamped}, `
+        + `this engine understands v${SCHEMA_VERSION}). Writes that touch changed columns will fail. `
+        + 'Update the plugin — `claude plugin update ai-coach` — or start a session so the engine reinstalls itself.';
+      log('open.newer-db', new Error(msg));
+      try { process.stderr.write(msg + '\n'); } catch { /* stderr may be closed in a hook */ }
+    }
+    fkOn(d);
+    return d;
+  }
   if (stamped >= SCHEMA_VERSION) { fkOn(d); return d; } // current — nothing to create, nothing to widen
   try {
     d.exec(fs.readFileSync(schemaPath, 'utf8')); // creates anything missing

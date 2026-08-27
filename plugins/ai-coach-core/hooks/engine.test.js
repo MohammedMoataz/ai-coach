@@ -1501,6 +1501,28 @@ assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows t
     'an opened database carries the current schema stamp');
 }
 
+// ---------- a database from a newer AI Coach says so, instead of failing at the INSERT ----------
+{
+  // This happens for real: the engine copy at ~/.ai-coach/bin/ comes from whichever build last ran
+  // SessionStart, so an installed plugin and a repo checkout can disagree — and the v2 migration
+  // drops a column the older build still writes. Unhandled, the user sees "table memories has no
+  // column named workspace" and reads it as a corrupt database.
+  const newerDb = path.join(tmp, 'from-the-future.db');
+  {
+    const { DatabaseSync } = require('node:sqlite');
+    const d = new DatabaseSync(newerDb);
+    d.exec(fs.readFileSync(path.join(__dirname, '..', 'memory', 'user-schema.sql'), 'utf8'));
+    d.exec('PRAGMA user_version = ' + (e.SCHEMA_VERSION + 5));
+    d.close();
+  }
+  const r = require('node:child_process').spawnSync('node',
+    [path.join(__dirname, 'engine.js'), 'stats'],
+    { encoding: 'utf8', timeout: 20000, cwd: tmp, env: { ...process.env, AICOACH_DB: newerDb } });
+  assert.match(r.stderr, /newer AI Coach/, 'it names the real problem: ' + r.stderr);
+  assert.match(r.stderr, /v" *|v\d/, 'and both version numbers');
+  assert.strictEqual(r.status, 0, 'but still opens — refusing would take the session memory away over a version number');
+}
+
 // ---------- clampTs: five query families trust another machine's clock through it ----------
 {
   assert.match(e.clampTs('2020-01-02 03:04:05'), /^2020-01-02 03:04:05$/, 'a past timestamp is kept');
