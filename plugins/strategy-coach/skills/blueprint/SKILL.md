@@ -36,7 +36,8 @@ the input here.
    the metrics that domain actually tracks. Get it wrong and everything downstream is wrong, so
    show it to the user and let them correct it before you continue.
 2. **Read what already exists; do not re-derive it.** `docs/onboarding/stack.md`,
-   `architecture.md`, `patterns/`, `docs/00-index.md`, `docs/study/`. Say in one line what you
+   `architecture.md`, `patterns/`, `docs/00-index.md`, `docs/study/` (written by
+   `/investigation-coach:study`). Say in one line what you
    found and what is missing. If there is no onboarding output at all, say so and recommend
    `/investigation-coach:map` first — this skill will still run, but its technical mapping will be
    thinner and slower for having to trace the code itself.
@@ -48,7 +49,10 @@ the input here.
    code (an approval someone does in email), what happens on the unhappy path, and which of these
    processes actually matters. Prefer a few sharp questions to a survey: what has been tried and
    rejected, and what is deliberately manual, are the two answers worth the most.
-5. **Map each process to code.** One row per step: the entry point as `file:line`, or the word
+5. **Load `references/notes.md`, then map each process to code.** That file is the output contract
+   — the evidence vocabulary, the skeleton for each of the four notes, and the two-audience shape
+   of a process note. Read it before you write anything, not after.
+   One row per step: the entry point as `file:line`, or the word
    `INFERRED` when you are reading intent rather than proof. Never blank. A step that exists in the
    business and nowhere in the code is a finding, not an omission — record it as `NOT IN CODE`.
    Each `NOT IN CODE` row is a candidate for `/strategy-coach:market --gap "<it>"`, which searches

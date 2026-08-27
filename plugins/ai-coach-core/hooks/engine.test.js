@@ -15,6 +15,14 @@ process.env.AICOACH_LOG = path.join(tmp, 'log.jsonl');
 process.env.AICOACH_AUTHOR = 'tester@example.com'; // deterministic identity (no git dependence)
 const e = require('./engine.js');
 
+// Some behaviour only exists in a FRESH process — a skill shelling out to the engine is not this
+// one, and that difference is the whole point of several checks below.
+function spawnEngine(args, env) {
+  return require('node:child_process').spawnSync(
+    'node', [path.join(__dirname, 'engine.js'), ...args],
+    { encoding: 'utf8', cwd: tmp, timeout: 20000, env: { ...process.env, ...(env || {}) } });
+}
+
 
 // everything below works inside one project; memories added with no project are global
 e.useProject('/demo/proj');
@@ -1312,6 +1320,102 @@ assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows t
   assert.strictEqual(e.opt('brief_chars', '4000'), '4000', 'and opt() agrees, because it is the same call');
   delete process.env.CLAUDE_PLUGIN_OPTION_brief_chars;
   if (before === undefined) delete process.env[KEY]; else process.env[KEY] = before;
+}
+
+// ---------- a setting a skill can actually see ----------
+{
+  // Claude Code passes CLAUDE_PLUGIN_OPTION_* to hook processes and to nothing else, so the engine
+  // copy every skill shells out to was resolving defaults while the session used the real setting.
+  // The hook writes down what it saw; a later process reads that. Env still outranks both.
+  const KEY = 'AICOACH_DEFAULT_TRUST';
+  const beforeEnv = process.env[KEY];
+  delete process.env[KEY];
+  fs.rmSync(e.SETTINGS_PATH, { force: true });
+
+  process.env.CLAUDE_PLUGIN_OPTION_default_trust = 'workspace';
+  const saved = e.saveSettings();
+  assert.strictEqual(saved.default_trust, 'workspace', 'the hook records the setting it was passed');
+  assert.ok(fs.existsSync(e.SETTINGS_PATH), 'and writes it beside the databases');
+
+  // A fresh process is the real case: same file, no plugin env at all.
+  const readBack = JSON.parse(spawnEngine(['config', '--json'], { CLAUDE_PLUGIN_OPTION_default_trust: '' }).stdout);
+  const trustRow = readBack.find((x) => x.key === 'default_trust');
+  assert.strictEqual(trustRow.value, 'workspace', 'a plain `node engine.js` honours it now');
+  assert.strictEqual(trustRow.via, 'settings.json', 'and says where it came from');
+
+  // Clearing the setting in /plugin has to clear the snapshot, or it outlives the choice.
+  delete process.env.CLAUDE_PLUGIN_OPTION_default_trust;
+  assert.deepStrictEqual(e.saveSettings(), {}, 'a cleared setting is cleared here too');
+  const cleared = JSON.parse(spawnEngine(['config', '--json']).stdout).find((x) => x.key === 'default_trust');
+  assert.strictEqual(cleared.value, 'full', 'and the default is what a later process sees');
+  assert.strictEqual(cleared.source, 'default', 'reported as the default, not as a plugin setting');
+
+  fs.rmSync(e.SETTINGS_PATH, { force: true });
+  if (beforeEnv === undefined) delete process.env[KEY]; else process.env[KEY] = beforeEnv;
+}
+
+// ---------- brief_chars is clamped to the range the manifest advertises ----------
+{
+  const KEY = 'AICOACH_BRIEF_CHARS';
+  const before = process.env[KEY];
+  delete process.env[KEY];
+  assert.strictEqual(e.briefChars(), e.BRIEF_CHARS_DEFAULT, 'unset is the default');
+  process.env[KEY] = '99999999';
+  assert.strictEqual(e.briefChars(), e.BRIEF_CHARS_MAX, 'a brief is injected into every session — the ceiling is real');
+  process.env[KEY] = '10';
+  assert.strictEqual(e.briefChars(), e.BRIEF_CHARS_MIN, 'and so is the floor');
+  process.env[KEY] = 'lots';
+  assert.strictEqual(e.briefChars(), e.BRIEF_CHARS_DEFAULT, 'nonsense falls back rather than becoming NaN');
+  process.env[KEY] = '2500';
+  assert.strictEqual(e.briefChars(), 2500, 'a value inside the range is used as given');
+  if (before === undefined) delete process.env[KEY]; else process.env[KEY] = before;
+}
+
+// ---------- an unknown default_trust falls to the strict side, not the permissive one ----------
+{
+  const KEY = 'AICOACH_DEFAULT_TRUST';
+  const before = process.env[KEY];
+  process.env[KEY] = 'workspace';
+  assert.strictEqual(e.trustDefault(), 'workspace', 'the documented value is honoured');
+  process.env[KEY] = ' WORKSPACE ';
+  assert.strictEqual(e.trustDefault(), 'workspace', 'case and whitespace are not a different setting');
+  process.env[KEY] = 'wrokspace';
+  assert.strictEqual(e.trustDefault(), 'full', 'a typo is not silently a trust level');
+  if (before === undefined) delete process.env[KEY]; else process.env[KEY] = before;
+}
+
+// ---------- the CLI answers in sentences, including when it fails ----------
+{
+  // injection-scan's own documented use is "a README from a repo you are about to vendor", and
+  // those clear the 512 KB cap. safeRead throws on that; the caller is a skill, which can act on a
+  // sentence and not on a stack trace.
+  const big = path.join(tmp, 'huge.md');
+  fs.writeFileSync(big, 'x'.repeat(e.INJECTION_SCAN_CAP + 1));
+  const r = spawnEngine(['injection-scan', big]);
+  assert.ok(!/at .*engine\.js:\d+/.test(r.stdout + r.stderr), 'no stack trace: ' + r.stdout + r.stderr);
+  assert.match(r.stdout, /cannot scan/, 'says it could not: ' + r.stdout);
+  assert.match(r.stdout, /KB/, 'and names the limit: ' + r.stdout);
+  assert.notStrictEqual(r.status, 0, 'a refusal is not a clean exit');
+
+  const missing = spawnEngine(['injection-scan', path.join(tmp, 'no-such-file.md')]);
+  assert.match(missing.stdout, /cannot scan/, 'a missing file is the same shape of answer');
+
+  // A throw from anywhere else in the CLI gets the same treatment.
+  const bad = spawnEngine(['finding-update', '999', '--status', 'not-a-status']);
+  assert.ok(!/at .*engine\.js:\d+/.test(bad.stdout + bad.stderr), 'no stack trace from a bad flag either');
+  assert.match(bad.stderr, /unknown status/, 'the real message survives: ' + bad.stderr);
+  assert.notStrictEqual(bad.status, 0, 'and it still exits non-zero');
+}
+
+// ---------- the seed stamps a version it can actually know ----------
+{
+  const file = path.join(tmp, 'meta-seed.jsonl');
+  e.seedExport(file, { dir: tmp });
+  const meta = JSON.parse(fs.readFileSync(file, 'utf8').split('\n')[0]);
+  assert.strictEqual(meta.kind, 'meta', 'meta is the first row');
+  assert.strictEqual(meta.seed, e.SEED_FORMAT, 'the format is the constant, not a literal');
+  assert.strictEqual(meta.schema, e.SCHEMA_VERSION, 'and the schema version is the one that governs reading');
+  assert.ok(!('engine' in meta), 'no hand-pasted marketplace version — this file cannot know it');
 }
 
 console.log('engine.test.js: ALL PASS');

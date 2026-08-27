@@ -41,6 +41,12 @@ the command *you* would run, and you decide.
 One line per finding: what it is, the evidence, and the exact command to fix it. End with the
 `ENGINE stats` line verbatim — it is already the counts, and retyping numbers invents them.
 
+`--verbose` changes exactly one thing: findings are listed in full instead of capped at the worst
+five per section, and each contradiction carries the check that proved it (the command and its
+output, or the `file:line` read). Everything else — the sections, the order, the closing stats
+line — is identical. The default is the short report because a health check nobody finishes
+reading is a health check nobody acts on.
+
 ## Rules
 
 - Never run `forget`. Propose it; the user runs it.

@@ -39,8 +39,12 @@ Verify it after writing — a malformed `.canvas` fails silently in Obsidian, wh
 like an empty diagram. One command, and it also counts the nodes against the ceiling below:
 
 ```bash
-node -e "const c=JSON.parse(require('fs').readFileSync('docs/onboarding/architecture.canvas','utf8'));console.log(c.nodes.length+' nodes, '+c.edges.length+' edges')"
+node -e "const c=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));console.log(c.nodes.length+' nodes, '+c.edges.length+' edges')" <path-to.canvas>
 ```
+
+Pass the file you actually wrote. `--feature` and `--project` put the canvas somewhere other than
+`docs/onboarding/architecture.canvas`, and a verification pinned to that one path either checks the
+wrong file or reports a missing one as a failure.
 
 ## Mermaid discipline
 

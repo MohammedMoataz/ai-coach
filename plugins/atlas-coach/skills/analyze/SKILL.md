@@ -45,6 +45,15 @@ file:line, or URL + quote). Uncertain defaults to PLAUSIBLE, never CONFIRMED. De
 what has gone stale (>90 days). One closing line on gaps only if the numbers show one ("12 docs,
 none newer than March") — never invented.
 
+**The corpus rots in one specific way, and stats is where it shows.** Deleting or renaming a `.md`
+leaves its paragraphs in the index: the index only rewrites chunks for a file it is currently
+writing. So `0 docs, 218 paragraphs` is not a puzzle, it is an index describing files that no
+longer exist — and a search will happily quote them. Whenever paragraphs outnumber what the
+documents can account for (docs at zero, or a paragraph count that did not fall after a deletion),
+say so plainly and offer `INGEST reindex`, which rebuilds the index from what is actually on disk.
+Reporting the two numbers side by side without remarking on the contradiction is the one thing
+this mode must not do.
+
 ## Rules
 
 - A verdict without evidence is not a verdict.

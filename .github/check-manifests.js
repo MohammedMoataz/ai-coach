@@ -47,6 +47,11 @@ for (const dir of fs.readdirSync(path.join(root, 'plugins'))) {
 }
 
 // every dependency resolves to a plugin in this marketplace, at a range its version satisfies
+const parse = (v) => String(v).replace(/^[\^~]/, '').split('.').map(Number);
+const ahead = (a, b) => { // is a > b, comparing x.y.z left to right
+  for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0); }
+  return false;
+};
 for (const [name, m] of manifests) {
   for (const dep of m.dependencies || []) {
     const d = typeof dep === 'string' ? { name: dep } : dep;
@@ -58,6 +63,38 @@ for (const [name, m] of manifests) {
     const have = String(target.version).match(/^(\d+)\./);
     check(want && have && want[1] === have[1],
       `${name}: requires ${d.name}@${d.version}, but ${d.name} is ${target.version}`);
+    // A floor above what ships can never be satisfied — the shape check above cannot see it
+    // because the majors still agree.
+    check(!ahead(parse(d.version), parse(target.version)),
+      `${name}: requires ${d.name}@${d.version}, which is ahead of the ${target.version} this marketplace ships`);
+  }
+}
+
+// The marketplace's own version and the bundle's must agree, and the CHANGELOG's newest section
+// has to be about that release. All three were 1.5.0 / 1.4.0 / 1.5.0 at once: the bundle was
+// simply never bumped, and every check here passed anyway because each number was well-formed on
+// its own. A release number is a claim about the other two, so it is checked against them.
+{
+  const bundle = manifests.get('ai-coach');
+  if (market.version && bundle) {
+    check(market.version === bundle.version,
+      `marketplace.json is ${market.version} but the ai-coach bundle is ${bundle.version} — a release bumps both`);
+  }
+  try {
+    const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
+    const newest = (changelog.match(/^##\s+v(\d+\.\d+\.\d+)/m) || [])[1];
+    check(newest === market.version,
+      `CHANGELOG's newest release is v${newest}, but marketplace.json says ${market.version}`);
+    // And that section has to name every plugin whose version it claims to have changed.
+    const section = changelog.split(/^##\s+/m).find((s) => s.startsWith('v' + market.version)) || '';
+    for (const [name, m] of manifests) {
+      if (name === 'ai-coach') continue;
+      if (!section.includes(name)) continue; // a plugin this release did not touch
+      check(section.includes(`${name} ${m.version}`),
+        `CHANGELOG v${market.version} mentions ${name} but not "${name} ${m.version}" — the version it actually ships`);
+    }
+  } catch (err) {
+    fail.push('CHANGELOG.md: ' + err.message);
   }
 }
 

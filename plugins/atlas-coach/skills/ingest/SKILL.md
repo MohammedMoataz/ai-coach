@@ -4,7 +4,7 @@ argument-hint: "<file-or-url>... [--out <dir>] [--raw]"
 disable-model-invocation: true
 model: haiku
 effort: low
-allowed-tools: Bash, Read, WebFetch, Write, Skill
+allowed-tools: Bash, Read, Edit, WebFetch, Write, Skill
 ---
 
 # /ingest — documents in, markdown out
@@ -59,7 +59,8 @@ same command in PowerShell. Output defaults to `./docs`.
 
 6. **Report**: written · skipped-as-unchanged · failed-with-reason, and that `./docs` is shared
    with the team once committed. The `.atlas-index.db` index is not meant to travel — check
-   `.gitignore` covers `*.db` and add the line if it does not; `INGEST reindex` rebuilds it
+   `.gitignore` covers `*.db` and **Edit** the line in if it does not (append; never Write over a
+   `.gitignore`, which would discard every rule already in it). `INGEST reindex` rebuilds the index
    anywhere, so nothing is lost by leaving it out.
 
 ## Rules

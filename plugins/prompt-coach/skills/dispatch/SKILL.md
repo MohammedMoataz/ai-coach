@@ -1,5 +1,6 @@
 ---
 description: The four rules for a prompt whose reader cannot ask you anything — a subagent, a fresh session after a reset, a workflow stage, or a teammate. Use before dispatching an agent, writing a plan spec, splitting work across contexts, or handing a task to another context.
+argument-hint: "[the draft you are about to send]"
 ---
 
 # dispatch — a prompt nobody can ask you about
@@ -63,9 +64,11 @@ This is the rule with no counterpart in chat, and the specific way delegation fa
 no return contract returns a file dump.
 
 Name three things: **size**, **evidence**, **negative space**. This product's own agents are written
-that way — `agents/researcher.md` caps at 600 words, requires every claim to name a source or be
-marked `UNVERIFIED`, and makes *what could not be determined* a required closing line rather than an
-omission. Copy that shape; it is load-bearing, not decoration:
+that way — atlas-coach's `researcher` agent caps at 600 words, requires every claim to name a source
+or be marked `UNVERIFIED`, and makes *what could not be determined* a required closing line rather
+than an omission. (It lives in a sibling plugin, so the shape is reproduced here rather than linked;
+the contract below is the whole of it, and nothing needs atlas-coach installed to use it.) Copy that
+shape; it is load-bearing, not decoration:
 
 ```
 Return: <= 300 words. Findings first, method never.

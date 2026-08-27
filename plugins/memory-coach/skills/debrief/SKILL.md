@@ -34,13 +34,19 @@ Session summaries are not this. They are a one-line note to yourself and they st
    - **unknowns** — what is NOT done and NOT determined. Required. "None" is not an answer.
 5. Show the draft. Then publish:
    `ENGINE debrief-publish --business "…" --technical "…" --evidence "…" --unknowns "…"`
+   If the user passed `--name <label>`, forward it: `--name "<label>"`. It overrides the session
+   name for this key only and renames nothing — the session keeps its own name. Without it the key
+   comes from the session name, which is the normal path and the one step 1 is about.
 6. Report the key exactly as printed, and that nothing leaves this machine until
    `/memory-coach:handoff` exports.
 
 ## Read — what teammates concluded
 
-- `ENGINE debriefs [--author <email>] [--name <substr>] [--task <branch>] [--since 30] [--grep <term>]`
-- `ENGINE debrief-show <key>` — pass the key exactly as printed, never a name you retyped.
+`/debrief list` and `/debrief show <key>` are these two commands; run them directly:
+
+- `list` → `ENGINE debriefs [--author <email>] [--name <substr>] [--task <branch>] [--since 30] [--grep <term>]`
+- `show <key>` → `ENGINE debrief-show <key>` — pass the key exactly as printed, never a name you
+  retyped.
 
 ## Rules
 

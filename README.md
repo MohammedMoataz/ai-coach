@@ -230,10 +230,17 @@ which of the three sources decided it.
 **To reset one** — clear it in `/plugin`, or unset the env var. There is no "reset all": the
 defaults are what you get when nothing is set anywhere, and `config` shows you exactly what is.
 
+Claude Code hands plugin settings to hook processes and to nothing else, so the engine a skill
+shells out to could not see them: `default_trust` shaped your session brief and then did nothing in
+`/memory-coach:recall`. The session-start hook now records what it was passed in
+`~/.ai-coach/settings.json`, and every other process reads that — one setting, one answer,
+everywhere. `config` marks those rows `settings.json`, and clearing a setting in `/plugin` clears
+the record on the next session start.
+
 | Setting | Default | What it governs |
 |---|---|---|
-| `brief_chars` | `4000` | Ceiling on the memory injected at session start. Ranking happens before the cap, so raising it surfaces more — it does not change what wins. |
-| `coach` | `on` | The coach line, and hints on vague prompts. **Display only.** |
+| `brief_chars` | `4000` | Ceiling on the memory injected at session start. Ranking happens before the cap, so raising it surfaces more — it does not change what wins. Clamped to 500–16000. |
+| `coach` | `on` | The coach line, and hints on vague prompts. **Display only** — and now actually so: prompt signals are recorded before this switch is read, because silencing a line must not empty the evidence that line is measured against. |
 | `corrections` | `on` | Whether failures are recorded at all. |
 | `learn` | `on` | One Haiku call at session end distils a summary and up to 3 learnings. |
 | `plan_review` | `on` | In plan mode only: one Haiku call scores the prompt. |
@@ -254,8 +261,8 @@ person might reach for.
 
 | Variable | Effect |
 |---|---|
-| `AICOACH_DB` | Path to the user-scope database. Tenants live beside it under `projects/`, so pointing this at a temp file gives you a whole isolated tree. |
-| `AICOACH_LOG` | Where failures append. Defaults to `~/.ai-coach/log.jsonl`. |
+| `AICOACH_DB` | Path to the user-scope database. Tenants, the bin copy, the settings record and the log all live beside it, so pointing this at a temp file really does give you a whole isolated tree. |
+| `AICOACH_LOG` | Where failures append. Defaults to `log.jsonl` beside the database — `~/.ai-coach/log.jsonl` unless `AICOACH_DB` moved it. |
 | `AICOACH_INNER` | Set to `1` inside spawned `claude -p` children so hooks do not recurse. |
 | `AICOACH_CLAUDE_BIN` | The `claude` binary to shell out to for the two Haiku calls. |
 | `AICOACH_SEED_KEY` | Passphrase for an encrypted seed, instead of `.ai-coach/seed.key`. |

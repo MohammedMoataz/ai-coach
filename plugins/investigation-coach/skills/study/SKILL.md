@@ -1,5 +1,5 @@
 ---
-description: Write study material explaining the project's design patterns and technologies - the why, not the how-to - into ./study. Use for "/study", "help me study this codebase", "explain the patterns used here".
+description: Write study material explaining the project's design patterns and technologies - the why, not the how-to - into docs/study. Use for "/study", "help me study this codebase", "explain the patterns used here".
 argument-hint: "[<area>] [--full] [--project]"
 disable-model-invocation: true
 ---
@@ -7,7 +7,7 @@ disable-model-invocation: true
 # /study — the why, written down
 
 Onboarding docs tell a newcomer what to do; nothing tells them why the code is shaped this way.
-This skill writes explanation — Diátaxis's neglected quadrant — into `./study/`: the patterns and
+This skill writes explanation — Diátaxis's neglected quadrant — into `docs/study/`: the patterns and
 technologies actually used, each tied to the real instance that proves it. It reads a lot of
 code: expect a real token spend; pass an area argument to bound it. Sweeps go to Explore
 subagents — keep conclusions, not file dumps.
@@ -25,8 +25,9 @@ found, not just the core ones. `--project`: span the repos in `.ai-coach/project
 
 ## Steps
 
-1. **Detect** what exists under `study/` (generated-by line = regenerable; without it =
-   hand-written, ask first).
+1. **Detect** what exists under `docs/study/` (generated-by line = regenerable; without it =
+   hand-written, ask first). A `study/` directory at the repo root is output from before this
+   path moved — say so and offer to move it; never write to both.
 2. **Discover the areas**: `docs/onboarding/stack.md` (written by `/investigation-coach:onboard`)
    already names the roots — when it exists it IS the area list, so spot-check it against the tree
    rather than re-deriving it. When it does not, read the project structure (roots, manifests) and
@@ -36,7 +37,7 @@ found, not just the core ones. `--project`: span the repos in `.ai-coach/project
 3. **Write** (structure and voice in `references/structure.md` — load before writing):
 
 ```
-study/
+docs/study/
   index.md            threshold concepts + reading order + the discovered areas
   <area>/*.md         one directory per discovered area, one file per pattern/technology
   cross-cutting/*.md  the concerns spanning every area: auth, errors, config, logging, testing
@@ -47,15 +48,18 @@ study/
    names what was discovered so absence reads as a fact.
 4. **Remember.** After a verified write — the files exist, and re-reading one shows the content you
    intended, generated-by line included:
-   `ENGINE add reference "study material at study/ (<areas>)" 0.75`.
+   `ENGINE add reference "study material at docs/study/ (<areas>)" 0.75`.
 
 ## Rules
 
 - Explanation only: why this pattern here, what it trades away, how it interacts. Setup steps
   belong to `/onboard`'s start-here; API shapes belong to reference docs — neither belongs here.
 - Every pattern claim cites a real instance (`file:line`). No instance, no chapter.
-- Wikilinks between study notes and to `docs/onboarding/` notes — open the repo root in Obsidian
-  and study/ joins the same graph.
+- Wikilinks between study notes and to `docs/onboarding/` notes — one vault under `docs/`, so
+  these notes, onboarding and the business blueprint are all one graph. This is why the path is
+  `docs/study/` and not the repo root: `/strategy-coach:vault` links its hub at `[[study/index]]`
+  and `/strategy-coach:blueprint` reads `docs/study/` for what it must not re-derive. A root
+  `study/` was in neither.
 - Filenames: no `* " \ / : | ?`.
 - Re-run = amend, never silent overwrite of hand-written files.
 

@@ -300,15 +300,21 @@ assert.strictEqual(sig[1].flags, 'exempt', 'exploration recorded as exempt: ' + 
 assert.strictEqual(sig[2].flags, '', 'clean prompt recorded with no flags: ' + JSON.stringify(sig[2]));
 assert.ok(sig.every((s) => !('text' in s)), 'no prompt text column exists at all');
 
-// coach off = fully silent, and nothing recorded
+// coach off = silent, and STILL RECORDING. `coach` is documented as display-only, and this is the
+// half that made that false: silencing the hint used to silence the evidence /prompt-stats measures
+// against, so turning off a line quietly emptied the only data that could justify it.
 r = run('prompt.js', { session_id: 'pc4', cwd: pProj, prompt: 'fix that thing in the code' }, { AICOACH_COACH: 'off' });
 assert.strictEqual(r.stdout.trim(), '', 'coach:off is silent');
-assert.strictEqual(signalsFor().length, 3, 'coach:off records nothing');
+const offSig = signalsFor();
+assert.strictEqual(offSig.length, 4, 'coach:off still records the signal — display only means display only');
+assert.ok(offSig[3].flags.includes('action-no-ref'), 'the signal recorded under coach:off is the real verdict: ' + JSON.stringify(offSig[3]));
+assert.strictEqual(offSig[3].hinted, 1, 'hinted records what the verdict was, not whether it was shown');
+assert.ok(offSig.every((s) => !('text' in s)), 'still no prompt text, under any setting');
 
 // short prompts and slash commands are skipped entirely
 run('prompt.js', { session_id: 'pc5', cwd: pProj, prompt: 'yes' });
 run('prompt.js', { session_id: 'pc5', cwd: pProj, prompt: '/memory-coach:recall rounding half up' });
-assert.strictEqual(signalsFor().length, 3, 'trivia and slash commands are not evaluated');
+assert.strictEqual(signalsFor().length, 4, 'trivia and slash commands are not evaluated');
 
 // plan mode spawns the judge — and <private> must never reach it.
 // An earlier case in this file deliberately trips the cooldown; clear it, or the spawn under test

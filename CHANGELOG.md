@@ -3,6 +3,75 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.5.1 — Say what is true (2026-08-27)
+
+A settings table that a skill could not read, a switch documented as cosmetic that quietly deleted
+evidence, a reference file holding a skill's entire output format that nothing ever loaded, and a
+scanner that threw a stack trace at the exact file it advertises. None of it failed loudly. All of
+it disagreed with what this product says about itself.
+
+**ai-coach-core 1.4.0 · memory-coach 1.2.1 · prompt-coach 1.1.1 · security-coach 1.0.1 ·
+harness-coach 1.0.3 · investigation-coach 1.2.1 · atlas-coach 1.0.1 · strategy-coach 1.3.1 ·
+ai-coach 1.5.1**
+
+### A setting only half the product could see
+
+Claude Code passes plugin settings to hook processes, MCP servers and LSP servers — and to nothing
+else. Every skill here reaches the engine by shelling out to `node ~/.ai-coach/bin/engine.js`,
+which is a Bash call, so not one of those settings ever reached it. The consequence was two answers
+to the same question: `default_trust: workspace` held a teammate's memories out of the session
+brief and then ranked them normally in `/memory-coach:recall`, and `brief_chars` was ignored
+entirely by `/memory-coach:doctor`, which asked for a brief and got the built-in 4000.
+
+The session-start hook is one of the processes that *is* told, so it now writes what it was told to
+`~/.ai-coach/settings.json`, and every later process reads it. An `AICOACH_*` variable still wins.
+The file is rewritten whole on every session start, so clearing a setting in `/plugin` clears it
+here too — a snapshot that only ever gained keys would outlive the choice it recorded, which is
+worse than not having one. `config` names the file in the `set by` column, because "you chose this,
+and this process learned it second-hand" is a different state from "nobody ever set it".
+
+### `coach: off` was never display-only
+
+`plugin.json` says display only. The README says silencing a display line should not quietly empty
+the evidence. The hook exited before recording the prompt signal, so turning off a one-line hint
+stopped `/prompt-coach:prompt-stats` collecting the only data that could ever justify that hint.
+Recording now happens before the display switch is consulted, where it always belonged — signal
+names only, never prompt text, exactly as before. `corrections` remains the switch that stops
+recording, and the suite now asserts the distinction from both sides.
+
+### Everything else that was not true
+
+- `injection-scan` on a file over 512 KB — "a README from a repo you are about to vendor", which is
+  the use `/security-coach:scan` advertises — threw out of `safeRead` and printed a Node stack
+  trace. The CLI now answers in one sentence, names the limit, and exits non-zero. Every other
+  command got the same treatment: a skill can act on a message and can do nothing with a stack.
+- `/strategy-coach:blueprint` never loaded `references/notes.md`, the file holding its evidence
+  vocabulary, all four document skeletons and the ⚠-verify discipline. One line, and the skill's
+  entire output contract is reachable again.
+- `/investigation-coach:study` wrote to `./study/` while four files in strategy-coach read
+  `docs/study/`. It writes `docs/study/` now: `/strategy-coach:vault`'s hub link resolves and
+  `/strategy-coach:blueprint` can find the material it was told to read.
+- `/security-coach:triage` stamped every finding `pentest`, including findings handed to it by
+  `/security-coach:audit`. The source is the caller's now — the engine already understood all four.
+- `/harness-coach:partners` offered seven tools from a catalog of nine; miro and draw.io were
+  unreachable unless you already knew their names.
+- `brief_chars` is clamped to the 500–16000 the manifest advertises, `default_trust` falls back to
+  `full` only for values it recognises, a memory with no confidence is worth 0.7 everywhere
+  instead of 0.7 in two places and 0.5 in the ranking, and the seed stamps the schema version it
+  can actually know instead of a marketplace number pasted in by hand.
+- `AICOACH_DB` now gives the isolated tree the README promises: the log moved with it, having
+  pointed at the real `~/.ai-coach/log.jsonl` all along.
+- The session-end distiller passed a project key where `add()` documents a working directory, and
+  landed on the right project by accident.
+
+### The check that would have caught this release's own drift
+
+`ai-coach` shipped as 1.4.0 while the marketplace and the CHANGELOG both said 1.5.0. Every existing
+check passed: each number was well-formed, and the dependency majors agreed. `check-manifests.js`
+now requires the marketplace version, the bundle version and the newest CHANGELOG heading to be the
+same release, requires that section to name each plugin at the version it actually ships, and
+rejects a dependency floor that is ahead of what the marketplace has.
+
 ## v1.5.0 — One place per fact (2026-08-24)
 
 Identity was recorded three times. A memory carried an email, a name and a role; so did a session;

@@ -42,7 +42,11 @@ process.stdin.on('end', () => {
         if (l && l.text && !engine.hasText(l.text)) {
           // stamped 'distilled': a model compressed this out of a transcript, and it must
           // never be able to read as something a person decided. Nothing promotes it later.
-          engine.add('learning', l.text, clamp(l.confidence), engine.project(data.cwd), id,
+          // data.cwd, not engine.project(data.cwd): add() documents its 4th argument as a WORKING
+          // DIRECTORY and resolves identity from it. Handing it a project key made it path.resolve
+          // a name that is not a path, walk 64 levels up from it looking for a .git, and cache the
+          // answer under a key nothing else uses. It landed on the right project by accident.
+          engine.add('learning', l.text, clamp(l.confidence), data.cwd, id,
             { provenance: 'distilled' });
         }
       }

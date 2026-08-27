@@ -22,8 +22,12 @@ same command in PowerShell.
    what the harness and the ingested corpus already know shapes the sub-questions and is never
    re-researched.
 2. **Tier.** Decompose into non-overlapping sub-questions: 3 (simple lookup) / 5 (comparison) /
-   7 (landscape) — `--tier` overrides. Never more than 8 agents total, including verification.
-3. **Fan out.** One `researcher` agent per sub-question, in parallel, via the Agent tool. Each
+   7 (landscape) — `--tier` overrides. The tier is the number of *researchers*; verification adds
+   one or two more on top, so tier 7 is a 9-agent run. Ten is the ceiling for everything a run
+   spawns.
+3. **Fan out.** One `researcher` agent per sub-question, in parallel, each spawned as a subagent
+   (the Task/Agent tool, whichever this harness exposes — the name differs, the call is the
+   same). Each
    returns a ≤600-word cited brief; their raw reading never enters this context. When `./docs`
    exists, paste the resolved `INGEST` command — the one above, already substituted in this
    skill's text — into each agent's prompt: an agent cannot expand `${CLAUDE_PLUGIN_ROOT}` itself.
@@ -31,8 +35,10 @@ same command in PowerShell.
    agent. REFUTED claims are dropped AND the drop is reported — a silently vanished claim
    teaches nobody. PLAUSIBLE claims stay, marked `(unverified)` inline. CONFIRMED claims carry
    their evidence.
-5. **Synthesize** into `./research/<slug>.md`: frontmatter (question, date, tier, sources
-   count), findings first, contradictions as findings, a "dropped as refuted" line, and a
+5. **Synthesize** into `./research/<slug>.md`: frontmatter (`question`, `date`, `tier`,
+   `sources`, `dropped_refuted` — the count of claims the gate killed, which is a required field
+   and reads `0` when nothing was refuted), findings first, contradictions as findings, a
+   "dropped as refuted" line, and a
    closing "not determined" list. Then store 1-3 durable conclusions:
    `ENGINE add reference "<conclusion> — <url>" <0.9 docs|0.7 blog|0.5 forum>`.
 6. **Hand back.** The session answer is the synthesis, findings first — the user reads the

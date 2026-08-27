@@ -20,6 +20,7 @@ docs/
   features/<slug>/   <- /strategy-coach:feature writes here
   onboarding/        <- /investigation-coach:onboard and :map own this
   study/             <- /investigation-coach:study owns this
+  market/            <- /strategy-coach:market writes here
   research/          <- /atlas-coach:research owns this
 ```
 
@@ -46,10 +47,18 @@ exists; a hub that links to nothing is worse than a short hub.
 - [[onboarding/architecture]] — components and what talks to what
 - [[study/index]] — why it is built this way
 
+## Looking outward
+- [[market/index]] — competitors, what their users complain about, and where the gap is
+- [[business/industry]] — the rules and standards this industry is held to
+
 ## Sources
 - [00-index](00-index.md) — documents ingested from outside the repo, with their origins
 - [[conventions]] — how notes here are written, and which ones you may edit by hand
 ```
+
+`market/` earns a section for the same reason every other directory does: this vault's own rule is
+that nothing orphans, and market notes were being written into a tree whose hub had no way to reach
+them. Link the individual analyses when there is no `market/index`.
 
 The `00-index` link is a plain markdown link, not a wikilink: it belongs to another skill, and the
 plain form signals "read, do not treat as part of this note set".

@@ -59,17 +59,24 @@ failure to find one.
    never more than 4 per competitor. Load `references/dimensions.md` for the question set.
 5. **Fetch evidence, not brochures.** One `atlas-coach:researcher` per competitor-question pair.
    Each returns ≤600 words, every claim sourced or `UNVERIFIED`, ending in what it could not
-   determine. Weight sources explicitly: bug trackers, changelogs, review sites and forums over
+   determine. **When atlas-coach is not installed**, do the same reading inline with WebSearch and
+   WebFetch, under the same contract — the protocol is the deliverable here, not the agent, and a
+   missing sibling plugin degrades this run rather than ending it. Say in the report which way it
+   ran, because inline reading costs this session's context and the agents do not. Weight sources explicitly: bug trackers, changelogs, review sites and forums over
    the vendor's own pages. Dates on everything — "does not support X" ages badly.
 6. **Verify what would change a decision.** Any claim you are about to build a recommendation on
    goes through `atlas-coach:verifier`, which tries to refute it. `PLAUSIBLE` is not `CONFIRMED`
-   and is written as `UNVERIFIED`. Skip this and the deliverable is a rumour with a table.
+   and is written as `UNVERIFIED`. Skip this and the deliverable is a rumour with a table. Without
+   atlas-coach: attack the claim yourself, in a separate pass, hunting for the source that
+   contradicts it — the gate is not optional, only the agent is.
 7. **Find the gap, and be willing to find none.** Cross the complaint sets: something every
    competitor's users complain about, that we could plausibly serve, is the finding. If nothing
    clears that bar, say so in one line — "no defensible gap found in this pass" is a real result
    and more useful than an invented one.
 8. **Write it, then remember it.** `docs/market/<slug>.md`, format in `references/format.md`.
-   Refresh in place; never fork into `<slug>-v2`. Then
+   Refresh in place; never fork into `<slug>-v2`. Link it from `docs/home.md`'s "Looking outward"
+   section if that hub exists — this vault's rule is that nothing orphans, and a market note
+   nothing links to is one nobody opens again. Then
    `ENGINE add reference "market analysis at docs/market/<slug>.md — <the gap, or that none was found>" 0.75`
 
 ## Rules
