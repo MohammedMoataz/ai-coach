@@ -22,6 +22,9 @@
     "Notification": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/notice.js\"", "timeout": 10, "statusMessage": "Noting what went wrong..." }] }
     ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/precompact.js\"", "timeout": 10, "statusMessage": "Saving where you were..." }] }
+    ],
     "SessionEnd": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end.js\"", "timeout": 60, "statusMessage": "Distilling session learnings..." }] }
     ]

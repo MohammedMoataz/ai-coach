@@ -10,6 +10,12 @@ Sources referenced below:
 - **CCB** — code.claude.com, *Best practices for Claude Code* (read 2026-08-12)
 - **PM** — getmaxim.ai, *Best practices for prompt management* (read 2026-08-12)
 - **HD** — anthropic.com/engineering, *Harness design for long-running application development*
+  (read 2026-08-12 — the date was missing here, in the one document whose entire premise is that
+  every claim carries the date it was checked)
+
+The twelve rules `/prompt-coach:prompt` prints are a subset of these twenty-two, and each one there
+cites the number it maps to. The backtick ids are the detector names — the same strings
+`/prompt-coach:prompt-stats` reports — so a signal in that table resolves to exactly one rule here.
 
 ---
 

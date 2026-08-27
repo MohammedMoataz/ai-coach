@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS memories (
   text_key   TEXT NOT NULL,
   confidence REAL DEFAULT 0.7,
   provenance TEXT DEFAULT 'human',      -- human | distilled | imported
-  concepts   TEXT,
   project    TEXT,                      -- always NULL here; kept so rows are shape-identical
   repo       TEXT,
   source     TEXT,

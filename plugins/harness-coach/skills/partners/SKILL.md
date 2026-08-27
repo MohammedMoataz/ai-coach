@@ -1,5 +1,5 @@
 ---
-description: Detect which of the seven curated companion tools are already installed, then install only the ones the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
+description: Detect which of the nine curated companion tools are already installed, then install only the ones the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
 argument-hint: "[partner-name]"
 disable-model-invocation: true
 model: haiku
@@ -12,7 +12,8 @@ AI Coach ships coaching and nothing else. These partners are tools worth having 
 coach points at them instead of absorbing them. Nothing installs without the user's pick, ever.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Steps
 
@@ -25,7 +26,11 @@ coach points at them instead of absorbing them. Nothing installs without the use
    pitch — no selling, and its caveat (token cost, restart, needs Chrome/uv/OAuth) stays attached.
 3. **Ask.** AskUserQuestion, one call, two multiSelect questions covering only the *missing*
    entries: "CLI tools" (gh, ast-grep, spec-kit, gsd-browser) and "Integrations" (chrome-devtools,
-   figma, obsidian). Picking none is a fine outcome.
+   figma, obsidian, miro). Picking none is a fine outcome. The groups are built from the catalog,
+   not from this line — a partner added there and not here is one nobody can reach.
+   **draw.io is deliberately not in either group**: nothing has to be installed to *generate* a
+   `.drawio` file, so it belongs in the brief as already-usable, and only the editor extension is
+   ever an install. Offer that one only if the user asks to edit the diagrams.
 4. **Install** each pick with its `Install:` line, then re-run its check to verify. Steps that are
    interactive (`gh auth login`, Figma OAuth, Obsidian's plugin settings) are handed to the user —
    suggest typing `! <command>` so the output lands in the session — never run headless. A failed
@@ -47,4 +52,4 @@ coach points at them instead of absorbing them. Nothing installs without the use
 
 ## Related
 
-`/memory-coach:doctor` checks the coach's own health; this checks what's standing next to it.
+`/memory-coach:recall --health` checks the coach's own memory; this checks what's standing next to it.

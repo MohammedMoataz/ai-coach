@@ -31,19 +31,24 @@ process.stdin.on('end', () => {
     const prompt = String(data.prompt || '').trim();
     engine.firstPrompt(data.session_id, prompt);
 
-    if (!engine.optOn('coach', 'on')) process.exit(0);
     if (prompt.length < 25 || prompt.startsWith('/') || prompt.startsWith('!')) process.exit(0);
 
     const verdict = engine.evaluatePrompt(prompt, 2);
 
-    // Record before deciding whether to speak. An exempt prompt and a clean prompt are both
-    // useful data: without them there is no baseline to measure a weak prompt against.
+    // Record before deciding whether to speak, and before the display switch is consulted. An
+    // exempt prompt and a clean prompt are both useful data: without them there is no baseline to
+    // measure a weak prompt against.
+    //
+    // `coach` is documented as display-only, and it has to be: this recording is the entire
+    // evidence base /prompt-coach:prompt-stats measures against, and silencing a one-line hint
+    // used to empty it without saying so. Signal NAMES travel here, never prompt text.
     try {
       engine.promptSignal(data.session_id, prompt.length,
         verdict.exempt ? ['exempt'] : verdict.flags,
         verdict.hints.length ? 1 : 0);
     } catch (err) { engine.log('prompt.signal', err); }
 
+    if (!engine.optOn('coach', 'on')) process.exit(0);
     if (verdict.exempt) process.exit(0);
 
     const notes = verdict.hints.slice();

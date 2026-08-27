@@ -1,6 +1,6 @@
 ---
 description: Turn a pentest or security report into tracked findings with owners and status, and produce the team report. Use for "/triage", "we got a pentest report", "security findings status".
-argument-hint: "<ingest|status|update|report> [args]"
+argument-hint: "<ingest|status|update|report> [--source pentest|audit|scan|disclosure] [args]"
 disable-model-invocation: true
 model: haiku
 effort: low
@@ -20,7 +20,8 @@ vulnerability written into a committed file is disclosure to everyone with repo 
 contains a `.ai-coach/security/` line and append it if missing.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Modes
 
@@ -28,9 +29,15 @@ contains a `.ai-coach/security/` line and append it if missing.
 1. Validate before recording: is it reproducible, is it in code this team owns, is it one finding
    or a chain the report double-counted? A finding that cannot be validated is recorded with that
    said in its detail, not silently dropped.
-2. `ENGINE finding-add --source pentest --title "<one line>" --cwe CWE-nnn --severity <as reported> --detail "<evidence, location, repro>"`
+2. `ENGINE finding-add --source <source> --title "<one line>" --cwe CWE-nnn --severity <as reported> --detail "<evidence, location, repro>"`
    — the reported severity is recorded as the claim it is; `--assessed` comes later, after the
    team judges likelihood × impact in their own environment.
+   **`<source>` is where the finding actually came from**, one of `pentest`, `audit`, `scan` or
+   `disclosure`: `--source` if the caller passed one, `audit` when `/security-coach:audit` handed
+   these over, `disclosure` for something reported from outside, `pentest` for a pentest report,
+   which is the default when nobody said. It used to be hardcoded to `pentest`, so a scanner run
+   and an external report both entered the database claiming a pentest produced them — and the
+   provenance of a finding is exactly what decides how much its severity claim is worth.
 3. When all findings are in: confirm `.gitignore` carries the `.ai-coach/security/` line (append
    it first if not — this is the gate, and it is checked here, not assumed from the note above),
    then regenerate `.ai-coach/security/findings.md` from `ENGINE findings --json` — a table of id,
@@ -49,10 +56,15 @@ regenerate `findings.md`. The status ladder is the discipline:
   CISO, a lead, an owner. A developer cannot accept risk on the org's behalf, including you.
 - `false-positive` also carries evidence. "We don't think so" is not evidence.
 
-**`report`** — write `.ai-coach/security/report-YYYY-MM-DD.md` for the dev team: summary counts by
-status, the full table (both severity columns visible — the claim and the judgment), what changed
+**`report`** — write `.ai-coach/security/report-YYYY-MM-DD-HHMM.md` for the dev team: summary counts
+by status, the full table (both severity columns visible — the claim and the judgment), what changed
 since the previous report file, and open findings by age. This file is the thing to share
 out-of-band with the security team; it deliberately does not live in git.
+
+The timestamp carries the hour and minute for a reason: a date-only name meant a second run on the
+same day overwrote the file it was supposed to diff against, so "what changed since the previous
+report" silently became "what changed since this morning's replacement". Read the newest existing
+report for the diff, then write a new file — never overwrite one.
 
 Load `references/workflow.md` only when the user asks why a step exists or who should sign what.
 

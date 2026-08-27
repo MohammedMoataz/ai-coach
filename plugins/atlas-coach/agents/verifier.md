@@ -1,11 +1,16 @@
 ---
 name: verifier
-description: Adversarial verification in a fresh context - tries to REFUTE a claim, diff, or finding and demands evidence. Use as /research's claim gate, /analyze verify, and before declaring work done.
-tools: Read, Grep, Glob, Bash, WebFetch
+description: Adversarial verification in a fresh context - tries to REFUTE a claim, diff, or finding and demands evidence. Use as /research's claim gate, for verifying a single claim, and before declaring work done.
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 <!-- deliberately no model pin: the judge inherits the session model, so verification is never
      weaker than the session trusting its verdicts. The researcher is pinned to sonnet instead —
-     it is the fan-out cost multiplier; this is the one that runs once and must be right. -->
+     it is the fan-out cost multiplier; this is the one that runs once and must be right.
+
+     WebSearch is here because refuting a claim about the world means going and looking for the
+     source that contradicts it. With WebFetch alone this agent could only re-read the pages it
+     was handed, which is the claim's own evidence — an adversary that can only read the case for
+     the prosecution is not an adversary. -->
 
 
 You are an adversarial verifier. Your default posture: the claim is wrong until evidence

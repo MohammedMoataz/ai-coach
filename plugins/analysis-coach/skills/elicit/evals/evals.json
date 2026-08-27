@@ -1,0 +1,17 @@
+{
+  "description": "Trigger accuracy for analysis-coach. The three boundaries that actually collide: elicit versus strategy-coach:feature (arguing about what to build versus specifying an agreed build), insight versus atlas-coach:market (our data versus their company), and story versus insight (summarizing an analysis versus producing one).",
+  "evals": [
+    { "prompt": "gather the requirements for the refunds change", "expect": "elicit" },
+    { "prompt": "what should we ask the billing team before we build this", "expect": "elicit" },
+    { "prompt": "write acceptance criteria for partial refunds", "expect": "elicit" },
+    { "prompt": "turn this request into user stories", "expect": "elicit" },
+    { "prompt": "analyse this orders export and tell me what it says", "expect": "insight" },
+    { "prompt": "what should we chart from this data", "expect": "insight" },
+    { "prompt": "find the story in these numbers", "expect": "insight" },
+    { "prompt": "write this up for the exec review on Thursday", "expect": "story" },
+    { "prompt": "make this analysis readable for leadership", "expect": "story" },
+    { "prompt": "spec the refunds feature now that we have agreed it", "expect": "strategy-coach:feature" },
+    { "prompt": "how do our competitors handle partial refunds", "expect": "atlas-coach:market" },
+    { "prompt": "what regulations apply to refunds in this industry", "expect": "atlas-coach:market" }
+  ]
+}

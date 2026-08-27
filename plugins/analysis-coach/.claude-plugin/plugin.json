@@ -1,0 +1,13 @@
+{
+  "name": "analysis-coach",
+  "displayName": "Analysis Coach",
+  "version": "1.0.0",
+  "description": "The business-analyst half of building software: elicit requirements nobody can argue about later, turn data into an analysis with its own critique attached, and write the version an executive will actually read. Inward and evidence-first — competitors and industry rules belong to atlas-coach. Ships skills only.",
+  "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
+  "homepage": "https://github.com/MohammedMoataz/ai-coach",
+  "license": "MIT",
+  "keywords": ["business-analysis", "requirements", "elicitation", "insight", "storytelling"],
+  "dependencies": [
+    { "name": "ai-coach-core", "version": "^1.6.0" }
+  ]
+}

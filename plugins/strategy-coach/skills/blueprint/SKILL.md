@@ -1,6 +1,6 @@
 ---
-description: Document what the business is — actors, processes, rules, glossary — mapped to the code that implements it, as Obsidian notes plus diagrams. Use for "/blueprint", "document the business", "map the processes", "what does this system actually do".
-argument-hint: "[--full | --feature <name>] [--visual mermaid|drawio|miro|none]"
+description: Documents the business — actors, processes, rules, glossary — mapped to the code that implements it, as Obsidian notes plus diagrams, scaffolding docs/ on the way in. Use for "/blueprint", "document the business", "map the processes", "set up the docs vault". Not for how the code works (see investigation-coach).
+argument-hint: "[--full | --feature <name>] [--visual mermaid|drawio|miro|none] [--scaffold-only]"
 disable-model-invocation: true
 ---
 
@@ -25,10 +25,22 @@ It also does not re-derive the architecture. If `/investigation-coach:map` has r
 the input here.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Steps
 
+0. **Scaffold the vault, then look at what is already in it.** This used to be `/strategy-coach:vault`,
+   a separate skill whose entire job was to run immediately before this one. List `docs/`; create
+   `docs/business/` and `docs/features/` if absent (no `.gitkeep` — each gets a hub note, and empty
+   directories do not survive git); write `docs/home.md` and `docs/conventions.md` from
+   `references/layout.md`; append `.obsidian/workspace*` and `.obsidian/cache` to `.gitignore` if
+   missing, appending only, never rewriting that file. Never create a `.obsidian/` directory —
+   Obsidian writes its own, and a hand-made one with the wrong schema version is worse than none.
+   Report three lists: created, linked, and **skipped because hand-written**; the third matters
+   most — name the file and say it carries no generated-by marker, so nobody reads "left alone" as
+   "missed". `--scaffold-only` stops here, which is the old `/vault` in one flag.
+   `ENGINE add reference "docs/ is an Obsidian vault; hub at docs/home.md, business notes in docs/business/, feature specs in docs/features/" 0.75`
 1. **Name the domain, before anything else.** One sentence: what business this system is in, and
    the sub-area it covers ("B2B wholesale ordering, specifically supplier price agreements"). Write
    it into `docs/business/overview.md` first. This is not ceremony — naming the domain up front
@@ -36,7 +48,8 @@ the input here.
    the metrics that domain actually tracks. Get it wrong and everything downstream is wrong, so
    show it to the user and let them correct it before you continue.
 2. **Read what already exists; do not re-derive it.** `docs/onboarding/stack.md`,
-   `architecture.md`, `patterns/`, `docs/00-index.md`, `docs/study/`. Say in one line what you
+   `architecture.md`, `patterns/`, `docs/00-index.md`, `docs/study/` (written by
+   `/investigation-coach:study`). Say in one line what you
    found and what is missing. If there is no onboarding output at all, say so and recommend
    `/investigation-coach:map` first — this skill will still run, but its technical mapping will be
    thinner and slower for having to trace the code itself.
@@ -48,10 +61,13 @@ the input here.
    code (an approval someone does in email), what happens on the unhappy path, and which of these
    processes actually matters. Prefer a few sharp questions to a survey: what has been tried and
    rejected, and what is deliberately manual, are the two answers worth the most.
-5. **Map each process to code.** One row per step: the entry point as `file:line`, or the word
+5. **Load `references/notes.md`, then map each process to code.** That file is the output contract
+   — the evidence vocabulary, the skeleton for each of the four notes, and the two-audience shape
+   of a process note. Read it before you write anything, not after.
+   One row per step: the entry point as `file:line`, or the word
    `INFERRED` when you are reading intent rather than proof. Never blank. A step that exists in the
    business and nowhere in the code is a finding, not an omission — record it as `NOT IN CODE`.
-   Each `NOT IN CODE` row is a candidate for `/strategy-coach:market --gap "<it>"`, which searches
+   Each `NOT IN CODE` row is a candidate for `/atlas-coach:market --gap "<it>"`, which searches
    how this industry already solved it — name that option in the report rather than speculating
    here.
 6. **Draw it.** A Mermaid flowchart inside each process note — the note is the source of truth,
@@ -79,7 +95,14 @@ the input here.
 - **No citation, no claim.** Every technical row is `file:line`, `INFERRED`, or `NOT IN CODE`.
 - **What the user told you is evidence too** — attribute it (`per <who>, <date>`). It is often the
   only source for a rule, and unattributed it reads as if the code proves it.
-- **Never overwrite a note without a `> Generated by /strategy-coach:blueprint` marker.**
+- **Never overwrite a note without a `> Generated by /strategy-coach:` marker.** No marker means a
+  person wrote it: report it as skipped and move on. This covers the scaffolded hub and conventions
+  page as much as the business notes.
+- **`docs/00-index.md` belongs to `/atlas-coach:ingest`.** Link it, never touch it. Likewise never
+  rename or move an existing file — a vault is a link graph, and a rename breaks links this skill
+  cannot see.
+- **Every generated note keeps at least one outbound wikilink**, so nothing orphans in the graph
+  view. Filenames sanitize `* " \ / : | ?` to `-`, with the real name kept as an `aliases:` entry.
 - **A missing Miro, a failed Artifact publish, or an absent onboarding doc degrades the run — it
   never fails it.** The notes are the deliverable; everything else is a rendering of them.
 - **Re-running amends.** Keep hand-added sections, update what you generated, and never silently
@@ -87,7 +110,6 @@ the input here.
 
 ## Related
 
-`/strategy-coach:vault` creates the folders this writes into — run it first.
 `/strategy-coach:feature` turns this understanding into a specified feature.
 `/investigation-coach:map` answers *what the code is*; this answers *what the business is*. The
 test: "how does X work here" → investigate; "what should we build and why" → strategize.

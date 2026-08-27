@@ -3,6 +3,315 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.8.0 — analysis-coach (2026-08-27)
+
+Everything in this marketplace so far serves the person writing the code. The work that decides
+*what* the code should do — pulling requirements out of people who have not had to be precise yet,
+reading data without describing it, and writing the version a decision-maker will actually read —
+had no home here.
+
+**analysis-coach 1.0.0 · ai-coach-core 1.6.1 · ai-coach 1.8.0**
+
+Three skills, one plugin, no code: `elicit`, `insight`, `story`. Inward and evidence-first —
+competitors and industry rules belong to `/atlas-coach:market`, and that boundary is in the
+description rather than in a paragraph someone has to find.
+
+### `/elicit` — the questions before the specification
+
+Stakeholders as *decisions with owners* rather than a list of names: a role earns its line by
+being the only one who can answer something. Then stories in one fixed form, and acceptance
+criteria as checks — every criterion names an observable, and one that cannot fail is a
+description of the happy path rather than a criterion. What cannot be made checkable moves to Open
+questions with the person who has to settle it, because an untestable requirement is usually an
+undecided one wearing a testable shape.
+
+It stops before the design. `/strategy-coach:feature` reads this document as its input.
+
+### `/insight` — an analysis that has already been argued with
+
+Pointed at a spreadsheet, a model describes it. The pipeline here follows *Data-to-Dashboard*
+(Zhang & Elhamod, arXiv:2505.23695, May 2025), whose agents do "domain detection, concept
+extraction, multi-perspective analysis generation, and iterative self-reflection": name the domain
+and the decision first, read the shape and the *gaps* before any value, then generate three
+deliberately different readings — the obvious one, one from another dimension, and one that would
+be bad news — and attack all three in writing before the user sees any of them. The critique is
+written down and fed back in, which is Reflexion's actual mechanism (Shinn et al.,
+arXiv:2303.11366, NeurIPS 2023) rather than re-reading and hoping.
+
+Dropped readings stay in the document with the reason. "No reading survived scrutiny" is a real
+result and a better one than a confident wrong answer.
+
+Two labels from this release's own plan did not survive verification and are not in the skill: the
+paper says "multi-perspective analysis generation", not "three-lens analysis", and its
+self-reflection step is not the Reflexion framework — that is a separate paper, cited separately.
+The plan asserted both. Checking them cost one agent run.
+
+### `/story` — the version that gets read
+
+Re-orders an analysis into the order a decision-maker needs — the answer, three evidenced
+supports, the ask, then only the caveats that would flip the recommendation. It never introduces a
+claim the source does not carry, and it never drops a caveat to make the story cleaner, which is
+the specific way this task fails and it fails silently, because the result reads better than the
+honest version. Under 150 words by default; if the finding cannot be made honest at that length,
+the length rule loses.
+
+### A real failure, found while building this
+
+Writing these skills meant running the engine, and one of those runs failed to store what it had
+learned: `table memories has no column named workspace`. The cause is a genuine hazard rather than
+a one-off. The engine copy at `~/.ai-coach/bin/` comes from whichever plugin build last ran
+SessionStart, so an installed plugin and a repo checkout can disagree about the schema — and
+v1.5.0's migration **drops** columns an older build still writes. The older engine then fails on
+every write, with an error that reads like a corrupt database.
+
+`open()` now checks the stamp in the other direction: a database written by a newer AI Coach than
+the running engine says so once, on stderr, naming both versions and how to fix it, and then opens
+anyway. Reads mostly work, and refusing to open would take a session's whole memory away over a
+version number. If you are seeing that error today, the fix is `claude plugin update ai-coach`.
+
+### On sources
+
+`elicit`'s reference file attributes Given/When/Then to Gherkin and Dan North's BDD work rather
+than to a standards body, because it is not a BABOK standard and is often cited as though it were.
+Likewise: the Scrum Guide defines a Definition of Done and does not define a Definition of Ready,
+so a team's DoR is a local agreement to surface, never a rule they are failing.
+
+## v1.7.0 — Context economics (2026-08-27)
+
+Context is the one resource a session spends continuously, that everything draws on, and that
+nothing reports until it runs out. Then the session compacts, the thread gets vaguer, and the model
+gets blamed. Nothing in this marketplace owned that — it was the largest gap in the suite and the
+one with no obvious home, which is usually the same thing.
+
+**ai-coach-core 1.6.0 · harness-coach 1.1.0 · ai-coach 1.7.0**
+
+### `/harness-coach:context`
+
+Itemizes the bill. It reads the live `/context` breakdown rather than estimating it, names the
+largest line instead of the easiest one — for most sessions that is tool results, not conversation
+— and answers the question people actually have, which is whether to `/clear` or let it compact.
+The table is four rows because there are four real situations, and the underused answer is `/clear`
+when the next task is unrelated to this one.
+
+`--plugins` itemizes always-on cost per installed plugin via `claude plugin details`, worst first,
+including this marketplace's own. A plugin whose description you cannot connect to work you do is a
+plugin to uninstall, and this suite is not exempt from that test.
+
+It never runs `/clear` itself. That discards the user's session, so it says when it is right and
+lets them decide.
+
+### The working state a summary drops
+
+Compaction re-fires SessionStart, and since v1.4.0 that hands back a quarter-size brief. But a
+brief is *memory* — durable facts, ranked. What compaction actually discards first is the boring
+continuity nobody would think to keep: which files this session has been in, what broke ten minutes
+ago, what is still open. None of that is durable enough to be a memory, and all of it is needed on
+the very next turn.
+
+A new `PreCompact` hook writes it down, and the SessionStart that follows hands it back — once, then
+deletes it, because a snapshot that survives belongs to a session nobody is in any more. It is rows
+the engine already has, formatted: no model call, so it cannot fail, cost anything, or be wrong in
+an interesting way.
+
+## v1.6.1 — Repo trust (2026-08-27)
+
+The tests were good at what they covered and silent about what they did not, and the gaps were not
+random: they were exactly the mechanisms nobody re-reads because they have always worked. Writing
+those tests found a performance fix that had never actually worked.
+
+**ai-coach-core 1.5.0 · ai-coach 1.6.1**
+
+### The optimization that was never applied
+
+v1.4.0 replaced two `git` spawns with direct reads of `.git`, and measured a 44% saving. Half of it
+was not real. `gitConfigValue` normalized a section header as it read it out of the file — quotes
+stripped, whitespace collapsed, lowercased — and then compared the result against the caller's
+`remote "origin"`, quotes and all. That comparison could never be true, so **every lookup of the
+origin URL fell through to spawning `git` anyway.** The fast path had never once returned a value,
+and nothing failed, because the fallback is correct: it was simply slow.
+
+Both sides are normalized now. Measured on Windows, median of 15 fresh processes resolving the
+origin of this repo, same machine, same payload:
+
+```
+before  median 242.6ms  (min 170.4, max 347.5)   spawns git
+after   median  79.4ms  (min  69.7, max  94.9)   reads .git/config
+n=15, saved 163.2ms/call (67% faster)
+```
+
+`observe.js` resolves the repository on every Edit, Write and Bash, so this is paid per tool call.
+
+### Tests for the things nobody re-reads
+
+- **`bootstrap()`** — every skill in seven plugins reaches the engine at one fixed path, and one
+  line puts it there. It had no test at all. Now: the copy lands, the schemas land beside it, a
+  stale copy is refreshed rather than left, and the installed copy runs where it lands.
+- **The git identity trio** — `gitPaths`, `originUrl`, `headBranch` across a repo with a remote, a
+  subdirectory, a detached HEAD, a worktree pointer file and a directory that is not a repository.
+  The CHANGELOG said these were verified by hand across those six shapes; the verification left
+  nothing behind, and the bug above is what that costs.
+- **`default_trust: workspace`** — the branch that inverts a SQL `NOT IN` into an `IN`. Never run.
+- **The schema stamp**, **`clampTs`**, and **log rotation** — the last of which was fixed once
+  because it broke, and then had no test to keep it fixed.
+- **`check-manifests.js` itself.** A lint that silently stops checking passes every time, so it now
+  has a suite that breaks the repo in seven specific ways in a throwaway copy and asserts the
+  checker notices each one.
+
+### What the checker checks now
+
+Frontmatter on every skill: a description exists, is under the 1,024-character ceiling, carries a
+trigger phrase, and has no angle brackets. **Every `ENGINE <verb>` a skill calls is dispatched by
+the CLI** — that surface is the real cross-plugin ABI and a rename broke it silently. Every
+`/plugin:skill` reference names a skill that exists, while a sentence about a *retired* skill is
+recognized as documentation rather than a dangling link. And the draw.io grid spec, which two
+plugins must each carry because neither can read the other's files, is checked constant by
+constant — the two copies had already drifted.
+
+CI gains the `permissions:` and `concurrency:` blocks it never had, and an explicit FTS5 probe that
+says what is wrong instead of failing three tests deep.
+
+### Dead weight
+
+`auto-seed` is gone — the command, the `seed_auto` setting, its manifest entry and its README row,
+all of which outlived by five releases the hook that used to call it. `memories.concepts`, declared
+in v0.1.0 and never written or read, is no longer created. `memories.uses` was the opposite problem:
+incremented on every read since v0.1.0 and used by nothing, so it now feeds a small saturating
+ranking bonus — worth about 20% at ten reads, never enough to outrank confidence.
+
+New: a distilled memory that nobody has ever recalled is deleted 90 days on. Deliberately narrow,
+because deleting knowledge is the one irreversible thing here — never a memory a person wrote,
+never one a teammate handed over, and never one that was recalled even once.
+
+Also: `FAIL ` and `INJ ` are constants rather than eight scattered literals, the log follows
+`AICOACH_DB` into an isolated tree, releases from v1.4.0 are tagged again, and the stale search
+index in this repo — 218 paragraphs from files that no longer existed — was rebuilt by the
+`reindex` its own `stats` mode now recommends.
+
+## v1.6.0 — Fewer, sharper skills (2026-08-27)
+
+Twenty-three skills, seven of them narrower than a skill needs to be: a folder-scaffolder whose
+whole job was to run immediately before another skill, a health report separated from the search it
+reports on, two thin wrappers around one engine command each, and a skill called `analyze` that did
+three unrelated things. Meanwhile `market` — competitor research, spawning atlas-coach's agents,
+sharing no file with anything beside it — sat in the plugin about documenting *this* business.
+
+Twenty skills now, and the always-on cost went from ~1,880 to ~1,770 tokens even after adding
+routing exclusions to the descriptions most likely to be mistaken for each other.
+
+**ai-coach-core 1.4.0 · memory-coach 1.3.0 · prompt-coach 1.1.2 · security-coach 1.1.0 ·
+harness-coach 1.0.4 · investigation-coach 1.3.0 · atlas-coach 1.1.0 · strategy-coach 1.4.0 ·
+ai-coach 1.6.0**
+
+### Where things moved
+
+| Was | Is | Why |
+|---|---|---|
+| `/strategy-coach:market` | `/atlas-coach:market` | It spawns atlas's agents and reads the outside world. atlas-coach *is* "everything outside the repo"; strategy-coach is now purely inward. |
+| `/strategy-coach:vault` | `/strategy-coach:blueprint` step 0, or `--scaffold-only` | Its entire documented job was to run immediately before blueprint. |
+| `/memory-coach:doctor` | `/memory-coach:recall --health` | The health of the memory belongs beside the search of it — and it moves off Haiku, because deciding two memories cannot both be true is analysis, not formatting. |
+| `/memory-coach:team` + `:project` | `/memory-coach:roster` | Two committed files answering one question: who we are, and what this project is. |
+| `/atlas-coach:analyze` | `/atlas-coach:translate`, plus `ingest stats` | Three unrelated verbs. `verify` was research's claim gate described a second time — it is now one line in `references/verdicts.md`; `stats` belongs to the skill that owns the corpus. |
+
+Old trigger phrases were kept on whichever skill absorbed the work, so "set up the docs vault" still
+reaches something and "check my memory" still runs the health report.
+
+### Two things a merge does not do
+
+`/investigation-coach:study` was on the cut list and stays. The reason to merge it was a broken path
+— it wrote `./study/` while four files read `docs/study/` — and v1.5.1 fixed that properly. What is
+left is a clean Diátaxis split (onboard = tutorial, map = the picture, study = explanation) with
+real hand-offs between the three, and merging it would have traded a working boundary for a smaller
+number. `/investigation-coach:onboard --tour` runs all three in the documented order instead.
+
+`prompt-coach` keeps its three. "Write me a prompt" and "which of my habits costs me the most" are
+different questions asked at different moments, and folding the second into the first would have
+saved ~50 always-on tokens at the cost of the trigger that finds it.
+
+### Descriptions that say what they are *not*
+
+The failure mode of a suite this size is two skills whose descriptions both plausibly match. The
+pairs that actually collide now carry exclusions — `recall` says it is not for editing the roster,
+`blueprint` says it is not for how the code works, `translate` says it is not for checking whether a
+claim is true — and the investigate-versus-strategize test ("how does X work here" → investigate,
+"what should we build" → strategize) moved out of one skill's closing prose into both descriptions.
+Three skills ship `evals/evals.json` files pinning those boundaries.
+
+### Two chains that were documented but not runnable
+
+`/security-coach:audit --triage` hands confirmed findings straight to triage instead of asking for a
+retyped command. `/investigation-coach:onboard --tour` runs onboard, then map, then study — the
+order three files already recommended, on the grounds that the later two read what the first wrote.
+Both still ask before doing anything with side effects; the flags remove typing, not decisions.
+
+## v1.5.1 — Say what is true (2026-08-27)
+
+A settings table that a skill could not read, a switch documented as cosmetic that quietly deleted
+evidence, a reference file holding a skill's entire output format that nothing ever loaded, and a
+scanner that threw a stack trace at the exact file it advertises. None of it failed loudly. All of
+it disagreed with what this product says about itself.
+
+**ai-coach-core 1.4.0 · memory-coach 1.2.1 · prompt-coach 1.1.1 · security-coach 1.0.1 ·
+harness-coach 1.0.3 · investigation-coach 1.2.1 · atlas-coach 1.0.1 · strategy-coach 1.3.1 ·
+ai-coach 1.5.1**
+
+### A setting only half the product could see
+
+Claude Code passes plugin settings to hook processes, MCP servers and LSP servers — and to nothing
+else. Every skill here reaches the engine by shelling out to `node ~/.ai-coach/bin/engine.js`,
+which is a Bash call, so not one of those settings ever reached it. The consequence was two answers
+to the same question: `default_trust: workspace` held a teammate's memories out of the session
+brief and then ranked them normally in `/memory-coach:recall`, and `brief_chars` was ignored
+entirely by `/memory-coach:doctor`, which asked for a brief and got the built-in 4000.
+
+The session-start hook is one of the processes that *is* told, so it now writes what it was told to
+`~/.ai-coach/settings.json`, and every later process reads it. An `AICOACH_*` variable still wins.
+The file is rewritten whole on every session start, so clearing a setting in `/plugin` clears it
+here too — a snapshot that only ever gained keys would outlive the choice it recorded, which is
+worse than not having one. `config` names the file in the `set by` column, because "you chose this,
+and this process learned it second-hand" is a different state from "nobody ever set it".
+
+### `coach: off` was never display-only
+
+`plugin.json` says display only. The README says silencing a display line should not quietly empty
+the evidence. The hook exited before recording the prompt signal, so turning off a one-line hint
+stopped `/prompt-coach:prompt-stats` collecting the only data that could ever justify that hint.
+Recording now happens before the display switch is consulted, where it always belonged — signal
+names only, never prompt text, exactly as before. `corrections` remains the switch that stops
+recording, and the suite now asserts the distinction from both sides.
+
+### Everything else that was not true
+
+- `injection-scan` on a file over 512 KB — "a README from a repo you are about to vendor", which is
+  the use `/security-coach:scan` advertises — threw out of `safeRead` and printed a Node stack
+  trace. The CLI now answers in one sentence, names the limit, and exits non-zero. Every other
+  command got the same treatment: a skill can act on a message and can do nothing with a stack.
+- `/strategy-coach:blueprint` never loaded `references/notes.md`, the file holding its evidence
+  vocabulary, all four document skeletons and the ⚠-verify discipline. One line, and the skill's
+  entire output contract is reachable again.
+- `/investigation-coach:study` wrote to `./study/` while four files in strategy-coach read
+  `docs/study/`. It writes `docs/study/` now: `/strategy-coach:vault`'s hub link resolves and
+  `/strategy-coach:blueprint` can find the material it was told to read.
+- `/security-coach:triage` stamped every finding `pentest`, including findings handed to it by
+  `/security-coach:audit`. The source is the caller's now — the engine already understood all four.
+- `/harness-coach:partners` offered seven tools from a catalog of nine; miro and draw.io were
+  unreachable unless you already knew their names.
+- `brief_chars` is clamped to the 500–16000 the manifest advertises, `default_trust` falls back to
+  `full` only for values it recognises, a memory with no confidence is worth 0.7 everywhere
+  instead of 0.7 in two places and 0.5 in the ranking, and the seed stamps the schema version it
+  can actually know instead of a marketplace number pasted in by hand.
+- `AICOACH_DB` now gives the isolated tree the README promises: the log moved with it, having
+  pointed at the real `~/.ai-coach/log.jsonl` all along.
+- The session-end distiller passed a project key where `add()` documents a working directory, and
+  landed on the right project by accident.
+
+### The check that would have caught this release's own drift
+
+`ai-coach` shipped as 1.4.0 while the marketplace and the CHANGELOG both said 1.5.0. Every existing
+check passed: each number was well-formed, and the dependency majors agreed. `check-manifests.js`
+now requires the marketplace version, the bundle version and the newest CHANGELOG heading to be the
+same release, requires that section to name each plugin at the version it actually ships, and
+rejects a dependency floor that is ahead of what the marketplace has.
+
 ## v1.5.0 — One place per fact (2026-08-24)
 
 Identity was recorded three times. A memory carried an email, a name and a role; so did a session;

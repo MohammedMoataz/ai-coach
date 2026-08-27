@@ -1,13 +1,13 @@
 {
   "name": "harness-coach",
   "displayName": "Harness Coach",
-  "version": "1.0.2",
-  "description": "The toolbox next to the coach: a curated list of partner tools that pair well with Claude Code — detect what's installed, pick what you want, install only that. Ships skills only.",
+  "version": "1.1.0",
+  "description": "The harness itself: what is installed next to the coach and whether it earns its keep, and what is filling this session's context. Detect partner tools and install only what you pick; itemize the context budget and answer clear-or-compact. Ships skills only.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",
   "keywords": ["tools", "setup", "partners", "onboarding"],
   "dependencies": [
-    { "name": "ai-coach-core", "version": "^1.0.0" }
+    { "name": "ai-coach-core", "version": "^1.6.0" }
   ]
 }

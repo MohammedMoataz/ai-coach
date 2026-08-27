@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// SessionStart (startup|clear): create session row + inject <=4K memory brief.
+// SessionStart (startup|clear|resume|compact): create session row + inject the memory brief.
 // Never fails the session; failures go to ~/.ai-coach/log.jsonl.
 if (process.env.AICOACH_INNER) process.exit(0); // spawned claude -p children: no recursion, no rows
 
@@ -14,6 +14,10 @@ process.stdin.on('end', () => {
     const data = JSON.parse(raw || '{}');
     engine = require('./engine.js');
     engine.bootstrap(); // keep ~/.ai-coach/bin/engine.js current so sibling plugins can call it
+    // A hook is one of the only processes Claude Code passes plugin settings to. Write down what
+    // this one can see, so the copy of the engine every skill shells out to can honour the same
+    // settings instead of silently falling back to the defaults.
+    engine.saveSettings();
     engine.useProject(data.cwd); // resolve which project's database this session belongs to
     const label = engine.sessionStart(data.session_id, data.cwd, engine.claudeSessionName(data.session_id));
     const out = [];
@@ -38,9 +42,19 @@ process.stdin.on('end', () => {
     // outright loses exactly the context compaction just summarized away. So compaction gets a
     // quarter-size brief: the top-ranked lines survive, the bill does not repeat in full.
     const compacted = String(data.source || '') === 'compact';
-    const cap = Number(engine.opt('brief_chars', 4000)) || 4000;
+    const cap = engine.briefChars(); // the setting, clamped to the range plugin.json declares
     const brief = engine.brief(compacted ? Math.min(1000, Math.floor(cap / 4)) : cap, data.cwd);
     if (brief.trim()) out.push('## AI Coach brief\n' + brief);
+    // After a compaction, hand back the working state PreCompact wrote down. The brief above is
+    // memory — durable facts — and deliberately not this: which files this session was in and what
+    // broke ten minutes ago is exactly what a summary drops and what the next turn needs.
+    // Read-and-delete, so it belongs to this one restart.
+    if (compacted) {
+      try {
+        const snap = engine.takeSnapshot(data.session_id);
+        if (snap) out.push(snap);
+      } catch { /* continuity is a bonus, never a reason to fail a session start */ }
+    }
     // The nudges below are onboarding, not continuity — after a compact they are pure noise.
     if (!compacted) {
       // teammate seed committed in this repo? point at it — deterministic, zero tokens

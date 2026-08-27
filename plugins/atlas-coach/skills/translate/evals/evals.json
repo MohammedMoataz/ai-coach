@@ -1,0 +1,13 @@
+{
+  "description": "Trigger accuracy for /atlas-coach:translate, which was the translate verb of the retired /analyze. The confusable neighbour is research: 'is this true' is a claim gate, 'build what this says' is this skill.",
+  "evals": [
+    { "prompt": "turn these API docs into a client for us", "expect": "translate" },
+    { "prompt": "implement what section 4 of the spec says", "expect": "translate" },
+    { "prompt": "port the upstream test cases into our test suite", "expect": "translate" },
+    { "prompt": "is this benchmark claim actually true?", "expect": "research" },
+    { "prompt": "research how other teams solve rate limiting", "expect": "research" },
+    { "prompt": "convert this PDF into markdown in our docs", "expect": "ingest" },
+    { "prompt": "what do our ingested docs cover", "expect": "ingest" },
+    { "prompt": "who else is in this market and where is the gap", "expect": "market" }
+  ]
+}

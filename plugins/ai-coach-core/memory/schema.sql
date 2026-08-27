@@ -42,10 +42,6 @@ CREATE TABLE IF NOT EXISTS memories (
   -- Who actually produced this line. An agent-written memory is not a human judgment and must
   -- never be able to pass for one: the brief and /recall both show it. Nothing is auto-promoted.
   provenance TEXT DEFAULT 'human',       -- human | distilled | imported
-  -- Reserved for concept tagging (how-it-works, gotcha, trade-off, ...) so a future release can
-  -- filter what the brief injects instead of taking the top N wholesale. Unused in v0.1.0;
-  -- the column ships now because widening a table is cheaper than breaking one.
-  concepts   TEXT,
   project    TEXT,                       -- the tenant this database belongs to
   repo       TEXT,                       -- which repository of that project it came from
   source     TEXT,                       -- url | session id | manual

@@ -167,4 +167,17 @@ if (g.converters().pandoc) {
   assert.match(r.stderr, /cannot read --body-file/, 'and says which file: ' + r.stderr);
 }
 
+// reading a corpus must not create one
+{
+  const empty = path.join(tmp, 'no-corpus-here');
+  let r = run('stats', '--out', empty);
+  assert.strictEqual(r.status, 0, 'stats on an absent corpus is not an error: ' + r.stderr);
+  assert.strictEqual(JSON.parse(r.stdout).docs, 0, 'and reports nothing');
+  assert.ok(!fs.existsSync(empty), 'asking what a corpus covers does not create the corpus');
+
+  r = run('search', 'anything at all', '--out', empty);
+  assert.strictEqual(r.status, 0, 'search on an absent corpus is not an error either');
+  assert.ok(!fs.existsSync(empty), 'and it stays absent');
+}
+
 console.log('ingest.test.js: ALL PASS');

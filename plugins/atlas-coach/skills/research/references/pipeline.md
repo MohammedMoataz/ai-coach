@@ -9,12 +9,12 @@ A survey of open-source research agents found one shared gap: none adversarially
 findings before reporting them. Plausible-but-wrong survives every pipeline that only gathers.
 The gate is the product; the fan-out is just speed.
 
-## Workflow variant
+## The shape, whichever way it runs
 
-When the user has opted into multi-agent orchestration (their words: "use a workflow",
-"be comprehensive") *and* the harness exposes a Workflow tool, the pipeline runs as a workflow
-script instead of sequential Agent calls. Without that tool the sequential path is the pipeline —
-the shape below still describes it, one stage at a time:
+Some harnesses expose a workflow/orchestration tool that runs this as one script; most do not, and
+**the sequential path is the pipeline** — spawn the researchers, collect, gate, synthesize. Check
+what your harness actually offers rather than assuming either. The structure below is the same
+either way; only the scheduling differs:
 
 - **Schemas** force structure at the tool-call layer:
   - findings: `{ findings: [{ claim, source, quote }] }` — a claim without a quote from its
@@ -36,8 +36,10 @@ the shape below still describes it, one stage at a time:
 | 5 | comparison / decision | "X vs Y for our case" |
 | 7 | landscape / survey | "what exists for Z, what's credible" |
 
-Tier counts are sub-questions, not total agents; verification adds 1-2 more. Eight agents total
-is the ceiling — past that, coverage gains drown in coordination noise (house finding).
+Tier counts are sub-questions, not total agents; verification adds 1-2 more, so the widest run
+(tier 7) spawns 9. **Ten agents total is the ceiling** — past that, coverage gains drown in
+coordination noise (house finding). The skill used to say eight while this table described nine,
+which is the sort of arithmetic nobody notices until a tier-7 run quietly drops a sub-question.
 
 ## Report anatomy (`./research/<slug>.md`)
 

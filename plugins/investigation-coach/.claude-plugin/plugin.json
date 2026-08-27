@@ -1,13 +1,13 @@
 {
   "name": "investigation-coach",
   "displayName": "Investigation Coach",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Onboard anyone onto the project: generated onboarding docs, an architecture map you can open in Obsidian or edit as a draw.io file, and study material that explains the why. Ships skills only.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",
   "keywords": ["onboarding", "architecture", "documentation", "study"],
   "dependencies": [
-    { "name": "ai-coach-core", "version": "^1.0.0" }
+    { "name": "ai-coach-core", "version": "^1.6.0" }
   ]
 }

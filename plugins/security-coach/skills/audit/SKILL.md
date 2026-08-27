@@ -1,6 +1,6 @@
 ---
 description: Run the security scanners you already have (SAST, dependencies, secrets) and read the results against OWASP 2025. Use for "/audit", "security audit", "check dependencies for CVEs", "OWASP check".
-argument-hint: "[sast|deps|secrets|standards] [path]"
+argument-hint: "[sast|deps|secrets|standards] [path] [--triage]"
 disable-model-invocation: true
 model: haiku
 effort: low
@@ -14,7 +14,8 @@ whatever is installed, then reads the results the way a security team would: exp
 likely-exploited beats severe-on-paper. It never installs anything and never reimplements a scanner.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Modes
 
@@ -55,11 +56,30 @@ Exceptional Conditions.
   then hold the line on anything new (NIST SSDF PW.5).
 - **Suppressions carry a reason.** An inline `# nosec`-style suppression without a justification
   comment is a finding in itself.
-- Findings worth tracking beyond this session: offer `/security-coach:triage ingest` — never
-  auto-ingest scanner noise into the findings table.
+- Findings worth tracking beyond this session: offer
+  `/security-coach:triage ingest --source audit` — never auto-ingest scanner noise into the
+  findings table. The `--source audit` matters: a scanner hit and a pentester's finding are not
+  worth the same, and a finding that lies about where it came from is one nobody can weigh.
+- **`--triage` chains the two**: after the report, hand the findings the user confirms are worth
+  tracking straight to `/security-coach:triage ingest --source audit`, without asking them to
+  retype anything. It still validates each finding through triage's own gate and it still asks
+  before recording — the flag removes a retyped command, not a decision. Without the flag, the
+  hand-off stays an offer.
 
 Load `references/standards.md` only when the user asks for the reasoning, the tool comparison, or
 category detail.
+
+## Remember what this run established
+
+An audit is the one skill here that used to leave no trace at all, so the next session's brief had
+no idea it had ever happened — and re-running a scanner to rediscover "gitleaks is not installed"
+or "the baseline is 41 legacy findings" is exactly the re-derivation this product exists to stop.
+After the report, record the shape of the run, never the findings themselves:
+
+`ENGINE add reference "security audit <modes> on <date>: <tools that ran / missing>, <n> findings, baseline <n>" 0.75`
+
+Findings stay out of memory: they belong in the local findings table via
+`/security-coach:triage`, and a vulnerability in a memory is a vulnerability in a seed.
 
 ## Rules
 

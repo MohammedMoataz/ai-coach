@@ -3,8 +3,8 @@
 </p>
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
-One focus per release. So far: memory, prompts, security, your toolbox, onboarding, then the
-world outside the repo.</p>
+One focus per release. So far: memory, prompts, security, your toolbox, onboarding, the world
+outside the repo, and the analysis that decides what to build.</p>
 
 ---
 
@@ -42,25 +42,32 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | Plugin | What it is |
 |---|---|
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors. Everything else depends on it. |
-| **memory-coach** | Skills only: `recall`, `debrief`, `handoff`, `team`, `project`, `doctor`. |
+| **memory-coach** | Skills only: `recall` (search, and `--health`), `debrief`, `handoff`, `roster`. |
 | **prompt-coach** | Skills only: `prompt`, `prompt-stats`, `dispatch`. |
 | **security-coach** | Skills only: `scan`, `audit`, `triage`. |
-| **harness-coach** | Skills only: `partners` — the tools worth having next to the coach. |
-| **investigation-coach** | Skills only: `onboard`, `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
-| **atlas-coach** | `research`, `ingest`, `analyze` — plus the marketplace's first two agents: `researcher` and `verifier`, reusable from any session. |
-| **strategy-coach** | Skills only: `vault`, `blueprint`, `feature`, `market` — document the business, specify what comes next, and look outward: competitors, industry rules, and how the industry already solved your gap. |
+| **harness-coach** | Skills only: `partners`, `context` — what is installed next to the coach, and what is filling this session. |
+| **investigation-coach** | Skills only: `onboard` (`--tour` runs all three), `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
+| **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus the marketplace's first two agents, `researcher` and `verifier`, reusable from any session. |
+| **strategy-coach** | Skills only: `blueprint` (which scaffolds the vault), `feature` — document the business, then specify what comes next. |
+| **analysis-coach** | Skills only: `elicit`, `insight`, `story` — the business-analyst half: requirements nobody can argue about later, an analysis that has already been argued with, and the version an executive reads. |
 | **ai-coach** | The bundle. Install this one. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
 [What you drive](#what-you-drive).
 
-Measured with `claude plugin details`, not estimated — **~1,317 always-on tokens** for the whole
-product as of v0.6.0: core and the bundle are 0, memory-coach ~298, prompt-coach ~114,
-security-coach ~201, harness-coach ~72, investigation-coach ~225, atlas-coach ~407 (three skills
-plus two agents). It has drifted: descriptions were rewritten in v1.0.0, and skills were added
-since — `debrief` in v1.1.0, `dispatch` in v1.2.0, and strategy-coach's four in v1.3.0 — so the
-figure is stale and understated by roughly seven descriptions, and strategy-coach is missing from
-the list entirely. The shape holds — what is always on is the descriptions, and nothing else.
+**~2,200 always-on tokens** for the whole product as of v1.8.0 — core and the bundle are 0,
+atlas-coach ~510 (four skills plus two agents), analysis-coach ~330, memory-coach ~320,
+investigation-coach ~260, prompt-coach ~200, security-coach ~200, strategy-coach ~210,
+harness-coach ~170. What is always on is the descriptions, and nothing else: every skill body, every reference file and every agent
+prompt is paid only when it runs.
+
+That number is counted from the descriptions themselves, calibrated against what
+`claude plugin details` reported for the shipped v1.5.0 — this repo is the source, and the
+marketplace's published copy is what the CLI can measure. Run `claude plugin details <plugin>`
+after a release for the authoritative figure. v1.6.0 went from 23 skills to 20 and from ~1,880
+tokens to ~1,770, while adding routing exclusions ("not for X — see Y") to the descriptions most
+likely to be confused for each other; v1.7.0 added one skill and ~100 back, and v1.8.0 a
+three-skill plugin and ~330.
 
 ## What happens on its own
 
@@ -87,19 +94,32 @@ the list entirely. The shape holds — what is always on is the descriptions, an
   off its own alarm.
 - **Guarded reads of repo files**: everything the engine reads from `.ai-coach/` goes through a
   symlink-refusing, size-capped read — a planted link to `~/.ssh/id_rsa` cannot flow into context.
+- **A snapshot before compaction**: which files this session has been in, what broke last, what is
+  still open. A brief is memory — durable facts — and that is deliberately not this. Handed back
+  once by the session start that follows the compaction, then deleted. No model call.
 - **One partners note, once**: a single session-start line pointing at `/harness-coach:partners`,
   gone forever after the first run. Nothing ever installs without your pick.
 
+**What the guard and the spotlight do not cover, stated plainly.** Both are wired to named tools:
+the guard to `Bash`, `WebFetch`, `Read`, `Write`, `Edit` and `NotebookEdit`, the spotlight to
+`WebFetch`, `WebSearch` and `Read`. An MCP server's tools are neither. A credential handed to an
+MCP tool is not checked, and a page fetched by one is not scanned — MCP tool names are per-install,
+so a matcher here would be a list that is wrong on everyone else's machine. Two things follow, and
+they are the honest version rather than a fix: prefer the built-in tools for anything carrying a
+secret, and treat `/security-coach:scan` as the on-demand check for content that arrived some other
+way.
+
 ## What you drive
 
-`/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` · `/memory-coach:team` ·
-`/memory-coach:project` · `/memory-coach:doctor` · `/prompt-coach:prompt` ·
-`/prompt-coach:prompt-stats` · `/prompt-coach:dispatch` · `/security-coach:scan` ·
-`/security-coach:audit` · `/security-coach:triage` · `/harness-coach:partners` ·
-`/investigation-coach:onboard` · `/investigation-coach:map` · `/investigation-coach:study` ·
-`/atlas-coach:research` · `/atlas-coach:ingest` · `/atlas-coach:analyze` ·
-`/strategy-coach:vault` · `/strategy-coach:blueprint` · `/strategy-coach:feature` ·
-`/strategy-coach:market`
+`/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` ·
+`/memory-coach:roster` · `/prompt-coach:prompt` · `/prompt-coach:prompt-stats` ·
+`/prompt-coach:dispatch` · `/security-coach:scan` · `/security-coach:audit` ·
+`/security-coach:triage` · `/harness-coach:partners` · `/harness-coach:context` ·
+`/investigation-coach:onboard` ·
+`/investigation-coach:map` · `/investigation-coach:study` · `/atlas-coach:research` ·
+`/atlas-coach:ingest` · `/atlas-coach:market` · `/atlas-coach:translate` ·
+`/strategy-coach:blueprint` · `/strategy-coach:feature` · `/analysis-coach:elicit` ·
+`/analysis-coach:insight` · `/analysis-coach:story`
 
 Two fire on their own. `recall`, so Claude reaches for memory unprompted when a question matches
 prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a follow-up — advice that
@@ -107,13 +127,14 @@ has to be remembered before it applies is advice that never applies. Everything 
 a skill with side effects should run when you say so, and neither of these has any.
 
 Every CLI-and-format skill is pinned to Haiku at low effort — that work should never bill at
-frontier rates (`ingest` and `vault` join that tier: routing, refinement and folder scaffolding are
-mechanical). The rest stay on the session model, deliberately: `recall` and `dispatch` run inside a
-real answer, never as a report of their own; investigation-coach's three, atlas-coach's
-`research`/`analyze`, and strategy-coach's `blueprint`, `feature` and `market` are real analysis —
-pinned down, the output reads like a file listing. Each of those says up front that it costs real
-tokens and takes a scoping flag to bound the spend. The hooks' own LLM calls (plan-mode review,
-session-end distillation) are hardcoded to Haiku too.
+frontier rates (`ingest` joins that tier: routing and refinement are mechanical). The rest stay on
+the session model, deliberately: `recall` and `dispatch` run inside a real answer, never as a report
+of their own; investigation-coach's three, atlas-coach's `research`, `market` and `translate`, and
+strategy-coach's `blueprint` and `feature` are real analysis — pinned down, the output reads like a
+file listing. `recall --health` is on the session model for the same reason: deciding that two
+memories cannot both be true is judgement, and it used to run on the cheap tier. Each of those says
+up front that it costs real tokens and takes a scoping flag to bound the spend. The hooks' own LLM
+calls (plan-mode review, session-end distillation) are hardcoded to Haiku too.
 
 ## What a teammate actually receives
 
@@ -230,22 +251,33 @@ which of the three sources decided it.
 **To reset one** — clear it in `/plugin`, or unset the env var. There is no "reset all": the
 defaults are what you get when nothing is set anywhere, and `config` shows you exactly what is.
 
+Claude Code hands plugin settings to hook processes and to nothing else, so the engine a skill
+shells out to could not see them: `default_trust` shaped your session brief and then did nothing in
+`/memory-coach:recall`. The session-start hook now records what it was passed in
+`~/.ai-coach/settings.json`, and every other process reads that — one setting, one answer,
+everywhere. `config` marks those rows `settings.json`, and clearing a setting in `/plugin` clears
+the record on the next session start.
+
 | Setting | Default | What it governs |
 |---|---|---|
-| `brief_chars` | `4000` | Ceiling on the memory injected at session start. Ranking happens before the cap, so raising it surfaces more — it does not change what wins. |
-| `coach` | `on` | The coach line, and hints on vague prompts. **Display only.** |
+| `brief_chars` | `4000` | Ceiling on the memory injected at session start. Ranking happens before the cap, so raising it surfaces more — it does not change what wins. Clamped to 500–16000. |
+| `coach` | `on` | The coach line, and hints on vague prompts. **Display only** — and now actually so: prompt signals are recorded before this switch is read, because silencing a line must not empty the evidence that line is measured against. |
 | `corrections` | `on` | Whether failures are recorded at all. |
 | `learn` | `on` | One Haiku call at session end distils a summary and up to 3 learnings. |
 | `plan_review` | `on` | In plan mode only: one Haiku call scores the prompt. |
 | `guard` | `on` | Blocks tool calls carrying real credentials. The one hook allowed to stop a call. |
 | `spotlight` | `on` | Injection-marker scan on fetched content. Warn-only, no model call. |
 | `partners` | `on` | The one-time `/harness-coach:partners` note. |
-| `seed_auto` | `on` | Whether `auto-seed` may refresh an existing seed in place. |
 | `default_trust` | `full` | Trust for a teammate you have not rated: `full` or `workspace`. |
 
 `coach` controls the coach *line*; `corrections` controls whether failures are recorded at all.
 They are separate on purpose — silencing a display line should not quietly empty the evidence
 `/prompt-coach:prompt-stats` measures against.
+
+Every setting in the table above also has an environment twin — `brief_chars` is
+`AICOACH_BRIEF_CHARS`, `coach` is `AICOACH_COACH`, and so on for all nine. The twin wins over the
+plugin setting and over the recorded snapshot, and it lasts for exactly one shell. `config` names
+which of the three answered.
 
 ### Environment variables that are not settings
 
@@ -254,8 +286,8 @@ person might reach for.
 
 | Variable | Effect |
 |---|---|
-| `AICOACH_DB` | Path to the user-scope database. Tenants live beside it under `projects/`, so pointing this at a temp file gives you a whole isolated tree. |
-| `AICOACH_LOG` | Where failures append. Defaults to `~/.ai-coach/log.jsonl`. |
+| `AICOACH_DB` | Path to the user-scope database. Tenants, the bin copy, the settings record and the log all live beside it, so pointing this at a temp file really does give you a whole isolated tree. |
+| `AICOACH_LOG` | Where failures append. Defaults to `log.jsonl` beside the database — `~/.ai-coach/log.jsonl` unless `AICOACH_DB` moved it. |
 | `AICOACH_INNER` | Set to `1` inside spawned `claude -p` children so hooks do not recurse. |
 | `AICOACH_CLAUDE_BIN` | The `claude` binary to shell out to for the two Haiku calls. |
 | `AICOACH_SEED_KEY` | Passphrase for an encrypted seed, instead of `.ai-coach/seed.key`. |

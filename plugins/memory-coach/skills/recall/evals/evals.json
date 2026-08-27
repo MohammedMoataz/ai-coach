@@ -1,0 +1,15 @@
+{
+  "description": "Trigger accuracy for /memory-coach:recall after it absorbed /doctor as --health. The pairs that matter are the ones a reader could send either way: searching memory versus editing the roster, and health versus a plain search.",
+  "evals": [
+    { "prompt": "did we hit this rounding bug before?", "expect": "recall" },
+    { "prompt": "what do we know about the orders CSV export", "expect": "recall" },
+    { "prompt": "check my memory for contradictions", "expect": "recall" },
+    { "prompt": "is the memory healthy?", "expect": "recall" },
+    { "prompt": "how many unclosed corrections are open", "expect": "recall" },
+    { "prompt": "add sara to the team", "expect": "roster" },
+    { "prompt": "trust omar at workspace level", "expect": "roster" },
+    { "prompt": "which project is this repo part of", "expect": "roster" },
+    { "prompt": "write up what I concluded this session", "expect": "debrief" },
+    { "prompt": "package my memory for a teammate", "expect": "handoff" }
+  ]
+}

@@ -106,6 +106,15 @@ function openIndex(dir) {
   return db;
 }
 
+// A read must not create what it is reading. `stats` and `search` went through openIndex, which
+// mkdirs and creates the database — so asking "what does this corpus cover?" in a repo that has no
+// corpus answered by leaving behind a `docs/` directory and an empty index. Returns null when
+// there is nothing to read, which every caller already had to handle.
+function openIndexRead(dir) {
+  if (!fs.existsSync(path.join(dir, INDEX_DB))) return null;
+  return openIndex(dir);
+}
+
 // paragraphs with their heading trail; short fragments carry no findable signal
 function chunk(body) {
   const out = [];
@@ -159,7 +168,8 @@ function searchIndex(dir, query, limit) {
   const terms = String(query).toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').split(/\s+/).filter(Boolean);
   if (!terms.length) return [];
   try {
-    const db = openIndex(dir);
+    const db = openIndexRead(dir);
+    if (!db) return [];
     const rows = db.prepare(
       'SELECT file, heading, chunk FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?'
     ).all(terms.join(' OR '), limit);
@@ -218,9 +228,11 @@ function statsFor(dir) {
   }
   let chunks = 0;
   try {
-    const db = openIndex(dir);
-    chunks = db.prepare('SELECT count(*) AS n FROM chunks').get().n;
-    db.close();
+    const db = openIndexRead(dir);
+    if (db) {
+      chunks = db.prepare('SELECT count(*) AS n FROM chunks').get().n;
+      db.close();
+    }
   } catch { /* index absent is a fact, not a failure */ }
   return { docs: list.length, chunks, tags, oldest, newest, staleOver90d: stale,
     sources: list.map((d) => d.source || 'unknown') };

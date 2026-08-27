@@ -13,7 +13,8 @@ Obsidian canvas. It reads a lot of code: expect a real token spend; scope with `
 bound it. Tracing goes to Explore subagents — keep conclusions, not file dumps.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
-`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell.
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
 ## Scope
 
