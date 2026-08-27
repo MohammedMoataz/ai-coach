@@ -1,0 +1,63 @@
+---
+description: Turns an analysis, requirements document or debrief into the short version a decision-maker reads: the finding first, its evidence, and the ask. Use for "/story", "write this up for the exec", "make this readable for leadership". Not for producing the analysis (see analysis-coach:insight).
+argument-hint: "<file or topic> [--audience <who>] [--length short|brief]"
+disable-model-invocation: true
+---
+
+# /story — the version that gets read
+
+An analysis nobody acts on is indistinguishable from an analysis nobody did. The gap is rarely the
+work; it is that the document is organized the way the work happened — method, then data, then
+findings, then implication — which is the exact reverse of the order a decision-maker needs.
+
+This skill re-orders it and cuts it, without softening it. It never produces new findings: if the
+source does not support a claim, the claim does not appear, however much better it would read.
+
+`ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
+
+## Steps
+
+1. **Read the source completely before writing a word of the summary.** A file, a
+   `docs/analysis/` note, a `docs/requirements/` document, or a debrief
+   (`ENGINE debriefs`, `ENGINE debrief-show <key>`). Summarizing from the parts you happened to
+   read is how a caveat goes missing.
+2. **Name the audience and what they can decide.** `--audience` if given, otherwise ask — one
+   question. This is not a formality: a summary for someone who can reallocate a budget is a
+   different document from one for someone who can only escalate. If nobody in the audience can
+   decide anything, say so; that is a finding about the meeting, not about the analysis.
+3. **Lead with the answer.** First sentence: what is true and what it means for them. Not "this
+   document examines" — that sentence is context the reader already has.
+4. **Then the three things that support it**, each one line, each carrying its evidence: a number
+   with its source, a quote with its author, a `file:line`. Three is the working limit, not a
+   target — two well-evidenced points beat three where the last is padding.
+5. **Then what is being asked of them.** A decision, a resource, an approval, or explicitly
+   nothing ("no decision needed — this is for awareness"). A summary with no ask is a summary the
+   reader has to reverse-engineer a purpose for.
+6. **Then the caveats that would change the decision**, and only those. Not every limitation —
+   the ones that, if wrong, flip the recommendation. Everything else stays in the source document.
+7. **Report the compression.** Say what the source was, what you cut, and what you deliberately
+   kept that the length rules argued against. Then
+   `ENGINE add reference "exec summary of <source> for <audience> — <the one-line finding>" 0.7`
+
+## Rules
+
+- **Never introduce a claim the source does not carry.** Not to smooth a transition, not to round a
+  number, not to make a conclusion land. If the source says `UNVERIFIED` or `INFERRED`, the summary
+  says so too — in the summary, where the reader is, not in a footnote they will not open.
+- **Never delete a caveat to make the story cleaner.** That is the specific way this task fails,
+  and it fails silently, because the result reads better than the honest version.
+- Numbers carry their basis: "38% (of the 212 orders sampled in March)". A percentage with no
+  denominator is a rhetorical device.
+- Length: `short` is under 150 words, `brief` is under 400. Default `short`. If the finding cannot
+  be made honest at that length, say so and give the shortest honest version instead — the length
+  rule loses that argument every time.
+- Plain words for domain terms, and the glossary term in brackets the first time if the audience
+  will meet it again elsewhere.
+
+## Related
+
+`/analysis-coach:insight` produces the analysis this summarizes; `/analysis-coach:elicit` produces
+the requirements. `/memory-coach:debrief` is the teammate-facing equivalent — same discipline, a
+different reader, and it stays in the repo rather than going to a meeting.

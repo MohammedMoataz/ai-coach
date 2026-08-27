@@ -85,13 +85,22 @@ for (const [name, m] of manifests) {
     const newest = (changelog.match(/^##\s+v(\d+\.\d+\.\d+)/m) || [])[1];
     check(newest === market.version,
       `CHANGELOG's newest release is v${newest}, but marketplace.json says ${market.version}`);
-    // And that section has to name every plugin whose version it claims to have changed.
+    // Each release states the versions it ships on one bolded line — `**core 1.6.0 · ai-coach
+    // 1.8.0**`. Every version claimed there has to be the version that actually ships. Prose
+    // elsewhere in the section may name a plugin for other reasons (a boundary, a comparison),
+    // and naming one is not a claim about its version.
     const section = changelog.split(/^##\s+/m).find((s) => s.startsWith('v' + market.version)) || '';
-    for (const [name, m] of manifests) {
-      if (name === 'ai-coach') continue;
-      if (!section.includes(name)) continue; // a plugin this release did not touch
-      check(section.includes(`${name} ${m.version}`),
-        `CHANGELOG v${market.version} mentions ${name} but not "${name} ${m.version}" — the version it actually ships`);
+    const shipLine = (section.match(/^\*\*([^*]*\d+\.\d+\.\d+[^*]*)\*\*$/m) || [])[1];
+    check(!!shipLine, `CHANGELOG v${market.version} has no bolded line stating the versions it ships`);
+    for (const claim of (shipLine || '').split('·')) {
+      const m = claim.trim().match(/^([a-z-]+)\s+(\d+\.\d+\.\d+)$/);
+      if (!m) continue;
+      const target = manifests.get(m[1]);
+      check(!!target, `CHANGELOG v${market.version} ships "${m[1]}", which this marketplace does not have`);
+      if (target) {
+        check(target.version === m[2],
+          `CHANGELOG v${market.version} says ${m[1]} ${m[2]}, but its manifest is ${target.version}`);
+      }
     }
   } catch (err) {
     fail.push('CHANGELOG.md: ' + err.message);

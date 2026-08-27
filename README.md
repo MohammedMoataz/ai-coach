@@ -3,8 +3,8 @@
 </p>
 
 <p align="center"><b>A coach for using Claude Code well.</b><br>
-One focus per release. So far: memory, prompts, security, your toolbox, onboarding, then the
-world outside the repo.</p>
+One focus per release. So far: memory, prompts, security, your toolbox, onboarding, the world
+outside the repo, and the analysis that decides what to build.</p>
 
 ---
 
@@ -49,15 +49,16 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 | **investigation-coach** | Skills only: `onboard` (`--tour` runs all three), `map`, `study` — onboard anyone onto the project; diagrams as Mermaid, Obsidian canvas, or editable draw.io. |
 | **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus the marketplace's first two agents, `researcher` and `verifier`, reusable from any session. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the vault), `feature` — document the business, then specify what comes next. |
+| **analysis-coach** | Skills only: `elicit`, `insight`, `story` — the business-analyst half: requirements nobody can argue about later, an analysis that has already been argued with, and the version an executive reads. |
 | **ai-coach** | The bundle. Install this one. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
 [What you drive](#what-you-drive).
 
-**~1,870 always-on tokens** for the whole product as of v1.7.0 — core and the bundle are 0,
-atlas-coach ~510 (four skills plus two agents), memory-coach ~320, investigation-coach ~260,
-prompt-coach ~200, security-coach ~200, strategy-coach ~210, harness-coach ~170 (two skills). What is always on
-is the descriptions, and nothing else: every skill body, every reference file and every agent
+**~2,200 always-on tokens** for the whole product as of v1.8.0 — core and the bundle are 0,
+atlas-coach ~510 (four skills plus two agents), analysis-coach ~330, memory-coach ~320,
+investigation-coach ~260, prompt-coach ~200, security-coach ~200, strategy-coach ~210,
+harness-coach ~170. What is always on is the descriptions, and nothing else: every skill body, every reference file and every agent
 prompt is paid only when it runs.
 
 That number is counted from the descriptions themselves, calibrated against what
@@ -65,7 +66,8 @@ That number is counted from the descriptions themselves, calibrated against what
 marketplace's published copy is what the CLI can measure. Run `claude plugin details <plugin>`
 after a release for the authoritative figure. v1.6.0 went from 23 skills to 20 and from ~1,880
 tokens to ~1,770, while adding routing exclusions ("not for X — see Y") to the descriptions most
-likely to be confused for each other; v1.7.0 added one skill and ~100 tokens back.
+likely to be confused for each other; v1.7.0 added one skill and ~100 back, and v1.8.0 a
+three-skill plugin and ~330.
 
 ## What happens on its own
 
@@ -92,7 +94,6 @@ likely to be confused for each other; v1.7.0 added one skill and ~100 tokens bac
   off its own alarm.
 - **Guarded reads of repo files**: everything the engine reads from `.ai-coach/` goes through a
   symlink-refusing, size-capped read — a planted link to `~/.ssh/id_rsa` cannot flow into context.
-
 - **A snapshot before compaction**: which files this session has been in, what broke last, what is
   still open. A brief is memory — durable facts — and that is deliberately not this. Handed back
   once by the session start that follows the compaction, then deleted. No model call.
@@ -117,7 +118,8 @@ way.
 `/investigation-coach:onboard` ·
 `/investigation-coach:map` · `/investigation-coach:study` · `/atlas-coach:research` ·
 `/atlas-coach:ingest` · `/atlas-coach:market` · `/atlas-coach:translate` ·
-`/strategy-coach:blueprint` · `/strategy-coach:feature`
+`/strategy-coach:blueprint` · `/strategy-coach:feature` · `/analysis-coach:elicit` ·
+`/analysis-coach:insight` · `/analysis-coach:story`
 
 Two fire on their own. `recall`, so Claude reaches for memory unprompted when a question matches
 prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a follow-up — advice that

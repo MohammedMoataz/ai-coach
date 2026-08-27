@@ -3,6 +3,65 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.8.0 — analysis-coach (2026-08-27)
+
+Everything in this marketplace so far serves the person writing the code. The work that decides
+*what* the code should do — pulling requirements out of people who have not had to be precise yet,
+reading data without describing it, and writing the version a decision-maker will actually read —
+had no home here.
+
+**analysis-coach 1.0.0 · ai-coach 1.8.0**
+
+Three skills, one plugin, no code: `elicit`, `insight`, `story`. Inward and evidence-first —
+competitors and industry rules belong to `/atlas-coach:market`, and that boundary is in the
+description rather than in a paragraph someone has to find.
+
+### `/elicit` — the questions before the specification
+
+Stakeholders as *decisions with owners* rather than a list of names: a role earns its line by
+being the only one who can answer something. Then stories in one fixed form, and acceptance
+criteria as checks — every criterion names an observable, and one that cannot fail is a
+description of the happy path rather than a criterion. What cannot be made checkable moves to Open
+questions with the person who has to settle it, because an untestable requirement is usually an
+undecided one wearing a testable shape.
+
+It stops before the design. `/strategy-coach:feature` reads this document as its input.
+
+### `/insight` — an analysis that has already been argued with
+
+Pointed at a spreadsheet, a model describes it. The pipeline here follows *Data-to-Dashboard*
+(Zhang & Elhamod, arXiv:2505.23695, May 2025), whose agents do "domain detection, concept
+extraction, multi-perspective analysis generation, and iterative self-reflection": name the domain
+and the decision first, read the shape and the *gaps* before any value, then generate three
+deliberately different readings — the obvious one, one from another dimension, and one that would
+be bad news — and attack all three in writing before the user sees any of them. The critique is
+written down and fed back in, which is Reflexion's actual mechanism (Shinn et al.,
+arXiv:2303.11366, NeurIPS 2023) rather than re-reading and hoping.
+
+Dropped readings stay in the document with the reason. "No reading survived scrutiny" is a real
+result and a better one than a confident wrong answer.
+
+Two labels from this release's own plan did not survive verification and are not in the skill: the
+paper says "multi-perspective analysis generation", not "three-lens analysis", and its
+self-reflection step is not the Reflexion framework — that is a separate paper, cited separately.
+The plan asserted both. Checking them cost one agent run.
+
+### `/story` — the version that gets read
+
+Re-orders an analysis into the order a decision-maker needs — the answer, three evidenced
+supports, the ask, then only the caveats that would flip the recommendation. It never introduces a
+claim the source does not carry, and it never drops a caveat to make the story cleaner, which is
+the specific way this task fails and it fails silently, because the result reads better than the
+honest version. Under 150 words by default; if the finding cannot be made honest at that length,
+the length rule loses.
+
+### On sources
+
+`elicit`'s reference file attributes Given/When/Then to Gherkin and Dan North's BDD work rather
+than to a standards body, because it is not a BABOK standard and is often cited as though it were.
+Likewise: the Scrum Guide defines a Definition of Done and does not define a Definition of Ready,
+so a team's DoR is a local agreement to surface, never a rule they are failing.
+
 ## v1.7.0 — Context economics (2026-08-27)
 
 Context is the one resource a session spends continuously, that everything draws on, and that

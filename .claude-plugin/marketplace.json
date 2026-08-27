@@ -6,7 +6,7 @@
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "plugins": [
     {
       "name": "ai-coach-core",
@@ -23,7 +23,7 @@
     {
       "name": "memory-coach",
       "source": "./plugins/memory-coach",
-      "description": "Memory you can search, conclusions you can hand to a teammate, and trust you keep private: /recall, /debrief, /handoff, /team, /project, /doctor.",
+      "description": "Memory you can search and check the health of, conclusions you can hand to a teammate, the roster that names who wrote them, and trust you keep private: /recall, /debrief, /handoff, /roster.",
       "category": "productivity",
       "tags": [
         "memory",
@@ -57,7 +57,7 @@
     {
       "name": "harness-coach",
       "source": "./plugins/harness-coach",
-      "description": "The toolbox next to the coach: detect, pick, and install the partner tools that pair well with Claude Code — /partners.",
+      "description": "The harness itself: detect, pick and install the partner tools that pair well with Claude Code, and itemize what is filling this session — /partners, /context.",
       "category": "productivity",
       "tags": [
         "tools",
@@ -81,7 +81,7 @@
     {
       "name": "atlas-coach",
       "source": "./plugins/atlas-coach",
-      "description": "Everything outside the repo: verified web research, documents-in-markdown-out ingestion, and claim-checked analysis — /research, /ingest, /analyze.",
+      "description": "Everything outside the repo: verified web research with an adversarial claim gate, documents-in-markdown-out ingestion, competitor and industry analysis, and documentation translated into your idiom — /research, /ingest, /market, /translate.",
       "category": "productivity",
       "tags": [
         "research",
@@ -93,13 +93,25 @@
     {
       "name": "strategy-coach",
       "source": "./plugins/strategy-coach",
-      "description": "Document what the business is and specify what comes next: an Obsidian vault of actors, processes and rules mapped to code, feature specs with a checkable definition of done, the competitive gap, the industry rules you must live inside, and how that industry already solved a gap — /vault, /blueprint, /feature, /market.",
+      "description": "Document what the business is and specify what comes next: an Obsidian vault of actors, processes and rules mapped to the code that implements them, and feature specs with a checkable definition of done — /blueprint, /feature. Inward-facing; competitors and industry rules moved to atlas-coach.",
       "category": "productivity",
       "tags": [
         "business-analysis",
         "requirements",
         "specification",
         "obsidian"
+      ]
+    },
+    {
+      "name": "analysis-coach",
+      "source": "./plugins/analysis-coach",
+      "description": "The business-analyst half of building software: elicit requirements nobody can argue about later, turn data into an analysis that has already been argued with, and write the version an executive actually reads — /elicit, /insight, /story.",
+      "category": "productivity",
+      "tags": [
+        "business-analysis",
+        "requirements",
+        "data-analysis",
+        "reporting"
       ]
     },
     {

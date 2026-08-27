@@ -67,6 +67,33 @@ const versionOf = (dir, plugin) =>
   assert.match(r.out, /ahead of/, 'and explained: ' + r.out);
 }
 
+// A release that claims to ship a version it does not ship.
+{
+  const dir = fixture('changelog-claim');
+  const changelog = path.join(dir, 'CHANGELOG.md');
+  const t = fs.readFileSync(changelog, 'utf8');
+  // The newest section only — an older section's ship line is history, not a claim about now.
+  const newest = t.split(/^##\s+/m)[1] || '';
+  const claim = (newest.match(/^\*\*([a-z-]+ \d+\.\d+\.\d+)/m) || [])[1];
+  assert.ok(claim, 'the newest release has a ship line to corrupt');
+  fs.writeFileSync(changelog, t.replace(claim, claim.split(' ')[0] + ' 9.9.9'));
+  const r = run(dir);
+  assert.ok(!r.ok, 'a version claimed but not shipped is caught: ' + r.out);
+  assert.match(r.out, /9\.9\.9/, 'and quoted: ' + r.out);
+}
+
+// …but naming a plugin in prose is not a claim about its version, and must not fail the build.
+{
+  const dir = fixture('changelog-prose');
+  const changelog = path.join(dir, 'CHANGELOG.md');
+  const t = fs.readFileSync(changelog, 'utf8');
+  const i = t.indexOf('\n## ', 4); // end of the newest section
+  fs.writeFileSync(changelog, t.slice(0, i)
+    + '\nThis release does not touch strategy-coach or atlas-coach.\n' + t.slice(i));
+  const r = run(dir);
+  assert.ok(r.ok, 'a plugin mentioned in prose is not a shipping claim: ' + r.out);
+}
+
 // A skill that calls an engine verb the CLI does not dispatch: the cross-plugin ABI break that
 // used to reach users as a usage line where an answer should have been.
 {
