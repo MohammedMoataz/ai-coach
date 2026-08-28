@@ -63,17 +63,19 @@ Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The ful
 
 ### What it costs before you type
 
-**~2,590 always-on tokens** for the whole product — core and the bundle are 0, atlas-coach ~600
-(four skills, three agents), analysis-coach ~420, investigation-coach ~360, memory-coach ~320,
-security-coach ~310, strategy-coach ~210, prompt-coach ~200, harness-coach ~170. What is always on
-is the descriptions, and nothing else: every skill body, every reference file and every agent
-prompt is paid only when it runs.
+**~700 tokens actually enter the model's context every session** — and the reason the number is
+this small is the reason it was mis-stated for five releases. What a session pays for is only what
+the model can act on: the two skills that fire on their own (`recall` ~80, `dispatch` ~110) and
+the six agents (~510 together). The other twenty-two skills and all three commands are marked
+user-only, and a user-only description is **not loaded into the model's context at all** — it
+exists in your `/` menu, and its cost is paid when you invoke it, like any skill body.
 
-The number is counted from the descriptions in this repository at 2.8 characters per token — a
-ratio measured against what `claude plugin details` reported for a shipped build, not assumed. It
-is still an approximation: the CLI reads a built plugin and tokenises properly, so run
-`claude plugin details <plugin>` for the authoritative figure. `/harness-coach:context` turns the
-same question on everything else you have installed.
+That was measured, not assumed: a live probe with positive controls saw exactly `recall` and
+`dispatch` and none of the user-only items, commands included. It matters because
+`claude plugin details` — this repo's own stated instrument — projects **every** description as
+always-on regardless of `disable-model-invocation`, which put the earlier figure near four times
+the real one. Use the CLI for per-component sizes; use a live session for what is actually loaded.
+`/harness-coach:context` turns the same question on everything else you have installed.
 
 ## What happens on its own
 
