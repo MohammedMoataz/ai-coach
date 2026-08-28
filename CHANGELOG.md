@@ -3,6 +3,43 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.10.1 — The bill, measured at runtime (2026-08-29)
+
+Five releases stated an "always-on" token figure — ~1,256, then ~2,200, ~2,590 — every one of
+them counted from skill descriptions and calibrated against `claude plugin details`, this repo's
+own stated instrument. A user's question ("why is partners a skill if only I can invoke it?")
+forced the measurement nobody had run: what does the **model** actually see?
+
+**ai-coach 1.10.1**
+
+### The differential
+
+A live session was probed with positive controls: asked which of eight named items were visible
+in its context, it reported exactly two — `recall` and `dispatch`, the only skills without
+`disable-model-invocation: true` — and none of the six user-only skills and commands it was asked
+about. The agents load (they appear in a session's agent list); user-only descriptions do not.
+
+So the real bill is **~700 tokens per session**: two auto-invocable skills (~190) and six agents
+(~510). The other twenty-two skills and all three commands cost nothing until invoked — their
+descriptions live in the `/` menu, not in the model's context.
+
+### What that corrects, and what it vindicates
+
+Corrected: the README's cost section, and the landing page's — both had presented the projection
+as "added to every session", roughly four times the measured number. The projection tool itself
+is the trap: `claude plugin details` reports every description as always-on regardless of
+`disable-model-invocation`, and even lists the bundle's commands under "Skills (3)" with a ~172
+projection. It remains the right instrument for per-component sizes; it is the wrong one for
+"what does a session pay".
+
+Vindicated: the bundle's claim — three commands, "still adds nothing to the model's context at
+session start" — is true at runtime, and the checker's rule enforcing `disable-model-invocation`
+on every command is what keeps it true. Also standing, and now with the mechanism visible: the
+description-trimming discipline of v1.6.0 and v1.9.0 was still worth it — but for `recall`,
+`dispatch` and the agents it is load-bearing, and for everything else it buys a tidier `/` menu.
+
+No code changed. The numbers did.
+
 ## v1.10.0 — Three commands (2026-08-28)
 
 Twenty-two of the twenty-four skills are user-only, so almost everything here was already a
