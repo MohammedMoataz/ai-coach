@@ -133,12 +133,16 @@ that arrived some other way.
 `/analysis-coach:elicit` · `/analysis-coach:insight` · `/analysis-coach:story`
 
 Three commands ship in the bundle, because only the bundle knows all nine coaches exist:
-`/ai-coach:start` (day one — identity, project, then the onboarding tour, each step keeping its
-own questions), `/ai-coach:wrap` (debrief then handoff, the ordering the docs already require,
-with every gate intact), and `/ai-coach:sitrep` (the morning read: memory health, the context
-bill, open findings, unrecorded failures — read-only end to end, worst first). Commands are
-user-only and sequence skills rather than replacing them; a step whose plugin is not installed is
-skipped by name, never a failure.
+`/ai-coach:start` (day one — reads the repo, works out which setup steps this project still
+needs, and hands you each as a line to type), `/ai-coach:wrap` (checks the identity gate and the
+session's substance, then hands you the one chained line —
+`/memory-coach:debrief /memory-coach:handoff` — that publishes and exports, every gate intact),
+and `/ai-coach:sitrep` (the morning read from the engine's own numbers — read-only end to end,
+worst first, pointing at the two deep-dive skills when the numbers earn them). A deliberate
+boundary sits under all three: Claude Code blocks a command from firing a user-only skill and
+forbids re-implementing one, so side effects stay yours to fire — a command's product is the
+tailored checklist and the checks around it, and a step whose plugin is not installed is skipped
+by name, never a failure.
 
 Two of the twenty-four skills fire on their own. `recall`, so Claude reaches for memory unprompted when a
 question matches prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a

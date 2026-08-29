@@ -3,6 +3,41 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.10.2 — Commands that know their place (2026-08-29)
+
+The first real run of `/ai-coach:wrap` hit a wall v1.10.0 had not tested: the command told the
+model to run `/memory-coach:debrief`, and Claude Code refused — a skill marked user-only cannot
+be fired by the model, even from inside a command the user typed. The docs go further, and it is
+the right rule: the harness blocks the call **and instructs the model not to reproduce the
+skill's steps another way**. Both escape hatches this release might have reached for are closed
+by design, because "only you can fire a side effect" would mean nothing if a command could
+re-implement the side effect inline.
+
+**ai-coach 1.10.2**
+
+All three commands are rewritten to their honest shape: they do their own reading, and they hand
+you the firing lines.
+
+- **wrap** runs the checks a person hits at the worst moment if nobody ran them early — the
+  `whoami` identity gate, whether the session has any substance to conclude, the branch
+  convention — then prints the one chained line that does the rest:
+  `/memory-coach:debrief /memory-coach:handoff` (Claude Code runs skills the *user* names
+  together in one message, up to six). Arguments are forwarded into the printed line, and the
+  commit reminder still closes it.
+- **start** detects instead of assumes: who is already registered, whether a project is declared,
+  whether current onboarding docs exist, which plugins are installed — and prints only the steps
+  this repo still needs, each ready to type, in the documented order. Day one on a documented
+  project is two lines and a pointer, and the command now says so instead of re-generating docs.
+- **sitrep** keeps everything that was already its own work — the raw engine reads (`stats`,
+  `corrections --open`, `findings --open`, changed config rows, recent debriefs), the worst-first
+  page, the absolute read-only rule — and stops claiming the two deep dives: it prints
+  `/memory-coach:recall --health` and `/harness-coach:context` only when its own numbers say the
+  dive would pay.
+
+The lesson, recorded where the next release will trip over it: **a command orchestrates around
+user-only skills, never through them.** What a command owns is detection, tailoring, gates
+checked early, and exact invocations handed over — the runway, not the landing.
+
 ## v1.10.1 — The bill, measured at runtime (2026-08-29)
 
 Five releases stated an "always-on" token figure — ~1,256, then ~2,200, ~2,590 — every one of

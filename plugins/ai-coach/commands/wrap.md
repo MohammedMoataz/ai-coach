@@ -1,42 +1,59 @@
 ---
-description: Finish a piece of work properly - publish the debrief, export the seed, and say what to commit. The two-step the docs already require, typed once.
+description: Finish a piece of work properly - check what is wrappable, then hand over the exact one-line invocation that publishes the debrief and exports the seed. The ordering the docs require, remembered for you.
 argument-hint: "[--name <label>] [--encrypt]"
 disable-model-invocation: true
 ---
 
 # /wrap — the work is not done until it can be picked up
 
-Two skills already own the ending of a piece of work, and their own documentation orders them:
-a seed exported without a debrief "carries attribution without the reasoning behind it". This
-command is that ordering, typed once. It adds no behaviour of its own — every gate the two skills
-have stays exactly where it is, because the point of a wrap-up is deliberateness, not speed.
+Two skills own the ending of a piece of work, and their own documentation orders them: a seed
+exported without a debrief "carries attribution without the reasoning behind it". Both are
+user-only, deliberately — publishing a conclusion and exporting a seed are side effects a person
+fires. **Claude Code enforces that**: this command cannot run those skills for you and must not
+reproduce their steps another way. What it can do is everything around the firing: check the
+state, tailor the sequence, and hand you the exact line to type.
 
-If memory-coach is not installed, say so and stop — there is nothing to wrap with.
+`ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again. If memory-coach is not installed,
+say so and stop — there is nothing to wrap with.
 
-## Sequence
+## Steps
 
-1. **Publish the conclusion.** Run the `/memory-coach:debrief` skill, forwarding `--name <label>`
-   if it was given. Follow that skill exactly: the session digest, the four required sections,
-   and the draft shown for approval before anything is published. If the user reads the draft
-   and decides the session does not deserve a debrief, that is a fine outcome — say so, skip to
-   step 2, and note in the report that the seed will carry attribution only.
-2. **Export the seed.** Run the `/memory-coach:handoff` skill, forwarding `--encrypt` if it was
-   given. Its own gate stands: `whoami` first, and stop to ask for anything on the `missing`
-   list before exporting — a wrap-up that ships anonymous work has wrapped nothing.
-3. **Say what leaves the machine, and how.** Report the debrief key exactly as printed, the
-   export counts exactly as printed, and the one step this command cannot do for the user:
+1. **Check the identity gate before the user hits it.** `ENGINE whoami` — if the `missing` list
+   is non-empty, say what is on it and how to fix each item now (git config, the roster, the
+   project name), because hitting that wall inside the export is the annoying place to hit it.
+2. **Check there is something to wrap.** `ENGINE session-digest` header and `ENGINE stats` — a
+   session with no observations and no first prompt has nothing to conclude; say so plainly and
+   stop, because an empty debrief is worse than none.
+3. **Check the branch tells the story.** `ENGINE whoami` reports `branchOk` — if it carries a
+   message, surface it once: the debrief key and the seed both file under this branch name.
+4. **Hand over the firing line.** One message, both skills — Claude Code chains skills the user
+   names together:
+
+   ```
+   /memory-coach:debrief /memory-coach:handoff
+   ```
+
+   Forward the arguments into the line you print: `--name <label>` belongs to debrief,
+   `--encrypt` to handoff. Say what will happen when they run it: the debrief drafts four
+   sections and shows them for approval, then handoff exports — every gate those skills have
+   stays exactly where it is, which is the point of them being user-fired.
+5. **Say what comes after.** The one step neither skill runs:
 
    ```
    git add .ai-coach/team-seed.jsonl && git commit
    ```
 
-   Nothing has left this machine until that commit is pushed — say that plainly, because the
-   whole design is that knowledge travels by git, reviewable in a pull request, never by sync.
+   Nothing leaves this machine until that commit is pushed — knowledge travels by git,
+   reviewable in a pull request, never by sync.
 
 ## Rules
 
-- Never skip a gate to make the wrap feel faster. The debrief draft is shown, the identity check
-  runs, and declining either is a legitimate answer this command reports rather than argues with.
-- Never commit or push for the user. The seed enters git when a person decides it does.
-- One piece of work per wrap. If the session plainly contains two unrelated pieces of work, say
-  so and suggest two debriefs — a conclusion that covers everything concludes nothing.
+- Never invoke the two skills yourself and never re-implement what they do — the harness blocks
+  the first and forbids the second, and both refusals are the feature: side effects fire when a
+  person types them.
+- If the session plainly contains two unrelated pieces of work, say so — a conclusion that
+  covers everything concludes nothing — and suggest wrapping them as two debriefs.
+- Report only what the checks found and the lines to type. This command's product is a prepared
+  runway, not a landing it performed itself.
