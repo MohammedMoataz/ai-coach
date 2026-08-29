@@ -22,11 +22,17 @@ itself at session start — open a new session and try again.
 
 ## Steps
 
-1. **Size it, and refuse the small ones.** `ENGINE prompt-check "<the scope>"`. It is big enough for
-   this walk when `multi-ask` fired, or it names more than one outcome, or it lands in more than
-   about three files or subsystems, or nobody in the room can state a single observable finish.
-   Otherwise say so in one line and hand over `/prompt-coach:prompt <bugfix|feature|refactor>` —
-   a spec walk for a one-file fix is exactly the waste this harness refuses to sell you elsewhere.
+1. **Size it, and refuse the small ones.** It is big enough for this walk when it names more than one
+   outcome, lands in more than about three files or subsystems, or nobody in the room can state a
+   single observable finish. Otherwise say so in one line and hand over
+   `/prompt-coach:prompt <bugfix|feature|refactor>` — a spec walk for a one-file fix is exactly the
+   waste this harness refuses to sell you elsewhere.
+
+   `ENGINE prompt-check "<the scope>"` is worth running here, but read it correctly: `multi-ask`
+   needs both **over 600 characters and more than six conjunctions**, so it fires on a long rambling
+   ask and stays silent on a short one carrying ten outcomes — measured, not assumed. A `multi-ask`
+   flag is evidence the scope is big. **`clean` is not evidence that it is small**, and judging size
+   by that flag alone sends real work back to `/prompt`.
 
 2. **Read before you ask anything.** `ENGINE search "<the topic>"` for what the team already
    concluded, `ENGINE whoami` for the branch and project, then look: `docs/features/`,

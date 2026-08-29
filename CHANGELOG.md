@@ -3,6 +3,61 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.11.0 — The walk before the work (2026-08-29)
+
+Planning a big scope with this harness had no front door. You typed the big vague ask, `/prompt`
+handed back a template or one rewrite, and the machinery that would actually have helped —
+`/strategy-coach:feature`'s clarify → spec → sign-off → plan, `/analysis-coach:elicit`'s owned open
+questions — was never mentioned. This release is the door, the gate nobody had written, and a
+`/prompt` that asks instead of shrugging.
+
+**prompt-coach 1.2.0 · ai-coach 1.11.0**
+
+### The definition of done for planning
+
+`feature`'s existing gate asks *"is this right?"* — a sign-off on a document. It never asks whether
+every dimension of the work has an answer somebody could execute against. Nothing in the repo did.
+So `/prompt-coach:scope` states it in one sentence anyone can quote: **planning is done when a fresh
+session on a cheap model could execute the work unattended and stop at a place both of you would
+call finished.** Seven gate rows are each one way of failing that sentence — a blank dimension, an
+adjective where an observable finish belongs, an empty boundary, no `@path`, an unowned unknown, an
+unsplit "and also", or a draft its own `prompt-check` still flags.
+
+The gate is not advisory. A FAIL prints what is missing and who owns it, and **emits nothing** — no
+brief with caveats, no "here it is anyway". A prompt that looks executable over an unanswered
+dimension is worse than no prompt, because it will be executed.
+
+### /scope — eight dimensions, borrowed rather than invented
+
+The dimensions are `feature`'s four clarifying questions, `elicit`'s open-questions-with-owners
+discipline, and `dispatch`'s four rules, collected into the one place a scope gets shaped. Each
+carries two example answers, and the walk refuses small work: `multi-ask`, more than one outcome, or
+more than about three subsystems, or it hands you back to `/prompt`. It reads the repo before it
+asks anything — a person asked a question their own repo answers is a person who stops answering
+questions.
+
+It writes nothing and records nothing, like the rest of this plugin, which is what makes it safe to
+point at half-formed thinking. When the scope does deserve a document, it names the skill that owns
+writing it, checking `claude plugin list` rather than a context that cannot see user-only skills.
+
+Borrowed spec-kit's shape, not its dependency — it stays a `/harness-coach:partners` suggestion for
+anyone who wants the standalone tool.
+
+### /prompt asks about the gap instead of leaving it blank
+
+Its rule was "leave a blank where nothing is known rather than inventing" — honest, and it never
+once helped anyone fill the blank. The nine detectors now have a second job: they already decide
+*which* gap a draft has, deterministically and with no model call, so the question that follows is a
+lookup rather than a judgement. Every detected rule in `references/rules.md` carries an `Ask:` line
+and two example answers; a review runs `prompt-check`, asks at most three of them highest-weight
+first with the examples as the options, then writes the single rewrite from the answers.
+
+That is why the skill can stay pinned to haiku while doing work that reads like it should not be.
+Declining still behaves exactly as before — honest blank, nothing invented.
+
+**No engine change**, so no new detector, no schema bump and no migration. Every new surface is
+user-only: the always-on context bill stays where v1.10.1 measured it.
+
 ## v1.10.3 — What a command can see (2026-08-29)
 
 Live probes of v1.10.2 surfaced two gaps, both the same species: instructions that assumed the

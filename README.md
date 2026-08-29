@@ -49,7 +49,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 |---|---|
 | **ai-coach-core** | The engine. Every hook, the memory database, the secrets guard, the session brief, the prompt detectors, the compaction snapshot. Everything else depends on it. |
 | **memory-coach** | Skills only: `recall` (search, and `--health`), `debrief`, `handoff`, `roster`. |
-| **prompt-coach** | Skills only: `prompt`, `prompt-stats`, `dispatch`. |
+| **prompt-coach** | Skills only: `prompt`, `scope`, `prompt-stats`, `dispatch` — the prompt you are about to send, the big scope you have not shaped yet, and the habits that cost you. Writes nothing, ever. |
 | **security-coach** | `scan`, `audit` (`--triage` chains them), `triage` — plus the `examiner` agent: suspected injection content is read in a quarantined context with no shell and no network. |
 | **harness-coach** | Skills only: `partners`, `context` — what is installed next to the coach, and what is filling this session. |
 | **investigation-coach** | `onboard` (`--tour` runs all three), `map`, `study` — plus the `scout` agent, which does their repo sweeps in an isolated context, every claim `file:line`-cited. |
@@ -66,7 +66,7 @@ Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The ful
 **~700 tokens actually enter the model's context every session** — and the reason the number is
 this small is the reason it was mis-stated for five releases. What a session pays for is only what
 the model can act on: the two skills that fire on their own (`recall` ~80, `dispatch` ~110) and
-the six agents (~510 together). The other twenty-two skills and all three commands are marked
+the six agents (~510 together). The other twenty-three skills and all three commands are marked
 user-only, and a user-only description is **not loaded into the model's context at all** — it
 exists in your `/` menu, and its cost is paid when you invoke it, like any skill body.
 
@@ -124,8 +124,9 @@ that arrived some other way.
 ## What you drive
 
 `/memory-coach:recall` · `/memory-coach:debrief` · `/memory-coach:handoff` ·
-`/memory-coach:roster` · `/prompt-coach:prompt` · `/prompt-coach:prompt-stats` ·
-`/prompt-coach:dispatch` · `/security-coach:scan` · `/security-coach:audit` ·
+`/memory-coach:roster` · `/prompt-coach:prompt` · `/prompt-coach:scope` ·
+`/prompt-coach:prompt-stats` · `/prompt-coach:dispatch` · `/security-coach:scan` ·
+`/security-coach:audit` ·
 `/security-coach:triage` · `/harness-coach:partners` · `/harness-coach:context` ·
 `/investigation-coach:onboard` · `/investigation-coach:map` · `/investigation-coach:study` ·
 `/atlas-coach:research` · `/atlas-coach:ingest` · `/atlas-coach:market` ·
@@ -183,9 +184,40 @@ still being argued about; `/strategy-coach:feature` reads its output once they a
 `/security-coach:audit --triage` hands confirmed findings straight into the tracking table with
 `--source audit`, because a scanner hit and a pentester's finding are not worth the same.
 `/investigation-coach:onboard --tour` runs onboard, then map, then study — the later two read what
-the first wrote instead of sweeping the repo again. And when a plugin mentions a sibling that is
+the first wrote instead of sweeping the repo again. `/prompt-coach:scope` is the front of that same
+chain: it shapes a big ask, gates it, and then names whichever skill should own the writing —
+`/strategy-coach:feature` for a spec somebody commits, `/analysis-coach:elicit` when the
+requirements are still being argued about, and neither when the prompt it just printed is the whole
+artifact. And when a plugin mentions a sibling that is
 not installed, the skill says what to do inline instead of failing — the dependency is a
 convenience, never a requirement.
+
+### When planning is done
+
+A sign-off is not a completeness check. `/strategy-coach:feature` asks you to approve a document;
+nothing asked whether the work had an answer for every dimension somebody could then execute
+against. `/prompt-coach:scope` states the missing definition in a sentence worth quoting:
+
+> **Planning is done when a fresh session on a cheap model could execute the work unattended and
+> stop at a place both of you would call finished.**
+
+Seven gate rows are each one way of failing that sentence — a blank dimension, an adjective where an
+observable finish belongs, an empty boundary, no `@path` and no exemplar, an unowned unknown, an
+unsplit "and also", or a draft its own `prompt-check` still flags. **A failing gate emits nothing.**
+Not a brief with caveats, not "here it is anyway": a prompt that looks executable over an unanswered
+dimension is worse than no prompt, because it will be executed. The refusal is the product.
+
+The walk refuses small work too, and hands it back to `/prompt` — a spec walk for a one-file fix is
+the same waste this harness declines to sell you everywhere else. It writes nothing and records
+nothing, which is what makes it safe to point at half-formed thinking; when the scope does deserve a
+document, it names the skill that owns writing one.
+
+`/prompt` gained the other half of that. Its rule used to be *leave a blank rather than invent one*
+— honest, and no help at all in filling the blank. The nine detectors now do double duty: they have
+already decided **which** gap a draft has, deterministically and with no model call, so the question
+that follows is a lookup rather than a judgement. That is why the skill still runs on haiku while
+asking questions that read like they need more. It asks at most three, each with two example
+answers, and declining returns the old behaviour exactly.
 
 ## What a teammate actually receives
 

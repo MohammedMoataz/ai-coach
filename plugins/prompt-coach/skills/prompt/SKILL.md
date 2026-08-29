@@ -49,8 +49,10 @@ reference id in brackets so "the rule behind this signal" resolves to exactly on
 list. Load the reference when the user wants the reasoning — or when a draft review needs the
 question bank, which lives beside each detected rule there.
 
-**Too big to be a prompt** — when `multi-ask` fires, or the draft carries more than one outcome, say
-so in one line and hand over `/prompt-coach:scope`. A rewrite cannot fix a scope that was never
+**Too big to be a prompt** — when the draft carries more than one outcome, say so in one line and
+hand over `/prompt-coach:scope`. `multi-ask` firing settles it, but its threshold is over 600
+characters *and* more than six conjunctions, so a short draft carrying five outcomes comes back
+`clean` — read the draft, not only the flag. A rewrite cannot fix a scope that was never
 shaped; that skill walks the eight dimensions and gates on whether planning is done. Offer it, do
 not insist — a long prompt with one clear outcome is fine, and this is a route, not a refusal.
 
