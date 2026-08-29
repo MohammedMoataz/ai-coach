@@ -38,13 +38,23 @@ The engine's two internal LLM calls were hardcoded to `claude -p --model claude-
 answer; `AICOACH_MODEL` swaps the model id on the default path — the escape hatch the 2026-08-27
 audit asked for. Both fail closed exactly like a missing binary: the nicety skips, nothing errors.
 
-### What stays Claude's, said plainly
+### The automatic layer travels too
 
-The automatic layer — brief injection, failure recording, the guard, the spotlight — is hooks, and
-no other harness exposes that surface. `adapters/README.md` carries the what-works-where matrix
-with install snippets verified against each harness's own docs and dated. Lifecycle adapters are
-deliberately absent, not missing: per-harness code this repo cannot test, worth writing when a
-real user outside Claude Code needs one.
+Written the moment real users on other harnesses existed — a team across Cursor, Windsurf,
+Antigravity, Blackbox and opencode. `adapters/shim.js` translates each harness's event JSON into
+the Claude-Code shape, runs the *same tested hook scripts* this repo already ships, and answers
+in the harness's own dialect — Cursor a JSON verdict plus exit 2, Windsurf exit codes (no ask
+tier, so a secret-ish payload blocks outright), Antigravity a camelCase `decision` with the ask
+tier intact. One shim, four dialects, zero duplicated logic; opencode gets a native plugin
+because its surface is JS events, not shell commands. Every path exits 0 on the unexpected — a
+field-name drift in these beta surfaces degrades to not-recording, never to a broken session.
+
+What each surface honestly supports is a matrix row, not a claim: Windsurf has no session or
+failure events (observations yes, distillation no — and the shim ensures session rows itself, so
+digests never answer "no session"); Codex CLI stays MCP + AGENTS.md because `notify` is too
+little surface for observations or a guard; Blackbox is labelled the least-verified row because
+its hook schema is advertised rather than documented. Context injection remains Claude Code's
+alone — elsewhere the brief is your first move, not your zeroth.
 
 ## v1.12.0 — The secrets guard is opt-in (2026-08-29)
 
