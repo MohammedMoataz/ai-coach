@@ -278,6 +278,16 @@ memory; each line still records the repo it came from, and your own repo ranks f
 **The brief never truncates silently.** A capped brief that looks complete is the one failure mode a
 memory tool cannot have, so the cap always leaves room to say what it dropped.
 
+**A command hands you the runway, never the landing.** Claude Code blocks a model from firing a
+user-only skill — even from inside a command you typed — and forbids reproducing that skill's
+steps another way. That is the right rule twice over: "only you fire a side effect" would mean
+nothing if a command could re-implement the side effect inline. So a command's product is
+everything *around* the firing — the state read, the gates checked before you hit them, the
+checklist narrowed to what this repo still needs — ending in the exact line for you to type. The
+corollary is easy to get wrong: a command cannot tell what is installed by looking at its own
+context, because user-only skills are invisible to it by design. It runs `claude plugin list`
+instead.
+
 **The engine lives at `~/.ai-coach/`, not in a plugin directory.** A plugin directory is documented
 as ephemeral and unreachable from a sibling plugin, so the engine installs a copy of itself beside
 the databases at a path that never moves. The corollary is handled too: if that copy is older than
