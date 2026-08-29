@@ -25,8 +25,10 @@ itself at session start — open a new session and try again.
    `docs/onboarding/index.md` and whether it is current, `docs/business/`. Every one that exists
    removes a step — day one on a documented project is short, and this command's main value is
    saying so instead of re-generating what is there.
-3. Note which of the three plugins are installed. A step whose plugin is missing appears on the
-   checklist as "skipped — <plugin> not installed", never as a failure.
+3. Note which of the three plugins are installed — **by running `claude plugin list`, never by
+   whether their skills appear in your context.** User-only skills are invisible to you by
+   design, so what you can see says nothing about what is installed. A step whose plugin is
+   missing appears on the checklist as "skipped — <plugin> not installed", never as a failure.
 
 ## The checklist — printed, tailored, in order, each line ready to type
 

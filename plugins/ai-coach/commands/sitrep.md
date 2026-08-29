@@ -53,6 +53,9 @@ surprise outranks stale memory.
   /harness-coach:context            when this session feels heavy, or before a long run
   ```
 
+  Print each line only if its plugin appears in `claude plugin list` — never judge by whether
+  the skill is visible to you, because user-only skills are invisible by design.
+
 ## Rules
 
 - Read-only is absolute: no `ENGINE add`, no `forget`, no file writes, no fixes — even trivial
