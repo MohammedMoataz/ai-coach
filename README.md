@@ -43,6 +43,14 @@ context at session start.
 
 Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-coach-core` with it.
 
+### Not on Claude Code?
+
+The memory works everywhere MCP does — Codex, Cursor, opencode, Windsurf, Gemini CLI — through
+`adapters/mcp/server.js`, and the 25 workflows compile to Cursor rules and an
+[AGENTS.md](https://agents.md) index. One shared `~/.ai-coach/` regardless of which harness opened
+the session, which is the point. What ports and what stays Claude's (the automatic hook layer),
+with verified per-harness install snippets: [`adapters/README.md`](adapters/README.md).
+
 ## What ships
 
 | Plugin | What it is |

@@ -3,6 +3,49 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.13.0 — Beyond Claude Code (2026-08-29)
+
+**ai-coach-core 1.8.0 · ai-coach 1.13.0**
+
+Until now the only door into this product was Claude Code's plugin system. The strongest thing in
+it — team memory nothing else in the ecosystem has — deserved more doors, and MCP is the one
+protocol Claude Code, Codex, Cursor, opencode, Windsurf and Gemini CLI all speak.
+
+### The memory speaks MCP
+
+`adapters/mcp/server.js`: zero dependencies, stdio JSON-RPC written by hand, seven tools —
+`memory_search`, `memory_add`, `memory_brief`, `debriefs_list`, `debrief_show`, `prompt_check`,
+`whoami`. It shells to the engine CLI rather than requiring engine.js, because the CLI is the ABI
+CI already guards. Publishing verbs are deliberately absent: an MCP tool is model-invoked by
+definition, and "only you publish it" is the product's oldest rule — the test pins the surface to
+exactly those seven so a convenient eighth cannot slip in. Tested over the real transport on both
+OSes: handshake, calls, a deliberate failure, an unknown method, a garbage line.
+
+### The skills compile
+
+`adapters/build.js` turns the 25 SKILL.md sources into one agent-requested `.mdc` rule per skill
+for Cursor and one AGENTS.md index for everything that reads that standard. A five-entry
+substitution table fixes only what structurally cannot travel — `AskUserQuestion`,
+`${CLAUDE_PLUGIN_ROOT}`, relative `references/` loads, `claude plugin list` — and skills that are
+user-only in the original carry it as a labelled convention, trusted where it cannot be enforced.
+Outputs are checked in; CI rebuilds and diffs them, so an edited skill whose compiled twin was
+forgotten fails the build.
+
+### The model pipeline unpins
+
+The engine's two internal LLM calls were hardcoded to `claude -p --model claude-haiku-4-5`.
+`AICOACH_LLM_CMD` now replaces the pipeline with any command that reads stdin and prints the
+answer; `AICOACH_MODEL` swaps the model id on the default path — the escape hatch the 2026-08-27
+audit asked for. Both fail closed exactly like a missing binary: the nicety skips, nothing errors.
+
+### What stays Claude's, said plainly
+
+The automatic layer — brief injection, failure recording, the guard, the spotlight — is hooks, and
+no other harness exposes that surface. `adapters/README.md` carries the what-works-where matrix
+with install snippets verified against each harness's own docs and dated. Lifecycle adapters are
+deliberately absent, not missing: per-harness code this repo cannot test, worth writing when a
+real user outside Claude Code needs one.
+
 ## v1.12.0 — The secrets guard is opt-in (2026-08-29)
 
 **ai-coach-core 1.7.0 · ai-coach 1.12.0**
