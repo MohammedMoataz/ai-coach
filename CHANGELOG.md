@@ -3,6 +3,32 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.10.3 — What a command can see (2026-08-29)
+
+Live probes of v1.10.2 surfaced two gaps, both the same species: instructions that assumed the
+model executing a command knows things it structurally cannot.
+
+**ai-coach 1.10.3**
+
+### A command cannot see what is installed
+
+An earlier probe had the model conclude "memory-coach skills not installed" about a machine where
+they were — because user-only skills are invisible to the model **by design**, which is the very
+mechanism v1.10.1 measured and celebrated. So "if the plugin is not installed, say so" was an
+instruction no model could follow by looking around. All three commands now say how to look:
+`claude plugin list`, with the warning spelled out — absence from your context proves nothing.
+`sitrep` applies the same rule before printing its deep-dive invocations.
+
+### A vague fix invites the wrong fix
+
+`wrap`'s identity gate said "say how to fix each missing item" — and the probe's model improvised
+"edit `.ai-coach/team.md` by hand", bypassing the roster skill whose whole design is append-only
+ownership of that file. Vagueness in a command body is delegation to whichever model runs it, so
+the gate now carries the exact table: git config lines for email and name,
+`/memory-coach:roster register` for the role, `/memory-coach:roster declare <name>` for the
+project — with the rule stated: these are the owners, never suggest hand-editing the files they
+own.
+
 ## v1.10.2 — Commands that know their place (2026-08-29)
 
 The first real run of `/ai-coach:wrap` hit a wall v1.10.0 had not tested: the command told the

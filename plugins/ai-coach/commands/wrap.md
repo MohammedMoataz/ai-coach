@@ -15,14 +15,26 @@ state, tailor the sequence, and hand you the exact line to type.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
-itself at session start — open a new session and try again. If memory-coach is not installed,
-say so and stop — there is nothing to wrap with.
+itself at session start — open a new session and try again.
+
+**Checking whether memory-coach is installed: run `claude plugin list` and look for it.** Never
+judge by whether its skills appear in your context — user-only skills are invisible to you by
+design, so their absence from what you can see proves nothing. Not installed: say so and stop;
+there is nothing to wrap with.
 
 ## Steps
 
 1. **Check the identity gate before the user hits it.** `ENGINE whoami` — if the `missing` list
-   is non-empty, say what is on it and how to fix each item now (git config, the roster, the
-   project name), because hitting that wall inside the export is the annoying place to hit it.
+   is non-empty, hitting that wall inside the export is the annoying place to hit it, so hand
+   over the exact fix for each item now. These are the owners; never suggest hand-editing the
+   files they own:
+
+   | Missing | The line to hand over |
+   |---|---|
+   | `email` | `git config user.email "<email>"` |
+   | `username` | `git config user.name "<name>"` |
+   | `role` | `/memory-coach:roster register` — it asks for the role and appends to the roster |
+   | `project name` | `/memory-coach:roster declare <name>` — writes `.ai-coach/project.md` |
 2. **Check there is something to wrap.** `ENGINE session-digest` header and `ENGINE stats` — a
    session with no observations and no first prompt has nothing to conclude; say so plainly and
    stop, because an empty debrief is worse than none.
