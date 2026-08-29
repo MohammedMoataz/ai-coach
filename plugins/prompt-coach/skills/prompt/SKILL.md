@@ -23,14 +23,36 @@ itself at session start — open a new session and try again.
 error text, the test command. Leave a blank where nothing is known rather than inventing a
 plausible value; a wrong specific is worse than an honest gap.
 
-**A pasted draft** — review it. Quote each weak spot, then give **exactly one** rewrite, then one
-line saying why the rewrite should work better. One rewrite, not three: a menu of options moves the
-judgment back onto the person who asked for help.
+**A pasted draft** — check it, ask about the gaps, then rewrite it once.
+
+1. `ENGINE prompt-check "<the draft>"` — nine deterministic detectors, no model call, no write.
+2. **Ask about what fired.** Every detected rule in `references/rules.md` carries an `**Ask:**` line
+   and two example answers; look up the ones that fired and put them to the user with
+   `AskUserQuestion`, the two examples as the options. **At most three, highest weight first** —
+   the flags come back weight-ordered, so this is a lookup, not a judgement call. Skip any question
+   the draft already answers.
+3. **Rewrite once, using the answers.** Quote each weak spot, give **exactly one** rewrite, then one
+   line on why it should work better. One rewrite, not three: a menu moves the judgment back onto
+   the person who asked for help.
+
+If they decline the questions or skip one, rewrite anyway with an honest blank — never invent a
+plausible value. A wrong specific is still worse than a visible gap, which is the whole reason the
+questions exist.
+
+`exempt` means it read as an exploratory question; that is legitimate and never coached. `clean`
+means the nine regexes found nothing — rewrite for shape if it needs it, but do not manufacture
+questions to ask.
 
 **`rules`** — print the twelve rules below. `references/rules.md` holds the full set with sources
 and dates, numbered 1-22 — the twelve here are the ones worth reciting, and each names its
 reference id in brackets so "the rule behind this signal" resolves to exactly one entry in either
-list. Load the reference only when the user wants the reasoning.
+list. Load the reference when the user wants the reasoning — or when a draft review needs the
+question bank, which lives beside each detected rule there.
+
+**Too big to be a prompt** — when `multi-ask` fires, or the draft carries more than one outcome, say
+so in one line and hand over `/prompt-coach:scope`. A rewrite cannot fix a scope that was never
+shaped; that skill walks the eight dimensions and gates on whether planning is done. Offer it, do
+not insist — a long prompt with one clear outcome is fine, and this is a route, not a refusal.
 
 **No argument** — ask for the prompt to check, in one line: "paste the prompt and I will check it".
 A skill cannot read the previous turn, so there is nothing to run `prompt-check` against until
@@ -103,6 +125,10 @@ Skip style nits unless they change meaning.
 ## Rules
 
 - One rewrite per review. Never a menu.
+- **Never more than three questions**, and never one the draft already answers. The questions are a
+  service, and a fourth one turns it into an interrogation people learn to skip.
+- Never ask a question that is not backed by a detector that actually fired. The bank in
+  `references/rules.md` is the whole permitted set; anything beyond it is this skill guessing.
 - Never rewrite a prompt into something that asks for more than the user wanted — tightening is not
   scope creep.
 - Rules are dated bets on how the current models behave, not eternal truths. If a rule in
@@ -110,5 +136,6 @@ Skip style nits unless they change meaning.
 
 ## Related
 
+- A scope too big for any rewrite: `/prompt-coach:scope`.
 - Your own prompt habits, measured: `/prompt-coach:prompt-stats`.
 - Do not use this to look up project knowledge — that is `/memory-coach:recall`.
