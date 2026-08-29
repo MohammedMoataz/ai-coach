@@ -1,0 +1,112 @@
+---
+description: Turns a big vague scope into one prompt that can actually be executed - a walk through the eight dimensions a fresh context cannot recover, questions carrying example answers, and a readiness gate that says whether planning is done. Use for "/scope", "help me plan this big change", "spec this out before I start", "is this ready to hand off". Do NOT use for a single-file change, which is /prompt-coach:prompt, or for a product feature that needs a committed document, which is /strategy-coach:feature.
+argument-hint: "<the big scope, in your own words> [--quick]"
+disable-model-invocation: true
+---
+
+# /scope — the walk before the work
+
+A big ask fails at the start, silently. It reads as complete to the person who wrote it, because
+they can see the parts they left out; the executor cannot, picks an interpretation, and spends a
+whole context on it. You find out by paying twice.
+
+This skill is the walk that catches that: the eight dimensions a fresh context cannot recover, asked
+with example answers, then a gate that says plainly whether planning is done. It ends by handing you
+**one prompt to send** — it does not send it, does not write a file, and records nothing. That is
+deliberate. Everything else in this plugin has the same property, and it is the reason
+`prompt-check` is safe to run on your own drafts.
+
+`ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
+
+## Steps
+
+1. **Size it, and refuse the small ones.** `ENGINE prompt-check "<the scope>"`. It is big enough for
+   this walk when `multi-ask` fired, or it names more than one outcome, or it lands in more than
+   about three files or subsystems, or nobody in the room can state a single observable finish.
+   Otherwise say so in one line and hand over `/prompt-coach:prompt <bugfix|feature|refactor>` —
+   a spec walk for a one-file fix is exactly the waste this harness refuses to sell you elsewhere.
+
+2. **Read before you ask anything.** `ENGINE search "<the topic>"` for what the team already
+   concluded, `ENGINE whoami` for the branch and project, then look: `docs/features/`,
+   `docs/requirements/`, `docs/onboarding/`, and the files the scope names. **Open by saying what
+   you already found.** A person asked a question their own repo answers is a person who stops
+   answering questions.
+
+3. **Walk the dimensions.** Load `references/coverage.md` — one load, both halves, you need the gate
+   later in the same run. Ask about each dimension the reading did not already settle. Use
+   `AskUserQuestion` when the answer is a choice between concrete options and let the two examples
+   *be* the options; ask in prose when it is not, and show the examples inline. Draw every example
+   from this repo and this session where you can — an example naming a file the user recognises is a
+   template, a generic one is only a hint.
+
+   `--quick` limits this to the five dimensions that would change the plan most, chosen from what
+   step 2 found rather than a fixed list.
+
+4. **Restate it as a coverage table.** One row per dimension: the answer in one line, and where it
+   came from.
+
+   | Dimension | Answer | Source |
+   |---|---|---|
+   | Observable finish | `check-manifests.js` exits 0 with the new rule on the fixture | asked |
+   | Constraints | detector ids are an ABI — numbering cannot move | found in `references/rules.md` |
+   | Unknowns | whether the walk ever writes a file | `ASSUMED — needs the user` |
+
+   An `ASSUMED` row is never quietly promoted to an answered one. It is a decision you made for
+   somebody, and it stays labelled until they take it back.
+
+5. **Run the gate.** Print all seven rows with a verdict, the passing ones included — a gate that
+   shows only failures reads as a list of complaints rather than a state. **Any FAIL stops the
+   walk:** say which rows failed, what each needs and who owns it, and emit nothing. Then stop and
+   let them answer. This is the whole point of the skill; a brief that looks executable over an
+   unanswered dimension is worse than no brief, because it will be executed.
+
+6. **Hand over one prompt.** Written to the four rules in `/prompt-coach:dispatch` — resolve the
+   ambiguity now, success criteria not steps, name the artifact and the shape, say what comes back.
+   Read that skill rather than reproducing its reasoning here. Check the draft before you print it:
+
+   ```
+   ENGINE prompt-check "<the prompt you are about to hand over>"
+   ```
+
+   Flags mean fix it, not ship it with a caveat — gate row 7 is exactly this check.
+
+7. **Say where it goes next, if anywhere.** Which one depends on what the walk found:
+
+   | What it turned out to be | The line to hand over |
+   |---|---|
+   | A product feature that wants a committed spec and a plan a cheap model can run | `/strategy-coach:feature <slug>` |
+   | Requirements still being argued about between people | `/analysis-coach:elicit "<what is being asked for>"` |
+   | Anything else | nothing — the prompt you just printed is the artifact |
+
+   **Check what is installed by running `claude plugin list`.** Never judge by whether those skills
+   appear in your context: they are user-only, so they are invisible to you by design and their
+   absence proves nothing. A plugin that is missing gets one honest line — "not installed" — not a
+   silent omission.
+
+## Rules
+
+- **Writes nothing, records nothing.** No file, no `ENGINE add`, no memory. If the scope deserves a
+  document, step 7 names the skill that owns writing it. This plugin's whole character is that it
+  can be pointed at your own half-formed thinking without consequence.
+- **Never answer a dimension for the user without marking it.** Reading the repo is an answer;
+  guessing is an `ASSUMED` row with a named person on it.
+- **Never ask what step 2 already found.** Show what you found first, then ask about the gaps only.
+- **The gate is not advisory.** No emitted prompt on a failing gate, and no "here it is anyway, but
+  note that…". The refusal is the product.
+- **One outcome, or named parts.** A scope with an "and also" is two scopes; split it, give each its
+  own finish, and say which one comes first. Do not walk both at once.
+- **Do not restate `dispatch`.** Its four rules are the contract for the prompt this skill emits;
+  cite it, and let it be the one place they are defended.
+
+## Related
+
+- The prompt you are about to send, reviewed or templated: `/prompt-coach:prompt`.
+- The contract this skill's output is written to: `/prompt-coach:dispatch`.
+- Which of your own habits actually cost you time: `/prompt-coach:prompt-stats`.
+- `/strategy-coach:feature` writes the spec and the plan as committed documents, grounded in the
+  business vault; reach for it when the work needs an artifact a teammate can read next week rather
+  than a prompt you are about to send.
+- `/harness-coach:partners` lists spec-kit, a standalone spec-driven workflow. This walk borrows the
+  shape of that process without the dependency; use the tool itself when you want its scaffolding.
