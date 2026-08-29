@@ -386,6 +386,8 @@ person might reach for.
 | `AICOACH_LOG` | Where failures append. Defaults to `log.jsonl` beside the database. |
 | `AICOACH_INNER` | Set to `1` inside spawned `claude -p` children so hooks do not recurse. |
 | `AICOACH_CLAUDE_BIN` | The `claude` binary to shell out to for the two Haiku calls. |
+| `AICOACH_MODEL` | A different model id for those two calls, on the default `claude -p` path. The escape hatch for the day `claude-haiku-4-5` retires. |
+| `AICOACH_LLM_CMD` | Replace the model pipeline entirely: a complete command that reads the prompt on stdin and prints the answer (e.g. `codex exec -`, `ollama run llama3.2`). Overrides both variables above. Fails closed like a missing binary — the nicety is skipped, nothing errors. |
 | `AICOACH_SEED_KEY` | Passphrase for an encrypted seed, instead of `.ai-coach/seed.key`. |
 | `AICOACH_OFF` | Silences the "your Node is too old" message on stderr. It does not disable anything else. |
 | `AICOACH_AUTHOR` / `AICOACH_USERNAME` / `AICOACH_ROLE` | Override the identity read from git and the roster. |
