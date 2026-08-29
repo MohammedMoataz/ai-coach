@@ -313,8 +313,11 @@ const SETTINGS = [
     what: 'One Haiku call at session end distils a summary and up to 3 learnings. Needs `claude` on PATH; degrades quietly without it.' },
   { key: 'plan_review', def: 'on', type: 'boolean',
     what: 'In plan mode only: one Haiku call scores the prompt and suggests a rewrite.' },
-  { key: 'guard', def: 'on', type: 'boolean',
-    what: 'Block tool calls carrying real credentials, and ask before secret-ish payloads. The one hook allowed to stop a call.' },
+  // Off by default since v1.12.0. It is the only hook that can stop a tool call, and a security
+  // control that blocks work nobody asked it to block gets switched off wholesale rather than
+  // tuned — so it is opt-in, and the README says plainly what a default install therefore misses.
+  { key: 'guard', def: 'off', type: 'boolean',
+    what: 'Block tool calls carrying real credentials, and ask before secret-ish payloads. The one hook allowed to stop a call. Off by default — turn it on in /plugin or with AICOACH_GUARD=on.' },
   { key: 'spotlight', def: 'on', type: 'boolean',
     what: 'Scan fetched content and out-of-repo reads for prompt-injection markers. Warn-only, no model call.' },
   { key: 'partners', def: 'on', type: 'boolean',

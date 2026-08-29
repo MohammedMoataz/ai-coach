@@ -62,6 +62,18 @@ assert.ok(r.stdout.includes('team-seed.jsonl') && r.stdout.includes('2 entries')
 
 // ---------- guard ----------
 
+// The default is OFF as of v1.12.0, so everything below has to opt in. Pinning the default here
+// is the assertion nobody thinks to write and the one that fails if it is ever flipped back by
+// accident — the guard going quiet is not a visible symptom. The key is assembled from halves so
+// this line does not carry a literal the guard would block on its way into the file.
+const AWS_LIVE_KEY = 'AKIA' + 'ABCDEFGHIJKLMNOP';
+r = run('guard.js', { tool_name: 'Bash', tool_input: { command: 'export AWS_KEY=' + AWS_LIVE_KEY } });
+assert.strictEqual(r.status, 0, 'guard is OFF by default — a real AWS key passes untouched');
+assert.strictEqual(r.stdout.trim(), '', 'guard off by default says nothing at all');
+
+// every behaviour assertion after this point needs the guard turned on
+env.AICOACH_GUARD = 'on';
+
 // block tier: real credentials, any tool — including Write (content scanned raw)
 r = run('guard.js', { tool_name: 'Bash', tool_input: { command: 'export AWS_KEY=AKIAABCDEFGHIJKLMNOP' } });
 assert.strictEqual(r.status, 2, 'guard blocks AKIA in Bash');
@@ -94,6 +106,7 @@ assert.strictEqual(r.status, 0, 'guard off = everything passes');
 r = spawnSync('node', [path.join(__dirname, 'guard.js')], { input: '{{{', encoding: 'utf8', env, timeout: 20000 });
 assert.strictEqual(r.status, 0, 'garbage stdin fails open');
 assert.ok(fs.readFileSync(env.AICOACH_LOG, 'utf8').includes('"where":"guard"'), 'fail-open is logged');
+delete env.AICOACH_GUARD; // back to shipped defaults for the rest of the suite
 
 // session-start: brief appears once memory + a previous session exist
 r = spawnSync('node', [path.join(__dirname, 'engine.js'), 'add', 'learning', 'hooks smoke memory', '0.9', '--project', '/demo/proj'],

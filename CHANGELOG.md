@@ -3,6 +3,42 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.12.0 — The secrets guard is opt-in (2026-08-29)
+
+**ai-coach-core 1.7.0 · ai-coach 1.12.0**
+
+### What changed, stated without softening
+
+`guard` now defaults to **off**. It is the only hook in this product permitted to stop a tool call,
+so its default is the difference between having a credential control and having none. **A fresh
+install no longer blocks a private key, an AWS key, a GitHub PAT or a Slack token from entering a
+`Bash` command, a `WebFetch`, or a file write.** Nothing else covers that; there is no fallback
+path and no reduced mode. Turning it back on is one line — `AICOACH_GUARD=on`, or the `guard`
+setting in `/plugin` — and everything it did before, it does again unchanged.
+
+The reasoning is the one that applies to any blocking control: a guard that stops work nobody asked
+it to stop gets switched off wholesale rather than tuned, and a control that is off because someone
+disabled it in irritation is worse than one that is off because they have not yet chosen it. Opt-in
+makes the choice explicit and the state honest. Whether that trade is right is a judgement call, and
+this entry exists so nobody has to reverse-engineer it from a diff.
+
+Every claim about it moved with it: `SECURITY.md` now leads that section with the default and the
+consequence, the README's own feature list says a default install does no credential blocking at
+all, and the settings table marks `guard` as the single setting here that ships off.
+
+### The test that had to be written
+
+The suite's guard assertions all ran with no environment set, so they were silently testing the old
+default — flip it and they fail, which they did. They now opt in explicitly, and a new assertion
+pins the default itself: a real AWS key through `Bash`, exit 0, no output. That is the check nobody
+thinks to write, and the only one that fails if the default is ever flipped back by accident,
+because a guard going quiet has no visible symptom.
+
+One detail worth recording: writing that test tripped the installed guard, which blocked the edit
+because the file's own fixture carries a PEM header. The key in the new assertion is assembled from
+two halves for that reason. The guard working on its own test suite is the last evidence it works
+that this release will produce by default.
+
 ## v1.11.0 — The walk before the work (2026-08-29)
 
 Planning a big scope with this harness had no front door. You typed the big vague ask, `/prompt`

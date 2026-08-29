@@ -1,7 +1,7 @@
 {
   "name": "ai-coach-core",
   "displayName": "AI Coach Core",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "The engine every AI Coach plugin runs on. Owns the session brief, the memory database, the secrets guard, and every hook — so the coach plugins above it ship skills and nothing else.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
@@ -43,8 +43,8 @@
     "guard": {
       "type": "boolean",
       "title": "Secrets guard",
-      "description": "Blocks tool calls carrying real credentials and asks before secret-ish payloads or credential-file reads. Fails open, always logged.",
-      "default": true
+      "description": "Blocks tool calls carrying real credentials and asks before secret-ish payloads or credential-file reads. Fails open, always logged. Off by default: it is the only setting here that can stop a tool call, so it is opt-in — turn it on and nothing carrying a private key, an AWS key or a token leaves through Bash, a fetch or a file write.",
+      "default": false
     },
     "spotlight": {
       "type": "boolean",

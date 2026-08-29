@@ -2,7 +2,9 @@
 'use strict';
 // PreToolUse secrets guard: block real credentials anywhere, ask on secret-ish outbound
 // payloads and credential-file reads. Fail-open by design — a guard bug must never brick
-// every tool call — but always logged. Opt-out: plugin setting `guard` / AICOACH_GUARD=off.
+// every tool call — but always logged. **Opt-IN since v1.12.0**: this hook does nothing until
+// the plugin setting `guard` is on, or AICOACH_GUARD=on. Nothing else in the product can block
+// a call, so an install that has not turned this on has no credential blocking at all.
 if (process.env.AICOACH_INNER) process.exit(0);
 
 // high-precision credential shapes: blocked in every matched tool, including file writes
@@ -39,7 +41,7 @@ process.stdin.on('data', (d) => (raw += d));
 process.stdin.on('end', () => {
   try {
     const engine = require('./engine.js');
-    if (!engine.optOn('guard', 'on')) process.exit(0);
+    if (!engine.optOn('guard', 'off')) process.exit(0);
     const data = JSON.parse(raw || '{}');
     const tool = data.tool_name || '';
     const input = data.tool_input || {};

@@ -98,8 +98,12 @@ the real one. Use the CLI for per-component sizes; use a live session for what i
 - **Prompt hints**: at most two, shown to you and never to the model. Nine deterministic detectors,
   no model call. **Exploratory questions are exempt** — "what would you improve in this file?" is a
   legitimate way to work, and a coach that nags at it deserves to be switched off.
-- **A secrets guard**: real credentials are blocked outright; secret-*ish* payloads and
-  credential-file reads ask first. Fails open, always logged.
+- **A secrets guard — off until you turn it on.** With `guard` enabled, real credentials are
+  blocked outright and secret-*ish* payloads and credential-file reads ask first; it fails open and
+  is always logged. It ships off because it is the only hook that can stop a tool call, and a
+  control that blocks work nobody asked it to block gets disabled wholesale instead of tuned. The
+  honest consequence: **a default install does no credential blocking at all.** One line turns it
+  on — `AICOACH_GUARD=on`, or the setting in `/plugin`.
 - **An injection check on what comes back**: WebFetch/WebSearch results and file reads from
   outside the repo are scanned for prompt-injection markers — invisible Unicode, "ignore previous
   instructions" phrasing, forged tool syntax, hidden HTML. A hit warns you and reminds the model
@@ -362,7 +366,7 @@ defaults are what you get when nothing is set anywhere, and `config` shows you e
 | `corrections` | `on` | Whether failures are recorded at all. |
 | `learn` | `on` | One Haiku call at session end distils a summary and up to 3 learnings. |
 | `plan_review` | `on` | In plan mode only: one Haiku call scores the prompt. |
-| `guard` | `on` | Blocks tool calls carrying real credentials. The one hook allowed to stop a call. |
+| `guard` | `off` | Blocks tool calls carrying real credentials. The one hook allowed to stop a call, and the only setting here that is off by default — turn it on and nothing carrying a private key, an AWS key or a token leaves through `Bash`, a fetch or a file write. |
 | `spotlight` | `on` | Injection-marker scan on fetched content. Warn-only, no model call. |
 | `partners` | `on` | The one-time `/harness-coach:partners` note. |
 | `default_trust` | `full` | Trust for a teammate you have not rated: `full` or `workspace`. Anything else falls back to `full` — a typo is not silently a trust level. |

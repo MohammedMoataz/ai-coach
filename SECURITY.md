@@ -24,8 +24,12 @@ Worth knowing before you audit it, and worth knowing before you install it:
 
 ## What the defenses do and do not claim
 
-- **The secrets guard** blocks tool calls carrying credentials and asks about secret-ish payloads.
-  It is pattern-based. It will miss things.
+- **The secrets guard is off by default, and nothing replaces it.** Turned on, it blocks tool calls
+  carrying credentials and asks about secret-ish payloads; it is pattern-based and it will miss
+  things. Left off — which is what a fresh install gets — nothing in this product stops a private
+  key, an AWS key or a token from going into a `Bash` command, a `WebFetch` or a file write. It is
+  the only hook permitted to block a call, so its default is the difference between a control and
+  no control. Enable it with `AICOACH_GUARD=on` or the `guard` setting in `/plugin`.
 - **The injection spotlight** scans fetched content for known prompt-injection markers and warns.
   It is a **low-confidence pre-filter, not a gate** — deterministic scanning is evadable by anyone
   who knows it is there, and it does not look at images at all. A clean result is not a safety
