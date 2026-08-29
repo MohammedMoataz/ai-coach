@@ -52,6 +52,8 @@ jobs:
       - run: node plugins/ai-coach-core/hooks/hooks.test.js
       - run: node plugins/atlas-coach/tools/ingest.test.js
       - run: node adapters/mcp/server.test.js
+      - run: node adapters/shim.test.js
+      - run: node adapters/opencode/ai-coach.test.mjs
 
   manifests:
     runs-on: ubuntu-latest

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" cursor session-start", "timeout": 20 }
+    ],
+    "sessionEnd": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" cursor session-end", "timeout": 60 }
+    ],
+    "beforeSubmitPrompt": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" cursor prompt", "timeout": 20 }
+    ],
+    "preToolUse": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" cursor pre-tool", "timeout": 10 }
+    ],
+    "postToolUse": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" cursor post-tool", "timeout": 10 }
+    ],
+    "postToolUseFailure": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" cursor post-fail", "timeout": 10 }
+    ]
+  }
+}

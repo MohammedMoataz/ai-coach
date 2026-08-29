@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "pre_user_prompt": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" windsurf prompt", "timeout": 20 }
+    ],
+    "pre_run_command": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" windsurf pre-tool", "timeout": 10 }
+    ],
+    "post_run_command": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" windsurf post-tool", "timeout": 10 }
+    ],
+    "pre_write_code": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" windsurf pre-tool", "timeout": 10 }
+    ],
+    "post_write_code": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" windsurf post-tool", "timeout": 10 }
+    ],
+    "pre_read_code": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" windsurf pre-tool", "timeout": 10 }
+    ],
+    "post_read_code": [
+      { "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" windsurf post-fetch", "timeout": 10 }
+    ]
+  }
+}
