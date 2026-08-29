@@ -1,50 +1,57 @@
 ---
-description: Day one on a project - register who you are, declare what the product is, then generate the onboarding docs, in the order the skills already document. A guided sequence, not automation.
+description: Day one on a project - detect what is already set up, then hand over the exact invocations for what is not, in the order the skills document. A tailored checklist, not automation.
 argument-hint: "[--feature <name>] [--with-blueprint]"
 disable-model-invocation: true
 ---
 
 # /start — four names nobody should need on day one
 
-Setting up a project properly is four invocations across three plugins, in a documented order —
-and the person who needs them most is the person who has not yet learned any of the names. This
-command is the sequence. It automates nothing: every step below asks its own questions and keeps
-its own gates, because they are all decisions, and the command's only job is that nobody has to
-know the map before the tool that draws maps has run.
+Setting up a project properly is a handful of invocations across three plugins, in a documented
+order — and the person who needs the sequence most is the one who has not yet learned any of the
+names. Those skills are user-only on purpose (they write your identity, your project file, your
+docs), and **Claude Code enforces that**: this command cannot run them for you and must not
+reproduce their steps another way. What it can do is read the repo, work out which steps this
+project actually still needs, and hand you each one as a line to type.
 
-Before starting, say what the whole sequence will do and roughly what it costs — the onboarding
-tour is three code-reading skills back to back — and let the user trim it. Each step that belongs
-to a plugin that is not installed is skipped by name: "skipped study — investigation-coach not
-installed" is a fine report line, and a partial install degrades this sequence, never fails it.
+`ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
+`node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
+itself at session start — open a new session and try again.
 
-## Sequence
+## Detect — reading only, so the checklist is about this repo, not a generic one
 
-1. **Who you are.** Run the `/memory-coach:roster` skill with no argument: the roster joined with
-   trust, `whoami` if the user is not listed, and the offer to register them. Registering is per
-   person and never done on someone's behalf — if the user declines, record that and continue;
-   memory works unregistered, it just attributes less.
-2. **What this product is.** From the same skill: `project`. If the project is implicit and the
-   user works across sibling repos (ask — one question), `declare <name>` groups them so a
-   backend and a frontend share one memory. Single-repo work needs nothing here, and the right
-   report line is "implicit project, nothing to declare".
-3. **The docs.** Run the `/investigation-coach:onboard` skill with `--tour`, forwarding
-   `--feature <name>` if given. The tour's own rules stand: it states the total cost before
-   starting, stops after any step the user asks to stop at, and skips a step whose output already
-   exists and is current. This is where most of the sequence's time and tokens go — the user was
-   told at the top, but the tour says it again with real numbers.
-4. **The business, only if asked.** With `--with-blueprint`, run the `/strategy-coach:blueprint`
-   skill afterwards — it reads what the tour just wrote instead of re-deriving it, which is the
-   reason it goes last. Without the flag, mention it in one line and stop; "what the business is"
-   is a second piece of work, and defaulting into it would double the bill uninvited.
-5. **Report.** One list: what was set up, what was skipped and why, what exists now that did not
-   exist an hour ago (with paths), and the one-line next steps — `/memory-coach:recall` when a
-   question matches prior work, `/ai-coach:wrap` when a piece of work finishes.
+1. `ENGINE whoami` — is the user identified (email, name), are they in the roster, is a project
+   declared, does the branch pass the convention?
+2. Look for what already exists: `.ai-coach/team.md`, `.ai-coach/project.md`,
+   `docs/onboarding/index.md` and whether it is current, `docs/business/`. Every one that exists
+   removes a step — day one on a documented project is short, and this command's main value is
+   saying so instead of re-generating what is there.
+3. Note which of the three plugins are installed. A step whose plugin is missing appears on the
+   checklist as "skipped — <plugin> not installed", never as a failure.
+
+## The checklist — printed, tailored, in order, each line ready to type
+
+Only the steps the detection says are needed, each with one sentence on what it will do and what
+it will ask:
+
+1. `/memory-coach:roster register` — when the user is not in the roster. It asks for the role;
+   registering is per person and never done on someone's behalf.
+2. `/memory-coach:roster declare <name>` — when they work across sibling repos that should share
+   one memory (ask this — one question). Single-repo work skips this line, and the report says
+   "implicit project, nothing to declare".
+3. `/investigation-coach:onboard --tour` — the docs, the architecture picture, the explanation,
+   in the order that costs least. Forward `--feature <name>` into the printed line if it was
+   given. Warn honestly: this is three code-reading skills back to back, the most expensive thing
+   in the marketplace, and the tour re-states the cost with real numbers before it runs.
+4. `/strategy-coach:blueprint` — only when `--with-blueprint` was given; otherwise one line
+   saying it exists and why it goes last (it reads what the tour wrote instead of re-deriving
+   it). Defaulting into it would double the bill uninvited.
 
 ## Rules
 
-- Never invent an identity, a project name, or a branch convention. Every one of those is a
-  question with an owner, and the owner is in the chair.
-- Re-running is safe and says so: every underlying skill amends rather than overwrites, and this
-  command inherits that by adding nothing of its own.
-- If the repo already has current onboarding docs, say so and shrink the sequence — day one on a
-  documented project is steps 1 and 2 plus a pointer to `docs/onboarding/index.md`.
+- Never run the checklist's skills and never re-implement them — the harness blocks the first
+  and forbids the second. The product here is the *tailored* list: what this repo still needs,
+  in the right order, with nothing to memorize.
+- Never invent an identity, a project name, or a branch convention. Every one is a question with
+  an owner, and the owner is in the chair.
+- Close with the two names worth keeping after day one: `/memory-coach:recall` when a question
+  matches prior work, and `/ai-coach:wrap` when a piece of work finishes.
