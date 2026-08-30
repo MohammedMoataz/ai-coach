@@ -1593,4 +1593,24 @@ assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows t
   assert.match(survivors, /shares one database/, 'and nothing a teammate handed over is either');
 }
 
+// ---------- claudeRun: the model pipeline is swappable, so no harness owns it ----------
+{
+  // A stand-in "LLM": reads stdin, answers. Proves the AICOACH_LLM_CMD path needs no claude
+  // binary at all — which is the whole point of the variable.
+  const fake = path.join(tmp, 'fake-llm.js');
+  fs.writeFileSync(fake, 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log("echo:"+s.trim()));');
+  process.env.AICOACH_LLM_CMD = JSON.stringify(process.execPath) + ' ' + JSON.stringify(fake);
+  const r = e.claudeRun('test-llm', 'ping from the suite', 15000);
+  delete process.env.AICOACH_LLM_CMD;
+  assert.ok(r.ok, 'custom LLM command ran');
+  assert.match(r.stdout, /echo:ping from the suite/, 'prompt went over stdin, answer came back: ' + r.stdout);
+
+  // And a custom command that fails must fail closed exactly like a missing claude: ok:false,
+  // never a throw — the callers treat a dead model as "skip the nicety", not as an error.
+  process.env.AICOACH_LLM_CMD = JSON.stringify(process.execPath) + ' -e "process.exit(3)"';
+  const bad = e.claudeRun('test-llm-bad', 'anything', 15000);
+  delete process.env.AICOACH_LLM_CMD;
+  assert.strictEqual(bad.ok, false, 'failing custom command degrades quietly');
+}
+
 console.log('engine.test.js: ALL PASS');

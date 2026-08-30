@@ -51,6 +51,9 @@ jobs:
       - run: node plugins/ai-coach-core/hooks/engine.test.js
       - run: node plugins/ai-coach-core/hooks/hooks.test.js
       - run: node plugins/atlas-coach/tools/ingest.test.js
+      - run: node adapters/mcp/server.test.js
+      - run: node adapters/shim.test.js
+      - run: node adapters/opencode/ai-coach.test.mjs
 
   manifests:
     runs-on: ubuntu-latest
@@ -63,3 +66,7 @@ jobs:
       # the lint, and it has its own test so a broken checker cannot pass by finding nothing.
       - run: node .github/check-manifests.test.js
       - run: node .github/check-manifests.js
+      # The compiled adapters (Cursor rules, AGENTS.md) are checked in; rebuild and diff so an
+      # edited SKILL.md whose compiled twin was forgotten fails here instead of shipping stale.
+      - run: node adapters/build.js
+      - run: git diff --exit-code adapters/out

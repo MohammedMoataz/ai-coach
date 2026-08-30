@@ -1,0 +1,25 @@
+{
+  "ai-coach": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" antigravity pre-tool", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" antigravity post-tool", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/absolute/path/to/ai-coach/adapters/shim.js\" antigravity session-end", "timeout": 60 }
+        ]
+      }
+    ]
+  }
+}

@@ -425,11 +425,20 @@ function cooling(feature) {
 function coolDown(feature) {
   try { fs.writeFileSync(cooldownPath(feature), new Date().toISOString()); } catch { /* best effort */ }
 }
+// The two model calls (learn, plan_review) are one prompt on stdin, one completion on stdout —
+// nothing about that is Claude-specific, so the whole pipeline is swappable:
+//   AICOACH_LLM_CMD  — a complete command reading the prompt on stdin and printing the answer
+//                      (e.g. `codex exec -`, `ollama run llama3.2`); overrides everything below
+//   AICOACH_MODEL    — a different model id for the default `claude -p` path; the escape hatch
+//                      for the day claude-haiku-4-5 retires
+//   AICOACH_CLAUDE_BIN — a different claude binary, kept for compatibility
 function claudeRun(feature, input, timeoutMs) {
   if (cooling(feature)) return { ok: false, stdout: '' };
   try {
+    const custom = process.env.AICOACH_LLM_CMD;
     const r = require('node:child_process').spawnSync(
-      process.env.AICOACH_CLAUDE_BIN || 'claude', ['-p', '--model', 'claude-haiku-4-5'],
+      custom || (process.env.AICOACH_CLAUDE_BIN || 'claude'),
+      custom ? [] : ['-p', '--model', process.env.AICOACH_MODEL || 'claude-haiku-4-5'],
       {
         input,
         encoding: 'utf8',
