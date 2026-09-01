@@ -1,7 +1,7 @@
 {
   "name": "ai-coach",
   "displayName": "AI Coach",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "description": "Install this one. Pulls in the engine and every coach released so far, plus the three cross-plugin commands — /start, /wrap, /sitrep. The commands are user-only, so the bundle still adds nothing to the model's context at session start.",
   "author": {
     "name": "Moataz",
@@ -17,7 +17,7 @@
   "dependencies": [
     {
       "name": "ai-coach-core",
-      "version": "^1.8.0"
+      "version": "^1.8.1"
     },
     {
       "name": "memory-coach",
@@ -37,7 +37,7 @@
     },
     {
       "name": "investigation-coach",
-      "version": "^1.4.0"
+      "version": "^1.5.0"
     },
     {
       "name": "atlas-coach",
@@ -45,7 +45,7 @@
     },
     {
       "name": "strategy-coach",
-      "version": "^1.4.1"
+      "version": "^1.5.0"
     },
     {
       "name": "analysis-coach",

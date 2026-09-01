@@ -38,8 +38,9 @@ claude plugin install ai-coach@ai-coach
 ```
 
 That one command installs the engine and every coach released so far, plus the three cross-plugin
-commands. The bundle's own components are user-only, so it still adds nothing to the model's
-context at session start.
+commands. The three commands are user-only, so they add nothing to the model's context at session
+start; the four documentation skills are model-invocable so `/ai-coach:start --run` can chain them,
+and what that costs is measured below.
 
 Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-coach-core` with it.
 
@@ -60,7 +61,7 @@ with verified per-harness install snippets: [`adapters/README.md`](adapters/READ
 | **prompt-coach** | Skills only: `prompt`, `scope`, `prompt-stats`, `dispatch` — the prompt you are about to send, the big scope you have not shaped yet, and the habits that cost you. Writes nothing, ever. |
 | **security-coach** | `scan`, `audit` (`--triage` chains them), `triage` — plus the `examiner` agent: suspected injection content is read in a quarantined context with no shell and no network. |
 | **harness-coach** | Skills only: `partners`, `context` — what is installed next to the coach, and what is filling this session. |
-| **investigation-coach** | `onboard` (`--tour` runs all three), `map`, `study` — plus the `scout` agent, which does their repo sweeps in an isolated context, every claim `file:line`-cited. |
+| **investigation-coach** | `onboard` (`--tour` really does run all three now), `map`, `study` — plus the `scout` agent, which does their repo sweeps in an isolated context, every claim `file:line`-cited. `map` writes one note per component, so the vault's graph view is the architecture. |
 | **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus three agents: `researcher`, `verifier`, and `reader`, which keeps a 200-page PDF out of your context. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the docs vault), `feature` — document the business, then specify what comes next. Inward by design; looking outward is atlas-coach. |
 | **analysis-coach** | `elicit`, `insight`, `story` — the business-analyst half — plus the `critic` agent: fresh-context review that has not seen the reasoning it grades. |
@@ -71,17 +72,24 @@ Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The ful
 
 ### What it costs before you type
 
-**~700 tokens actually enter the model's context every session** — and the reason the number is
-this small is the reason it was mis-stated for five releases. What a session pays for is only what
-the model can act on: the two skills that fire on their own (`recall` ~80, `dispatch` ~110) and
-the six agents (~510 together). The other twenty-three skills and all three commands are marked
-user-only, and a user-only description is **not loaded into the model's context at all** — it
-exists in your `/` menu, and its cost is paid when you invoke it, like any skill body.
+**Roughly 1,300 tokens enter the model's context every session as of v1.14.0**, up from ~700 — and
+the increase is a deliberate trade, not a regression. What a session pays for is only what the model
+can act on: the skills it may invoke itself, and the agents. Until v1.13.0 that was two skills
+(`recall` ~80, `dispatch` ~110) and six agents (~510 together). v1.14.0 adds four documentation
+skills — `onboard`, `map`, `study`, `blueprint` — so that `--tour` and `/ai-coach:start --run` can
+chain them instead of printing four lines for you to type. Their four descriptions are 1,651
+characters, which at the ratio the two measured skills give is about 590 tokens. The other nineteen
+skills and all three commands stay user-only, and a user-only description is **not loaded into the
+model's context at all** — it exists in your `/` menu, and its cost is paid when you invoke it, like
+any skill body.
 
-That was measured, not assumed: a live probe with positive controls saw exactly `recall` and
-`dispatch` and none of the user-only items, commands included. It matters because
+The ~700 figure was measured rather than assumed: a live probe with positive controls saw exactly
+`recall` and `dispatch` and none of the user-only items, commands included. The 1,300 above is that
+measurement plus arithmetic on the four new descriptions, which is weaker evidence — the honest
+label is "expected", and a live probe on v1.14.0 is still owed. What is not in doubt is the
+direction: four descriptions that were free are not free any more. It matters how you check, because
 `claude plugin details` — this repo's own stated instrument — projects **every** description as
-always-on regardless of `disable-model-invocation`, which put the earlier figure near four times
+always-on regardless of `disable-model-invocation`, which put the pre-v1.10.1 figure near four times
 the real one. Use the CLI for per-component sizes; use a live session for what is actually loaded.
 `/harness-coach:context` turns the same question on everything else you have installed.
 
@@ -146,22 +154,25 @@ that arrived some other way.
 `/analysis-coach:elicit` · `/analysis-coach:insight` · `/analysis-coach:story`
 
 Three commands ship in the bundle, because only the bundle knows all nine coaches exist:
-`/ai-coach:start` (day one — reads the repo, works out which setup steps this project still
-needs, and hands you each as a line to type), `/ai-coach:wrap` (checks the identity gate and the
+`/ai-coach:start` (day one — reads the repo, works out which setup steps this project still needs
+and which flags they want, then hands you one line to paste, or runs the documentation steps itself
+with `--run`), `/ai-coach:wrap` (checks the identity gate and the
 session's substance, then hands you the one chained line —
 `/memory-coach:debrief /memory-coach:handoff` — that publishes and exports, every gate intact),
 and `/ai-coach:sitrep` (the morning read from the engine's own numbers — read-only end to end,
 worst first, pointing at the two deep-dive skills when the numbers earn them). A deliberate
-boundary sits under all three: Claude Code blocks a command from firing a user-only skill and
-forbids re-implementing one, so side effects stay yours to fire — a command's product is the
-tailored checklist and the checks around it, and a step whose plugin is not installed is skipped
-by name, never a failure.
+boundary sits under all three, and v1.14.0 moved it rather than removed it: the side effects with an
+owner — your identity, your project declaration, publishing a conclusion — stay yours to fire, and
+Claude Code still blocks a command from firing those or re-implementing them. Reading code and
+writing notes has no owner in that sense, so `/start --run` performs those. A step whose plugin is
+not installed is skipped by name, never a failure.
 
-Two of the twenty-four skills fire on their own. `recall`, so Claude reaches for memory unprompted when a
-question matches prior work. And `dispatch`, the rules for a prompt whose reader cannot ask a
-follow-up — advice that has to be remembered before it applies is advice that never applies.
-Everything else waits for you: a skill with side effects should run when you say so, and neither
-of these has any.
+Six of the twenty-five skills are model-invocable. `recall`, so Claude reaches for memory unprompted
+when a question matches prior work, and `dispatch`, the rules for a prompt whose reader cannot ask a
+follow-up — advice that has to be remembered before it applies is advice that never applies. Neither
+has a side effect. The other four — `onboard`, `map`, `study`, `blueprint` — do write files, and
+they are reachable only so that `--tour` and `/ai-coach:start --run` can chain them; each
+description says it never fires on its own. Everything else waits for you.
 
 Every CLI-and-format skill is pinned to Haiku at low effort — that work should never bill at
 frontier rates (`ingest` joins that tier: routing and refinement are mechanical). The rest stay on
@@ -322,14 +333,14 @@ memory; each line still records the repo it came from, and your own repo ranks f
 **The brief never truncates silently.** A capped brief that looks complete is the one failure mode a
 memory tool cannot have, so the cap always leaves room to say what it dropped.
 
-**A command hands you the runway, never the landing.** Claude Code blocks a model from firing a
+**A command never fires a skill you should have fired.** Claude Code blocks a model from firing a
 user-only skill — even from inside a command you typed — and forbids reproducing that skill's
-steps another way. That is the right rule twice over: "only you fire a side effect" would mean
-nothing if a command could re-implement the side effect inline. So a command's product is
-everything *around* the firing — the state read, the gates checked before you hit them, the
-checklist narrowed to what this repo still needs — ending in the exact line for you to type. The
-corollary is easy to get wrong: a command cannot tell what is installed by looking at its own
-context, because user-only skills are invisible to it by design. It runs `claude plugin list`
+steps another way. The rule holds where it matters: registering you in the roster and declaring
+your project are side effects with an owner, and the owner is in the chair. What v1.14.0 changed is
+which skills sit behind that line. Reading code and writing notes has no owner in that sense, so
+the four documentation skills are model-invocable and `/ai-coach:start --run` chains them; the
+roster steps stay lines you type. A command still cannot tell what is installed by looking at its
+own context, because user-only skills are invisible to it by design. It runs `claude plugin list`
 instead.
 
 **The engine lives at `~/.ai-coach/`, not in a plugin directory.** A plugin directory is documented

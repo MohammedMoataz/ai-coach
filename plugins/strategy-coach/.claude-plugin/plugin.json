@@ -1,7 +1,7 @@
 {
   "name": "strategy-coach",
   "displayName": "Strategy Coach",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "Document what the business is, and specify what comes next: an Obsidian vault of actors, processes and rules mapped to the code that implements them, plus feature specs with a definition of done and a plan a cheap model can execute. Inward-facing by design — looking outward is atlas-coach. Ships skills only.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",

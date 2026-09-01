@@ -1,15 +1,15 @@
 ---
-description: Map the architecture - services, components, and who calls whom - as an artifact page, markdown diagrams, an Obsidian canvas, and optionally editable draw.io files. Use for "/map", "architecture diagram", "how do the services connect".
+description: Map the architecture — services, components, who calls whom — as an artifact page, markdown diagrams, one Obsidian note per component, a canvas, and optionally draw.io. Use when the user explicitly asks ("/map", "architecture diagram", "how do the services connect"), or when onboard --tour or /ai-coach:start --run chains it; never proactively, it reads a lot of code and writes files.
 argument-hint: "[--full] [--feature <name>] [--project] [--diagrams drawio]"
-disable-model-invocation: true
 ---
 
-# /map — one model, three renderings
+# /map — one model, several renderings
 
 An architecture doc is a set of claims about who calls whom. This skill traces those claims from
 the code — every edge carries `file:line` evidence or is marked **INFERRED** — then renders one
-model three ways: a shareable artifact page, markdown diagrams that render on GitHub, and an
-Obsidian canvas. It reads a lot of code: expect a real token spend; scope with `--feature` to
+model several ways: a shareable artifact page, markdown diagrams that render on GitHub, a note per
+component whose links make the vault's graph view the architecture, and an Obsidian canvas that
+places those notes. It reads a lot of code: expect a real token spend; scope with `--feature` to
 bound it. Tracing goes to `scout` agents — keep conclusions, not file dumps.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
@@ -19,7 +19,8 @@ itself at session start — open a new session and try again.
 ## Scope
 
 Default: this repo, surface layer — the services/components on the core paths. `--full`:
-everything. `--project`: span the repos in `.ai-coach/project.md`. `--feature <name>`: one
+everything. `--project`: span the repos in `.ai-coach/project.md`, writing into the `docs/` of the
+repo you ran from — one vault, one graph, whatever the repo count. `--feature <name>`: one
 feature traced end to end (sequence diagram + its feature note only). Large repo and no flag:
 AskUserQuestion (multiSelect) offering the detected top areas — never map a huge system
 unprompted.
@@ -44,10 +45,20 @@ do, and the reason not to reach for a subscription whiteboard instead.
      experimental C4 diagram type), one `sequenceDiagram` per core flow. Split any diagram past
      ~15-20 nodes. The page states its evidence discipline and marks INFERRED edges visibly.
      Artifacts start private — tell the user where the share menu is.
+   - **`docs/onboarding/components/<name>.md`** — one note per service or component, and the
+     reason this skill produces a graph rather than three pictures. Each traced edge becomes a
+     wikilink in the note's **Talks to** section, so Obsidian's graph view draws the call structure
+     with no further configuration; a canvas edge, by contrast, is invisible to it. Template in
+     `references/canvas.md`.
    - **`docs/onboarding/architecture.md`** — the same diagrams as mermaid fences plus a component
-     table (component · responsibility · talks to · evidence).
-   - **`docs/onboarding/architecture.canvas`** — JSON Canvas: nodes = services/components grouped
-     per layer, edges = calls with labels.
+     table (component · responsibility · talks to · evidence), each row's first cell linking
+     `[[onboarding/components/<name>]]`.
+   - **`docs/onboarding/architecture.canvas`** — JSON Canvas: one `file` node per component note,
+     grouped per layer, edges = calls with labels. File nodes, never text cards — the note is the
+     model and the canvas only places it.
+   - **`docs/.obsidian/graph.json`** — the four colour groups that make the graph readable, written
+     only when the file is absent and never overwritten. The one sanctioned exception to "no skill
+     generates `.obsidian/`"; the content and the reasoning are in `references/canvas.md`.
    - **`docs/onboarding/architecture.drawio`** — only with `--diagrams drawio`. Load
      `references/drawio.md` first: the coordinates are on a fixed grid because the format has no
      auto-layout, and a generated diagram with overlapping boxes is worse than none. Say in the
@@ -58,9 +69,9 @@ do, and the reason not to reach for a subscription whiteboard instead.
      `${CLAUDE_PLUGIN_ROOT}/skills/onboard/references/formats.md` before writing one — the two
      skills share this directory and must not write two shapes into it). Skip ones that already
      exist; amend generated ones that went stale.
-3. **Remember.** After a verified write — the file exists, and re-reading it shows the content you
-   intended, with the `.canvas` additionally parsing as JSON (step 2's `references/canvas.md` gives
-   the check) — record it:
+3. **Remember.** After a verified write — the files exist, re-reading one shows the content you
+   intended, every component note has at least one outbound wikilink, and the `.canvas` and any
+   `graph.json` parse as JSON (step 2's `references/canvas.md` gives both checks) — record it:
    `ENGINE add reference "architecture map at docs/onboarding/architecture.md (<scope>)" 0.75`.
 
 ## Rules
@@ -70,9 +81,12 @@ do, and the reason not to reach for a subscription whiteboard instead.
   one view each.
 - Never mermaid's C4 diagram type: experimental, and GitHub won't render it.
 - Node and file names sanitized: no `* " \ / : | ?` (Obsidian refuses them).
-- Re-run = amend. Generated means the first line is `> Generated by /investigation-coach:` — every
-  `.md` this skill writes carries it. Regenerate those when stale; hand-written files are asked
-  about, never clobbered. The `.canvas` is always regenerable: only this skill writes it.
+- **The vault root is `docs/`** — cross-directory wikilinks are vault-absolute from there, canvas
+  `file` paths likewise, and the report says to open `docs/` rather than the repo root.
+- Re-run = amend. Generated means `> Generated by /investigation-coach:` appears in the first 10
+  lines — every `.md` this skill writes carries it directly below its frontmatter block.
+  Regenerate those when stale; hand-written files are asked about, never clobbered. The `.canvas`
+  is always regenerable: only this skill writes it.
 
 ## Related
 
