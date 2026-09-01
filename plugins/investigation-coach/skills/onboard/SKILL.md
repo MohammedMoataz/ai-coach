@@ -93,8 +93,11 @@ docs/onboarding/
 and both read the `stack.md` written here rather than sweeping the repo again. That makes the order
 matter, and it was documented in three places with no way to just run it. `--tour` runs this skill,
 then invokes `investigation-coach:map` and `investigation-coach:study` **through the Skill tool**,
-forwarding whichever of `--project`, `--feature <name>` and `--diagrams drawio` you were given, so
-each step reuses what the last one wrote. This is the one place that owns the sequence:
+so each step reuses what the last one wrote. Forward only the flags each one accepts: `map` takes
+`--project`, `--feature <name>` and `--diagrams drawio`; `study` takes `--project` and `--full`
+only, and a `--feature <name>` scope reaches it as its `<area>` argument when the name matches a
+discovered area, or not at all when it does not. Handing a skill a flag it does not define is
+undefined behaviour, not a no-op. This is the one place that owns the sequence:
 `/ai-coach:start --run` chains here rather than calling the three skills itself.
 
 Say the total cost before starting — this is three code-reading skills back to back, the most

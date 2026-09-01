@@ -57,10 +57,12 @@ it will ask:
    /investigation-coach:onboard --tour [--project] [--feature <name>] [--diagrams drawio]
    ```
 
-   Append ` /strategy-coach:blueprint` when `--with-blueprint` was given; otherwise one line
-   saying it exists and why it goes last (it reads what the tour wrote instead of re-deriving it).
-   Defaulting into it would double the bill uninvited. Fill the flags in from the detection — a
-   printed line with a placeholder still in it is a line nobody can paste.
+   Append ` /strategy-coach:blueprint` when `--with-blueprint` was given — with `--visual drawio`
+   if `--diagrams drawio` was, and `--feature <name>` if that was, so the pasted line and `--run`
+   produce the same thing. Otherwise one line saying it exists and why it goes last (it reads what
+   the tour wrote instead of re-deriving it) — defaulting into it would double the bill uninvited.
+   Fill the flags in from the detection: a printed line with a placeholder still in it is a line
+   nobody can paste.
 
    Warn honestly about the cost: the tour is three code-reading skills back to back, the most
    expensive thing in the marketplace, and it re-states the cost with real numbers before it runs.
@@ -78,8 +80,9 @@ The roster steps are still printed, never run. Then:
    exists and is current is skipped by name. Do not call the three skills separately; two callers
    sequencing the same three skills is how the order drifts.
 3. **Then `strategy-coach:blueprint`, only with `--with-blueprint`** — with `--visual drawio` when
-   `--diagrams drawio` was given, so the whole run renders the same way. It reads what the tour
-   wrote, which is why it goes last.
+   `--diagrams drawio` was given and `--feature <name>` when that was, so the whole run stays one
+   scope and one rendering. It takes no `--project`; it reads what the tour wrote, which is why it
+   goes last.
 4. **Close with what landed**: the files each step wrote, anything it skipped and why, and the one
    instruction that makes the result usable — open `docs/` in Obsidian, not the repo root. That
    folder is the vault; its graph view is the architecture.

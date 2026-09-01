@@ -29,7 +29,11 @@ never assumed — they are discovered from the project's structure**: backend/fr
 classic web app, one area per service for microservices, engine/cli for a tool — whatever the
 architecture actually is. An area argument writes only that directory. `--full`: every pattern
 found, not just the core ones. `--project`: span the repos in `.ai-coach/project.md`, writing into
-the `docs/` of the repo you ran from — one vault, however many repos it explains.
+the `docs/` of the repo you ran from — one vault, however many repos it explains, with each area
+directory under its repo (`docs/study/<repo>/<area>/`). Two services that both have a `worker` area
+are two areas, and an unqualified path would merge them into one file that is true of neither.
+`cross-cutting/` stays at the top level: a pattern shared across repos is the one thing that is not
+per-repo.
 
 ## Steps
 
@@ -51,6 +55,7 @@ the `docs/` of the repo you ran from — one vault, however many repos it explai
 docs/study/
   index.md            threshold concepts + reading order + the discovered areas
   <area>/*.md         one directory per discovered area, one file per pattern/technology
+                      (`<repo>/<area>/*.md` under --project, so same-named areas stay apart)
   cross-cutting/*.md  the concerns spanning every area: auth, errors, config, logging, testing
 ```
 

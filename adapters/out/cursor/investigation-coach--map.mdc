@@ -55,8 +55,9 @@ do, and the reason not to reach for a subscription whiteboard instead.
    - **`docs/onboarding/components/<name>.md`** — one note per service or component, and the
      reason this skill produces a graph rather than three pictures. Each traced edge becomes a
      wikilink in the note's **Talks to** section, so Obsidian's graph view draws the call structure
-     with no further configuration; a canvas edge, by contrast, is invisible to it. Template in
-     `$AICOACH_REPO/plugins/investigation-coach/skills/map/references/canvas.md`.
+     with no further configuration; a canvas edge, by contrast, is invisible to it. Under
+     `--project` the path is `components/<repo>/<name>.md` — one vault holding two repos will
+     collide on names like `api` or `worker` otherwise. Template in `$AICOACH_REPO/plugins/investigation-coach/skills/map/references/canvas.md`.
    - **`docs/onboarding/architecture.md`** — the same diagrams as mermaid fences plus a component
      table (component · responsibility · talks to · evidence), each row's first cell linking
      `[[onboarding/components/<name>]]`.
@@ -77,7 +78,9 @@ do, and the reason not to reach for a subscription whiteboard instead.
      skills share this directory and must not write two shapes into it). Skip ones that already
      exist; amend generated ones that went stale.
 3. **Remember.** After a verified write — the files exist, re-reading one shows the content you
-   intended, every component note has at least one outbound wikilink, and the `.canvas` and any
+   intended, every component note has at least one outbound wikilink (a component with no traced
+   outbound edge says so and links `[[onboarding/architecture]]`, which is why this is always
+   satisfiable), and the `.canvas` and any
    `graph.json` parse as JSON (step 2's `$AICOACH_REPO/plugins/investigation-coach/skills/map/references/canvas.md` gives both checks) — record it:
    `ENGINE add reference "architecture map at docs/onboarding/architecture.md (<scope>)" 0.75`.
 

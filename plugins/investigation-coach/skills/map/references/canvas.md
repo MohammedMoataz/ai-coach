@@ -19,8 +19,10 @@ Spec: JSON Canvas 1.0 (jsoncanvas.org, open-sourced by Obsidian, MIT). One JSON 
     names as discovered from its structure (never a preset list).
 - **Edges** — `id, fromNode, toNode` required; `fromSide`/`toSide`
   (`top|right|bottom|left`), `label` (the call: "validates token", "publishes event"), `color`.
-  A canvas edge is invisible to the graph view, so every edge here also exists as a wikilink in
-  its component note's **Talks to** section. The canvas is the drawn view; the notes are the graph.
+  A canvas edge is invisible to the graph view, so every edge here also exists as a wikilink in a
+  note — in the section that matches what it connects: component to component goes in **Talks to**
+  (and in the other note's **Called by**), component to feature goes in **Features**. The canvas is
+  the drawn view; the notes are the graph.
 
 Minimal valid example:
 
@@ -73,6 +75,13 @@ One per node in the model, at `docs/onboarding/components/<sanitized-name>.md`. 
 the architecture into a graph: each edge traced from the code becomes a wikilink, so Obsidian's
 graph view draws the call structure without being told anything about it.
 
+**Under `--project`, the repo name is part of the path**: `components/<repo>/<name>.md`, and the
+links that reach it are `[[onboarding/components/<repo>/<name>]]`. Two repos in one vault will
+sooner or later both contain a `client`, an `api` or a `worker`, and the second one written would
+silently overwrite the first. Qualify every one of them, not only the ones that happen to collide
+today — a naming rule that depends on what is currently in the tree changes its answer on the next
+run. Single-repo mode stays unqualified.
+
 ```markdown
 ---
 tags: [onboarding, component, <layer>]
@@ -111,8 +120,8 @@ deliberate exception, and it is narrow: **only when it does not already exist.**
 uncoloured says nothing about which node is a service and which is a business process, and these
 four colour groups are not something anyone would guess to type. Once written the file belongs to
 the user — a re-run never touches it, because their tweaks outrank ours. It is committed, not
-ignored: the `.gitignore` lines `/strategy-coach:blueprint` adds cover `.obsidian/workspace*` and
-`.obsidian/cache`, and must not be widened to cover this.
+ignored: the `.gitignore` lines `/strategy-coach:blueprint` adds cover `docs/.obsidian/workspace*`
+and `docs/.obsidian/cache/`, and must not be widened to cover this.
 
 ```json
 {

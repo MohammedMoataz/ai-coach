@@ -42,9 +42,12 @@ itself at session start — open a new session and try again.
    directories do not survive git); write `docs/home.md`, `docs/conventions.md` and the empty
    `docs/features/index.md` from `$AICOACH_REPO/plugins/strategy-coach/skills/blueprint/references/layout.md` — `home.md` links that index, so scaffolding
    the directory without it manufactures the broken link this step exists to prevent. Append
-   `.obsidian/workspace*` and `.obsidian/cache` to `.gitignore` if missing, appending only, never
-   rewriting that file, and never widen those patterns: `/investigation-coach:map` writes
-   `docs/.obsidian/graph.json` and it is meant to be committed. Create nothing else under
+   `docs/.obsidian/workspace*` and `docs/.obsidian/cache/` to the repo-root `.gitignore` if
+   missing, appending only, never rewriting that file. The paths are rooted at the vault on
+   purpose: a pattern containing a slash is anchored to the directory its `.gitignore` sits in, so
+   a bare `.obsidian/workspace*` at the repo root would never match anything under `docs/`. Never
+   widen them either — `/investigation-coach:map` writes `docs/.obsidian/graph.json` and it is
+   meant to be committed. Create nothing else under
    `.obsidian/` — Obsidian writes its own, and a hand-made file with the wrong schema version is
    worse than none.
    Report three lists: created, linked, and **skipped because hand-written**; the third matters

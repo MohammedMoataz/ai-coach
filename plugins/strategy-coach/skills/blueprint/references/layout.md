@@ -153,8 +153,8 @@ A fixed vocabulary, because the graph view colours by it:
 
 No skill creates a `.obsidian/` directory, with a single exception:
 `/investigation-coach:map` writes `.obsidian/graph.json` **once, only when it is absent**, to give
-the graph its colour groups. It is committed; `.gitignore` covers `.obsidian/workspace*` and
-`.obsidian/cache` only. Edit it freely — nothing will overwrite it.
+the graph its colour groups. It is committed; `.gitignore` covers `docs/.obsidian/workspace*` and
+`docs/.obsidian/cache/` only. Edit it freely — nothing will overwrite it.
 
 ## Filenames
 
