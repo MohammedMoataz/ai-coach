@@ -316,6 +316,16 @@ assert.strictEqual(e.trustLevel('sara@example.com'), 'full', 'unset teammate get
 assert.ok(!fs.readFileSync(path.join(dirProj, '.ai-coach', 'team.md'), 'utf8').includes('trust'),
   'shared roster never gains a trust field');
 
+// ...and `team-list` reads it back. This only fails in a FRESH process: the CLI verb used to query
+// the per-project database for a table that exists only in the user one, so any roster with a
+// member died on `no such table: trust`.
+{
+  const r = spawnEngine(['team-list', dirProj]);
+  assert.strictEqual(r.status, 0, 'team-list exits clean: ' + r.stderr);
+  assert.match(r.stdout, /omar@example\.com>.*\[trust: workspace\]/, 'private trust joins the roster line');
+  assert.match(r.stdout, /sara@example\.com>.*\[trust: default /, 'an unset teammate reports the default');
+}
+
 // sessions get a name, and duplicate labels disambiguate instead of failing
 process.env.AICOACH_TASK = 'feature/orders';
 const n1 = e.sessionStart('n-1', '/demo/named');

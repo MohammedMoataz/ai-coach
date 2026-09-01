@@ -106,10 +106,18 @@ a CRLF shebang is a broken hook. Do not fight it with editor settings.
 
 **A command cannot run a user-only skill.** Claude Code blocks the Skill tool for a user-only skill
 even from inside a command the user typed, and forbids reproducing that skill's steps another way.
-So a command's product is a prepared runway, never a landing it performed itself: read state, check
-the gates, hand over the exact line to type. A command also cannot tell what is installed by
-looking at its own context — user-only skills are invisible to it by design — so it runs
-`claude plugin list` instead. Both of these were learned by shipping the opposite.
+So for anything still user-only, a command's product is a prepared runway rather than a landing:
+read state, check the gates, hand over the exact line to type. Which skills stay behind that line is
+a judgement, not a default — v1.14.0 moved the four documentation skills out from behind it so
+`/ai-coach:start --run` could chain them, and kept the roster there because registering someone is
+a decision with an owner. The test to apply: does firing this commit the user to something only they
+can decide? A command also cannot tell what is installed by looking at its own context — user-only
+skills are invisible to it by design — so it runs `claude plugin list` instead. Both of these were
+learned by shipping the opposite.
+
+**Flipping `disable-model-invocation` off makes the description the only gate.** A model-invocable
+skill that reads a lot of code or writes files has to say in its own description when it may fire
+and that it never fires unprompted. There is nothing else holding it back.
 
 **Nothing a model wrote may pass for something a person decided.** Every memory carries a
 `provenance` of `human`, `distilled` or `imported`, and there is deliberately no code path that

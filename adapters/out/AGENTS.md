@@ -65,14 +65,14 @@ Claude Code injects this automatically; in this harness it is your first move.
 
 ### investigation-coach
 
-- **map** *(user-fired)* — `[--full] [--feature <name>] [--project] [--diagrams drawio]`
-  Map the architecture - services, components, and who calls whom - as an artifact page, markdown diagrams, an Obsidian canvas, and optionally editable draw.io files. Use for "/map", "architecture diagram", "how do the services connect".
+- **map** — `[--full] [--feature <name>] [--project] [--diagrams drawio]`
+  Map the architecture — services, components, who calls whom — as an artifact page, markdown diagrams, one Obsidian note per component, a canvas, and optionally draw.io. Use when the user explicitly asks ("/map", "architecture diagram", "how do the services connect"), or when onboard --tour or /ai-coach:start --run chains it; never proactively, it reads a lot of code and writes files.
   Full instructions: `$AICOACH_REPO/plugins/investigation-coach/skills/map/SKILL.md`
-- **onboard** *(user-fired)* — `[status] [--full] [--feature <name>] [--project] [--diagrams drawio] [--tour]`
-  Generates onboarding docs — core features, setup, rules, stack, patterns, all evidence-cited. Use for "/onboard", "onboard a new team member", "document this project for newcomers". Not for the business or a feature spec (see strategy-coach).
+- **onboard** — `[status] [--full] [--feature <name>] [--project] [--diagrams drawio] [--tour]`
+  Generates onboarding docs — core features, setup, rules, stack, patterns, all evidence-cited — into docs/onboarding/. Use when the user explicitly asks ("/onboard", "onboard a new team member", "document this project for newcomers"), or when /ai-coach:start --run chains it; never proactively, it reads a lot of code and writes files. Not for the business or a feature spec (see strategy-coach).
   Full instructions: `$AICOACH_REPO/plugins/investigation-coach/skills/onboard/SKILL.md`
-- **study** *(user-fired)* — `[<area>] [--full] [--project]`
-  Write study material explaining the project's design patterns and technologies - the why, not the how-to - into docs/study. Use for "/study", "help me study this codebase", "explain the patterns used here".
+- **study** — `[<area>] [--full] [--project]`
+  Write study material explaining this project's patterns and technologies, the why rather than the how-to, into docs/study/. Use when the user explicitly asks ("/study", "help me study this codebase", "explain the patterns here"), or when onboard --tour or /ai-coach:start --run chains it; never proactively, it reads a lot of code and writes files.
   Full instructions: `$AICOACH_REPO/plugins/investigation-coach/skills/study/SKILL.md`
 
 ### memory-coach
@@ -119,8 +119,8 @@ Claude Code injects this automatically; in this harness it is your first move.
 
 ### strategy-coach
 
-- **blueprint** *(user-fired)* — `[--full | --feature <name>] [--visual mermaid|drawio|miro|none] [--scaffold-only]`
-  Documents the business — actors, processes, rules, glossary — mapped to the code that implements it, as Obsidian notes plus diagrams, scaffolding docs/ on the way in. Use for "/blueprint", "document the business", "map the processes", "set up the docs vault". Not for how the code works (see investigation-coach).
+- **blueprint** — `[--full | --feature <name>] [--visual mermaid|drawio|miro|none] [--scaffold-only]`
+  Documents the business — actors, processes, rules, glossary — mapped to the code that implements it, as Obsidian notes plus diagrams, scaffolding docs/ on the way in. Use when the user explicitly asks ("/blueprint", "document the business", "map the processes", "set up the docs vault"), or when /ai-coach:start --run --with-blueprint chains it; never proactively, it asks questions and writes files. Not for how the code works (see investigation-coach).
   Full instructions: `$AICOACH_REPO/plugins/strategy-coach/skills/blueprint/SKILL.md`
 - **feature** *(user-fired)* — `<slug or description> [--prior-art] [--amend]`
   Turn a feature request into a spec, a definition of done whose every line is checkable, and an execution plan a cheap model can run in a fresh session. Use for "/feature", "spec this feature", "plan feature X", "write the requirements".

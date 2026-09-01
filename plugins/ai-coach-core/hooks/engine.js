@@ -2593,7 +2593,7 @@ function dispatch(cmd, a, flagValue) {
       const emails = Object.keys(team);
       if (!emails.length) console.log('no .ai-coach/team.md in this project');
       for (const em of emails) {
-        const t = db().prepare('SELECT level FROM trust WHERE email = ?').get(em);
+        const t = userDb().prepare('SELECT level FROM trust WHERE email = ?').get(em);
         console.log(`${team[em].name || em} <${em}>${team[em].role ? ' — role: ' + team[em].role : ''}`
           + `  [trust: ${t ? t.level : 'default ' + trustDefault()}]`);
       }
