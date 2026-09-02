@@ -1,7 +1,6 @@
 ---
-description: Who is on this project and whom you trust, and which repositories belong to one product. Use for "/roster", "add me to the team", "trust this teammate", "group these repos", "declare the project". Not for searching memory (see recall).
-argument-hint: "[register | trust <email> <full|workspace> [note] | sync | project | declare <name> | repos]"
-disable-model-invocation: true
+description: Who is on this project and whom you trust, and which repositories belong to one product. Use when the user explicitly asks ("/roster", "add me to the team", "trust this teammate", "group these repos", "declare the project"), or when /ai-coach:wrap chains it to close an identity gap; never proactively. Not for searching memory (see recall).
+argument-hint: "[register [<role>] | trust <email> <full|workspace> [note] | sync | project | declare <name> | repos]"
 model: haiku
 effort: low
 ---
@@ -28,8 +27,12 @@ then `ENGINE whoami` if the user is not listed, and offer to register them. Foll
 project line from `ENGINE project`, so one call answers both halves of "where am I and who is
 here".
 
-**`register`** — append the user to `.ai-coach/team.md`, creating the file if absent. Take name and
-email from `whoami`; ask for the role. One member per line:
+**`register [<role>]`** — append the user to `.ai-coach/team.md`, creating the file if absent. Take
+name and email from `whoami`. Ask for the role, unless it was passed as an argument — a caller that
+already asked (`/ai-coach:wrap` does, alongside everything else it found missing) has the answer,
+and asking again for something the user just typed is the tax this whole flow exists to remove.
+Roles are single words: the roster parser reads `role:\s*([\w-]+)`, so `tech-lead` survives and
+`tech lead` silently truncates. One member per line:
 
 ```markdown
 # Team
@@ -92,8 +95,9 @@ listed.
 ## Rules
 
 - Never write a `trust:` field into `.ai-coach/team.md`. Trust is not a fact about the team.
-- Roles are free text, and `team.md` is the **only** place they live — a memory records the
-  author's email and joins for the rest. So `/memory-coach:recall --role qa` means "written by
+- A role is one word — the parser reads `role:\s*([\w-]+)`, so `tech-lead` survives and `tech lead`
+  becomes `tech` with no warning. Within that, the vocabulary is the team's own. `team.md` is the
+  **only** place roles live — a memory records the author's email and joins for the rest. So `/memory-coach:recall --role qa` means "written by
   people who are QA now", and editing a line here re-labels everything that person ever wrote.
   That is the trade: one editable truth, no role history.
 - Registering is per person. Never add a teammate on their behalf.

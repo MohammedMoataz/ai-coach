@@ -1,7 +1,6 @@
 ---
-description: Publishes what you concluded — business outcome, technical decision, evidence, and what is still unknown — so a teammate can pick the work up; also lists and reads theirs. Use for "/debrief", "publish my conclusions", "what did the team conclude".
+description: Publishes what you concluded — business outcome, technical decision, evidence, and what is still unknown — so a teammate can pick the work up; also lists and reads theirs. Use when the user explicitly asks ("/debrief", "publish my conclusions", "what did the team conclude"), or when /ai-coach:wrap chains it; never proactively, and never past its own approval gate — the draft is shown and confirmed before anything is published.
 argument-hint: "[--name <label>] | list [--author <email>] | show <key>"
-disable-model-invocation: true
 ---
 
 # /debrief — publish what you concluded

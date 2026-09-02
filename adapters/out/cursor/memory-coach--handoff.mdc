@@ -1,5 +1,5 @@
 ---
-description: "memory-coach: Package this project's memory for a teammate, or load theirs. Use for \"hand this off\", \"share what I learned\", \"/handoff import\"."
+description: "memory-coach: Package this project's memory for a teammate, or load theirs. Use when the user explicitly asks (\"hand this off\", \"share what I learned\", \"/handoff import\"), or when /ai-coach:wrap chains it after a debrief; never proactively — it writes an export file others will import."
 alwaysApply: false
 ---
 
@@ -8,10 +8,6 @@ alwaysApply: false
 > Setup (once): clone https://github.com/MohammedMoataz/ai-coach, set AICOACH_REPO to the clone,
 > and run `node "$AICOACH_REPO/plugins/ai-coach-core/hooks/engine.js" bootstrap` — that plants the
 > engine every rule below shells to. Needs Node 22.16+ or 24+ (node:sqlite with FTS5).
-
-> **User-fired by convention.** In the Claude Code original this cannot be invoked by the
-> model at all. Cursor has no such switch, so honour it by hand: apply this rule when the
-> user asks for this work, never proactively.
 
 
 # /handoff — pass memory between teammates

@@ -8,11 +8,13 @@ disable-model-invocation: true
 
 Setting up a project properly is a handful of invocations across three plugins, in a documented
 order — and the person who needs the sequence most is the one who has not yet learned any of the
-names. Two kinds of step live in that list and they are not the same kind of thing. The **roster**
-steps write who you are and what project this is; they stay lines you type, because nobody
-registers you or declares your project on your behalf. The four **documentation** skills only read
-code and write notes, so as of v1.14.0 this command can run them: `--run` does, and without it you
-get the same tailored checklist as a single line to paste.
+names. Two kinds of step live in that list. The **roster** steps write who you are and what project
+this is — answers with an owner, so they are asked before they are written, and `/ai-coach:wrap`
+is where that asking happens: it collects every identity gap in one question on the way to
+publishing. This command prints them, because on day one the roster is a decision to make
+deliberately rather than a gap to close in passing. The four **documentation** skills only read code
+and write notes, so as of v1.14.0 this command runs them: `--run` does, and without it you get the
+same tailored checklist as a single line to paste.
 
 `ENGINE` means `node "$HOME/.ai-coach/bin/engine.js"`, or
 `node "$env:USERPROFILE\.ai-coach\bin\engine.js"` in PowerShell. Missing? The engine installs
@@ -51,7 +53,7 @@ it will ask:
    one memory (ask this — one question). Single-repo work skips this line, and the report says
    "implicit project, nothing to declare".
 3. Then the documentation, as **one line to paste** rather than three to remember — Claude Code
-   chains skills the user names together, the same way `/ai-coach:wrap` hands over its two:
+   chains skills the user names together:
 
    ```
    /investigation-coach:onboard --tour [--project] [--feature <name>] [--diagrams drawio]
@@ -69,7 +71,8 @@ it will ask:
 
 ## `--run` — the same list, performed
 
-The roster steps are still printed, never run. Then:
+The roster steps are still printed here, never run — see the intro for why this command leaves
+them to you while `/ai-coach:wrap` asks for them. Then:
 
 1. **Say what it costs, once, and ask.** Three code-reading skills back to back, four with
    `--with-blueprint`. One confirmation covers the whole run; stop immediately whenever the user
@@ -92,9 +95,10 @@ A skill whose plugin `claude plugin list` did not show is not invoked: report it
 
 ## Rules
 
-- Never run the roster steps and never re-implement any skill on this list. What this command adds
-  is the *tailored* sequence — what this repo still needs, in the right order, with the flags
-  already worked out.
+- Never re-implement any skill on this list, and leave the roster steps as printed lines: closing
+  an identity gap in passing belongs to `/ai-coach:wrap`, which asks for the whole of it at once.
+  What this command adds is the *tailored* sequence — what this repo still needs, in the right
+  order, with the flags already worked out.
 - Never invent an identity, a project name, or a branch convention. Every one is a question with
   an owner, and the owner is in the chair.
 - Close with the two names worth keeping after day one: `/memory-coach:recall` when a question

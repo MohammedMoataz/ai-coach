@@ -77,17 +77,17 @@ Claude Code injects this automatically; in this harness it is your first move.
 
 ### memory-coach
 
-- **debrief** *(user-fired)* — `[--name <label>] | list [--author <email>] | show <key>`
-  Publishes what you concluded — business outcome, technical decision, evidence, and what is still unknown — so a teammate can pick the work up; also lists and reads theirs. Use for "/debrief", "publish my conclusions", "what did the team conclude".
+- **debrief** — `[--name <label>] | list [--author <email>] | show <key>`
+  Publishes what you concluded — business outcome, technical decision, evidence, and what is still unknown — so a teammate can pick the work up; also lists and reads theirs. Use when the user explicitly asks ("/debrief", "publish my conclusions", "what did the team conclude"), or when /ai-coach:wrap chains it; never proactively, and never past its own approval gate — the draft is shown and confirmed before anything is published.
   Full instructions: `$AICOACH_REPO/plugins/memory-coach/skills/debrief/SKILL.md`
-- **handoff** *(user-fired)* — `[import] [--task <t>] [--repo <r>] [--encrypt]`
-  Package this project's memory for a teammate, or load theirs. Use for "hand this off", "share what I learned", "/handoff import".
+- **handoff** — `[import] [--task <t>] [--repo <r>] [--encrypt]`
+  Package this project's memory for a teammate, or load theirs. Use when the user explicitly asks ("hand this off", "share what I learned", "/handoff import"), or when /ai-coach:wrap chains it after a debrief; never proactively — it writes an export file others will import.
   Full instructions: `$AICOACH_REPO/plugins/memory-coach/skills/handoff/SKILL.md`
 - **recall** — `<query> [--full] [--task <t>] [--author <email>] [--role <r>] [--user <name>] [--repo <r>] [--all] | --health [--verbose]`
   Searches this project's memory for what was already learned, and reports on the memory's own health. Use for "did we hit this before", "what do we know about X", "/recall", "check my memory". Not for editing the roster (see roster).
   Full instructions: `$AICOACH_REPO/plugins/memory-coach/skills/recall/SKILL.md`
-- **roster** *(user-fired)* — `[register | trust <email> <full|workspace> [note] | sync | project | declare <name> | repos]`
-  Who is on this project and whom you trust, and which repositories belong to one product. Use for "/roster", "add me to the team", "trust this teammate", "group these repos", "declare the project". Not for searching memory (see recall).
+- **roster** — `[register [<role>] | trust <email> <full|workspace> [note] | sync | project | declare <name> | repos]`
+  Who is on this project and whom you trust, and which repositories belong to one product. Use when the user explicitly asks ("/roster", "add me to the team", "trust this teammate", "group these repos", "declare the project"), or when /ai-coach:wrap chains it to close an identity gap; never proactively. Not for searching memory (see recall).
   Full instructions: `$AICOACH_REPO/plugins/memory-coach/skills/roster/SKILL.md`
 
 ### prompt-coach

@@ -1,7 +1,6 @@
 ---
-description: Package this project's memory for a teammate, or load theirs. Use for "hand this off", "share what I learned", "/handoff import".
+description: Package this project's memory for a teammate, or load theirs. Use when the user explicitly asks ("hand this off", "share what I learned", "/handoff import"), or when /ai-coach:wrap chains it after a debrief; never proactively — it writes an export file others will import.
 argument-hint: "[import] [--task <t>] [--repo <r>] [--encrypt]"
-disable-model-invocation: true
 model: haiku
 effort: low
 ---
