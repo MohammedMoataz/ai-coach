@@ -1,7 +1,6 @@
 ---
-description: Package this project's memory for a teammate, or load theirs. Use for "hand this off", "share what I learned", "/handoff import".
+description: Package this project's memory for a teammate, or load theirs. Use when the user explicitly asks ("hand this off", "share what I learned", "/handoff import"), or when /ai-coach:wrap chains it after a debrief; never proactively, and never past its own gate — it states what will travel and waits for a yes before writing an export file others will import.
 argument-hint: "[import] [--task <t>] [--repo <r>] [--encrypt]"
-disable-model-invocation: true
 model: haiku
 effort: low
 ---
@@ -37,6 +36,20 @@ someone else on their behalf.
 under the branch name, so a branch called `my-stuff` hands over work nobody can group later.
 
 ## Hand off — the default
+
+0. **Say what will travel, and wait.** Before exporting, state in one short block what this seed
+   will contain — the project and repositories in scope, that debriefs and session attribution
+   travel while global memories and prompt text do not, and whether `--encrypt` is on — then ask
+   whether to write it. **Do not export until the answer is yes.**
+
+   This gate is the one that matters now. Until v1.15.0 the harness held it: this skill could not
+   be invoked by the model at all, so a person typing its name *was* the confirmation. It is
+   model-invocable so `/ai-coach:wrap` can chain it, which means the confirmation has to live here
+   instead of in the act of typing. A seed is a file other people read; nobody should discover one
+   in their working tree that they did not ask for.
+
+   The gate is not skippable and has no flag. `/ai-coach:wrap` reaching this point does not satisfy
+   it — that command deliberately stops before the commit for the same reason.
 
 1. `ENGINE seed-export .ai-coach/team-seed.jsonl --dir "<repo-root>"`
    - Pass `--dir` even though the file path looks unambiguous: it is what resolves

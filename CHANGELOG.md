@@ -3,6 +3,57 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.15.0 — One command, one question, one review (2026-09-02)
+
+**ai-coach 1.15.0 · memory-coach 1.4.0**
+
+Wrapping a piece of work cost four typed commands, and the two identity gaps in the middle were
+always discovered at the worst possible moment — inside the export, after the thinking was done.
+`/ai-coach:wrap` now finds what is missing, asks for all of it in one question, and publishes.
+
+### The boundary moved again, and this time the principle is stated properly
+
+`debrief`, `handoff` and `roster` lose `disable-model-invocation: true`. The old rule — a command
+cannot fire a skill — protected the wrong noun. Typing `/memory-coach:debrief` was never the
+consent; approving the four sections it drafts is. So the line sits where the decision happens: the
+debrief still shows business, technical, evidence and unknowns and waits, a "no" ends the run, and
+the role and project name are asked in a question rather than inferred into place.
+
+`handoff` gained the gate it had been getting for free. Until now the harness was its
+confirmation: the skill could not be model-invoked, so a person typing its name was the consent.
+Model-invocable, it needs that confirmation in its own steps — it now states what will travel
+(scope, what does and does not leave the machine, whether `--encrypt` is on) and waits for a yes
+before writing. Not skippable, no flag, and `wrap` reaching that point does not satisfy it.
+
+What no command may do is unchanged and now written down: invent an answer that has an owner,
+reproduce a gated skill's steps to route around its gate, or commit to your git history. `wrap`
+ends by printing `git add .ai-coach/team-seed.jsonl && git commit`, because a commit in someone's
+history is theirs to author.
+
+### The tenant check
+
+`ENGINE project` falls back to the git remote when no `.ai-coach/project.md` exists, so a team that
+says "hotelgate-packages" gets filed under `bitbucket.org/legatesoftware/extranet.web`. That key is
+not a label — it selects the SQLite tenant. Declaring the real name afterwards points every future
+write at an empty database and strands every memory, session, debrief and correction already
+recorded.
+
+`wrap` now compares the key this session resolves to against the name the team actually uses, and
+settles it with a row count rather than a guess: `ENGINE projects` lists every key the engine has
+ever *opened* — machine-wide, empty ones included, and a key is registered merely by being resolved
+— so appearing there proves nothing. Only those two keys are ever candidates; a third belongs to
+another project and is never named in a `rekey`. On a real mismatch wrap reports both row counts and
+hands over `ENGINE rekey <old> <new>` **before** declaring anything, saying plainly that it deletes
+the source and is not undoable. It never runs it. Silent when the keys agree.
+
+### One question, not four
+
+The handoff skill already carried the rule — "ask for all of them in one question, not four" — and
+nothing upstream honoured it. `wrap` collects role, project name, email and username in a single
+`AskUserQuestion`, writes them in the order the tenant key requires (`project.md` before anything
+publishes), and re-checks `whoami` before it proceeds. `roster register` gained an optional
+`<role>` argument so it does not ask again for something the user just typed.
+
 ## v1.14.0 — The vault is a graph (2026-09-02)
 
 **ai-coach-core 1.8.1 · ai-coach 1.14.0 · investigation-coach 1.5.0 · strategy-coach 1.5.0**

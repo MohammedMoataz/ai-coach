@@ -6,7 +6,7 @@
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "plugins": [
     {
       "name": "ai-coach-core",
