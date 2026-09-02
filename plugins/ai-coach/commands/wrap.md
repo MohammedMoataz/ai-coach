@@ -44,16 +44,32 @@ it is inferred from the git remote, which is how a project ends up filed as
 
 That key is not a label. It selects the database — one SQLite tenant per key.
 
-`ENGINE projects` lists every key the engine has ever **opened**, which is not the same as every
-key holding data: a key is recorded the first time it is resolved, so an empty one can appear in
-that list. Treat a second key as a signal to look, not as proof. What settles it is the row count
-under that key, and `AICOACH_PROJECT` overrides resolution, so ask the engine directly:
+`ENGINE projects` lists every key the engine has ever **opened**, and that list is machine-wide:
+it holds keys from every project on this machine, including keys that hold nothing (a key is
+recorded the first time it is resolved). Two consequences, and the second one is why this section
+is written so carefully.
+
+**Only two keys are ever candidates here**, and you must not consider a third:
+
+1. the key this session resolves to, from `ENGINE project`;
+2. the name the user says this project is called — from `.ai-coach/project.md` if it exists, or
+   from the answer to step 3's question.
+
+A third key in that list belongs to some other project. It is not a candidate, it is not a
+mismatch, and it must never be named in a `rekey`.
+
+**Validate both before either reaches a shell.** A key can come from a git remote, and a remote is
+attacker-controllable text. Use a key only if it matches `^[A-Za-z0-9._@:/-]+$`; anything else —
+`$(`, a backtick, a quote, a space, a newline — is reported and stops this check rather than being
+interpolated into a command.
+
+Then, for a candidate key, get its row count. `AICOACH_PROJECT` overrides resolution:
 
 ```bash
-AICOACH_PROJECT="<other-key>" node "$HOME/.ai-coach/bin/engine.js" stats
+AICOACH_PROJECT="<candidate-key>" node "$HOME/.ai-coach/bin/engine.js" stats
 ```
 ```powershell
-$env:AICOACH_PROJECT="<other-key>"
+$env:AICOACH_PROJECT="<candidate-key>"
 node "$env:USERPROFILE\.ai-coach\bin\engine.js" stats
 $env:AICOACH_PROJECT=""
 ```
@@ -61,11 +77,18 @@ $env:AICOACH_PROJECT=""
 Then:
 
 - **Only the resolving key holds rows** — nothing to do, and declaring that same name later is free.
-- **Another key holds the rows** — say both names and stop before declaring anything. Writing
-  `.ai-coach/project.md` now would point every future write at an empty tenant and strand every
-  memory, session, debrief and correction already recorded under the old one. The repair is
-  `ENGINE rekey <old-key> <new-key>`, which moves the rows and deletes the source — hand that line
-  over, say it is not undoable, and let the user run it before you continue.
+- **Only the other candidate holds rows** — this is the real mismatch. Say both keys and their row
+  counts, and stop before declaring anything: writing `.ai-coach/project.md` now would point every
+  future write at an empty tenant and strand every memory, session, debrief and correction already
+  recorded under the other one. The repair is `ENGINE rekey <old-key> <new-key>` — it moves the rows
+  and **deletes the source**, and it is not undoable. Do not run it. Print it, name both keys and
+  both row counts, say plainly what will be deleted, and let the user run it themselves. Resolve
+  the name question (step 3) first when the target name is not already known, or you cannot fill in
+  `<new-key>` honestly.
+- **Both candidates hold rows** — two tenants have been accumulating in parallel. `rekey` merges by
+  moving and deleting, so this is not a decision to take on someone's behalf: report both counts,
+  say that merging them is lossy in one direction, and let the user choose. Continue the wrap under
+  whichever key they name, or stop if they want to sort it out first.
 - **No rows anywhere yet** — a fresh project. Declaring is free; ask for the name with everything
   else.
 
@@ -112,14 +135,16 @@ approval gate is the point of this whole command and stays exactly where it is**
 business, technical, evidence and unknowns, shows them, and waits. Nothing is published until the
 user says yes, and a "no" ends the run here rather than exporting a draft nobody accepted.
 
-Then `memory-coach:handoff`, forwarding `--encrypt` when given. It exports
-`.ai-coach/team-seed.jsonl`.
+Then `memory-coach:handoff`, forwarding `--encrypt` when given. It has a gate of its own — it says
+what will travel and waits — and that one is not yours to satisfy on the user's behalf either. Two
+confirmations in one run is the correct number: one approves a conclusion being published, the other
+approves a file other people will read.
 
 ## 6. Say what comes after
 
 The one step this command deliberately does not take:
 
-```
+```bash
 git add .ai-coach/team-seed.jsonl && git commit
 ```
 

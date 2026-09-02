@@ -19,6 +19,12 @@ consent; approving the four sections it drafts is. So the line sits where the de
 debrief still shows business, technical, evidence and unknowns and waits, a "no" ends the run, and
 the role and project name are asked in a question rather than inferred into place.
 
+`handoff` gained the gate it had been getting for free. Until now the harness was its
+confirmation: the skill could not be model-invoked, so a person typing its name was the consent.
+Model-invocable, it needs that confirmation in its own steps — it now states what will travel
+(scope, what does and does not leave the machine, whether `--encrypt` is on) and waits for a yes
+before writing. Not skippable, no flag, and `wrap` reaching that point does not satisfy it.
+
 What no command may do is unchanged and now written down: invent an answer that has an owner,
 reproduce a gated skill's steps to route around its gate, or commit to your git history. `wrap`
 ends by printing `git add .ai-coach/team-seed.jsonl && git commit`, because a commit in someone's
@@ -32,9 +38,13 @@ not a label — it selects the SQLite tenant. Declaring the real name afterwards
 write at an empty database and strands every memory, session, debrief and correction already
 recorded.
 
-`wrap` now compares the resolving key against `ENGINE projects`, which lists every key holding
-data. When they disagree it names both and hands over `ENGINE rekey <old> <new>` **before**
-declaring anything, rather than after. Silent when they agree.
+`wrap` now compares the key this session resolves to against the name the team actually uses, and
+settles it with a row count rather than a guess: `ENGINE projects` lists every key the engine has
+ever *opened* — machine-wide, empty ones included, and a key is registered merely by being resolved
+— so appearing there proves nothing. Only those two keys are ever candidates; a third belongs to
+another project and is never named in a `rekey`. On a real mismatch wrap reports both row counts and
+hands over `ENGINE rekey <old> <new>` **before** declaring anything, saying plainly that it deletes
+the source and is not undoable. It never runs it. Silent when the keys agree.
 
 ### One question, not four
 

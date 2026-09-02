@@ -81,7 +81,7 @@ Claude Code injects this automatically; in this harness it is your first move.
   Publishes what you concluded — business outcome, technical decision, evidence, and what is still unknown — so a teammate can pick the work up; also lists and reads theirs. Use when the user explicitly asks ("/debrief", "publish my conclusions", "what did the team conclude"), or when /ai-coach:wrap chains it; never proactively, and never past its own approval gate — the draft is shown and confirmed before anything is published.
   Full instructions: `$AICOACH_REPO/plugins/memory-coach/skills/debrief/SKILL.md`
 - **handoff** — `[import] [--task <t>] [--repo <r>] [--encrypt]`
-  Package this project's memory for a teammate, or load theirs. Use when the user explicitly asks ("hand this off", "share what I learned", "/handoff import"), or when /ai-coach:wrap chains it after a debrief; never proactively — it writes an export file others will import.
+  Package this project's memory for a teammate, or load theirs. Use when the user explicitly asks ("hand this off", "share what I learned", "/handoff import"), or when /ai-coach:wrap chains it after a debrief; never proactively, and never past its own gate — it states what will travel and waits for a yes before writing an export file others will import.
   Full instructions: `$AICOACH_REPO/plugins/memory-coach/skills/handoff/SKILL.md`
 - **recall** — `<query> [--full] [--task <t>] [--author <email>] [--role <r>] [--user <name>] [--repo <r>] [--all] | --health [--verbose]`
   Searches this project's memory for what was already learned, and reports on the memory's own health. Use for "did we hit this before", "what do we know about X", "/recall", "check my memory". Not for editing the roster (see roster).
