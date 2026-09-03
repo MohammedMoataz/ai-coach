@@ -14,7 +14,7 @@ welcome.
 | | Claude Code | Cursor | Windsurf | Antigravity | opencode | Blackbox | Codex CLI / anything MCP |
 |---|---|---|---|---|---|---|---|
 | Team memory, debriefs, prompt-check | plugins | MCP | MCP | MCP | MCP | MCP | MCP |
-| The 25 workflows (skills) | native | `.mdc` rules | rules dir | rules dir | AGENTS.md | AGENTS.md | AGENTS.md index |
+| The 26 workflows (skills) | native | `.mdc` rules | rules dir | rules dir | AGENTS.md | AGENTS.md | AGENTS.md index |
 | Observation / failure recording | automatic | **shim** | **shim** (no failure event) | **shim** | **plugin** | **shim** † | — |
 | Prompt signals | automatic | **shim** | **shim** | — (no prompt event) | — | **shim** † | — |
 | Secrets guard (blocking, opt-in) | hook | **shim** — deny + ask | **shim** — deny only, no ask tier | **shim** — deny + ask | **plugin** — deny only | **shim** † | — |
@@ -103,7 +103,7 @@ or `codex mcp add ai-coach -- node /absolute/path/to/ai-coach/adapters/mcp/serve
 
 ## The compiled rules
 
-Built by `node adapters/build.js` from the 25 `SKILL.md` sources; checked in under `adapters/out/`
+Built by `node adapters/build.js` from the 26 `SKILL.md` sources; checked in under `adapters/out/`
 and CI fails if they drift from the sources. Do not hand-edit the outputs.
 
 **Cursor**: copy the rules into your project —

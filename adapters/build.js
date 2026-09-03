@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Compile the 25 SKILL.md sources into what other harnesses can read: one .mdc rule per skill
+// Compile the 26 SKILL.md sources into what other harnesses can read: one .mdc rule per skill
 // for Cursor, and one AGENTS.md index for everything that speaks that standard (Codex, opencode,
 // Gemini CLI, Copilot, Zed, …). The skill prose is the product; only the packaging is Claude's,
 // so this is a mechanical transform with a short substitution table — never a rewrite.

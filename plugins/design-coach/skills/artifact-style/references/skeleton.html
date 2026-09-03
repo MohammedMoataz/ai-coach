@@ -1,0 +1,246 @@
+<title>Page Name</title>
+<!-- design-coach:artifact-style skeleton — the one copy of the base CSS and the zoom script.
+     No doctype/html/head/body: the Artifact host wraps the file. Copy, rename the title, replace
+     the fallback hex with the project's tokens when detect.md found any (names stay), delete what
+     the page does not use. The lint (scripts/check-artifact.js) passes on this file as shipped. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* §tokens — light on bare :root; the same names redefined twice for dark (system preference,
+   then the viewer's explicit toggle). Fallback palette: teal on near-black/near-white; --muted is
+   a slate so secondary text clears 4.5:1 on every surface in both themes. */
+:root {
+  color-scheme: light;
+  --bg: #fafefd;  --surface: #f3fbf9;  --surface-2: #e0f8f3;
+  --border: #a1ded2;  --border-strong: #83cdc1;
+  --text: #0d3d38;  --muted: #475569;
+  --accent: #0f766e;  --accent-hover: #115e59;  --accent-contrast: #ffffff;
+  --accent-soft: #ccf3ea;
+  --sans: "IBM Plex Sans", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d1514;  --surface: #111c1b;  --surface-2: #0d2d2a;
+    --border: #145750;  --border-strong: #1c6961;
+    --text: #adf0dd;  --muted: #94a3b8;
+    --accent: #2dd4bf;  --accent-hover: #5eead4;  --accent-contrast: #042f2e;
+    --accent-soft: #023b37;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1514;  --surface: #111c1b;  --surface-2: #0d2d2a;
+  --border: #145750;  --border-strong: #1c6961;
+  --text: #adf0dd;  --muted: #94a3b8;
+  --accent: #2dd4bf;  --accent-hover: #5eead4;  --accent-contrast: #042f2e;
+  --accent-soft: #023b37;
+}
+
+/* §base */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 var(--sans); overflow-wrap: anywhere; }
+.wrap { max-width: 72rem; margin: 0 auto; padding: 32px 16px 64px; }
+.prose { max-width: 68ch; }
+h1 { font-size: clamp(26px, 4vw, 39px); line-height: 1.15; margin: 0 0 8px; text-wrap: balance; }
+h2 { font-size: 25px; line-height: 1.25; margin: 40px 0 8px; }
+h3 { font-size: 20px; line-height: 1.3; margin: 24px 0 8px; }
+p, li { margin: 0 0 8px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { color: var(--accent-hover); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.muted { color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; container-type: inline-size; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font: 500 12px/1.6 var(--mono); }
+button, .btn { min-height: 28px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface-2); color: var(--text); font: 13px/1 var(--sans); cursor: pointer; }
+.btn-primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+
+/* §overflow — text never leaves its box. The trap is flex/grid children defaulting to
+   min-width:auto (they refuse to shrink); the fixes are one class per content type. */
+.row > *, .grid > * { min-width: 0; }
+.tablewrap { overflow-x: auto; max-width: 100%; }              /* a table scrolls; the page never does */
+table { border-collapse: collapse; width: 100%; }
+caption { text-align: left; color: var(--muted); padding: 0 0 6px; font-size: 14px; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: normal; }
+thead th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
+.trunc { max-width: 24ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } /* pair with title="full text" */
+.clamp2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } /* pair with title="" */
+.anywhere { overflow-wrap: anywhere; }                        /* URLs, hashes, ids: break, never hide */
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi { font-size: clamp(22px, 4vw, 36px); line-height: 1.1; font-weight: 600; }  /* shrinks, never clamps */
+pre { overflow-x: auto; white-space: pre; margin: 0 0 12px; padding: 12px 14px; background: var(--surface-2); border-radius: var(--radius); font: 13px/1.6 var(--mono); }
+pre.wrap { white-space: pre-wrap; }                            /* prose in a pre, not code */
+code { font-family: var(--mono); font-size: .92em; }
+
+/* §zoom — every diagram (inline svg or mermaid) lives in figure.zoomable. The script sizes the
+   svg in CSS pixels (no transforms, so the scroll box grows with it and text stays crisp). */
+.zoomable { margin: 24px 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.zoomable figcaption { padding: 10px 14px 0; font-size: 14px; color: var(--muted); }
+.zoom-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; }
+.zoom-toolbar button { min-width: 28px; height: 28px; padding: 0 8px; font: 13px/1 var(--mono); }
+.zoom-toolbar button:hover { border-color: var(--accent); }
+.zoom-level { margin-left: auto; font: 12px/1 var(--mono); color: var(--muted); }
+.zoom-viewport { overflow: auto; max-height: 70vh; border-top: 1px solid var(--border); overscroll-behavior: contain; touch-action: none; cursor: grab; }
+.zoom-viewport:focus-visible { outline-offset: -2px; }
+.zoom-viewport.dragging { cursor: grabbing; user-select: none; }
+.zoom-stage { width: max-content; min-width: 100%; padding: 12px; }
+.zoom-stage svg { display: block; max-width: none; }
+.zoom-stage svg text { font-family: var(--mono); }
+.zoom-stage .mermaid { margin: 0; padding: 0; background: none; white-space: normal; }
+.zoomable:fullscreen { display: flex; flex-direction: column; margin: 0; border: 0; border-radius: 0; background: var(--bg); }
+.zoomable:fullscreen .zoom-viewport { flex: 1; max-height: none; }
+@media (prefers-reduced-motion: no-preference) { .zoom-stage svg { transition: width .12s ease-out, height .12s ease-out; } }
+
+/* §print */
+@media print {
+  .zoom-toolbar, nav { display: none; }
+  .zoom-viewport { max-height: none; overflow: visible; }
+  .card, table, figure { break-inside: avoid; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em; color: var(--muted); }
+}
+</style>
+
+<main class="wrap">
+  <h1>Page Name</h1>
+  <p class="muted prose">One sentence on what this page settles, for whom.</p>
+
+  <section class="grid">
+    <div class="card">
+      <h3 class="clamp2" title="A card title long enough to need a second line and then some">A card title long enough to need a second line and then some</h3>
+      <p class="kpi num">1,284</p>
+      <p class="muted">Label</p>
+    </div>
+  </section>
+
+  <div class="tablewrap">
+    <table>
+      <caption>What the table compares, one line.</caption>
+      <thead><tr><th scope="col">Component</th><th scope="col">Talks to</th><th scope="col">Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>api</td><td>worker, db</td><td class="trunc" title="src/api/routes/orders.ts:42"><code>src/api/routes/orders.ts:42</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <figure class="zoomable">
+    <figcaption>What this picture shows — the claim, not the title.</figcaption>
+    <div class="zoom-toolbar" role="group" aria-label="Diagram controls">
+      <button type="button" data-zoom="out" aria-label="Zoom out">&minus;</button>
+      <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+      <button type="button" data-zoom="fit" aria-label="Fit to width">Fit</button>
+      <button type="button" data-zoom="reset" aria-label="Actual size">1:1</button>
+      <button type="button" data-zoom="full" aria-label="Fullscreen">&#x26F6;</button>
+      <span class="zoom-level" aria-live="polite"></span>
+    </div>
+    <div class="zoom-viewport" tabindex="0" aria-label="Diagram; drag to pan, Ctrl+wheel or pinch to zoom, + - 0 1 keys">
+      <div class="zoom-stage">
+        <svg viewBox="0 0 640 200" role="img" aria-label="Client calls the API, which writes to the database.">
+          <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+          <g fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="20" y="70" width="160" height="60" rx="6"/>
+            <rect x="240" y="70" width="160" height="60" rx="6"/>
+            <rect x="460" y="70" width="160" height="60" rx="6"/>
+            <line x1="180" y1="100" x2="238" y2="100" marker-end="url(#arr)"/>
+            <line x1="400" y1="100" x2="458" y2="100" marker-end="url(#arr)"/>
+          </g>
+          <g fill="currentColor" font-size="13" text-anchor="middle">
+            <text x="100" y="105">client</text><text x="320" y="105">api</text><text x="540" y="105">db</text>
+            <text x="209" y="90" font-size="11">HTTP</text><text x="429" y="90" font-size="11">writes</text>
+          </g>
+        </svg>
+        <!-- or: <pre class="mermaid">%%{init:{'themeVariables':{'fontSize':'26px'}}}%%
+flowchart LR ...</pre> — the host renders it into an svg; the script waits for it. -->
+      </div>
+    </div>
+  </figure>
+</main>
+
+<script>
+/* §zoom — one script, every .zoomable. Sizes the svg in px (no transforms), so the viewport's
+   own scroll box grows with the zoom. Pointer events: one finger/mouse drags to pan, two fingers
+   pinch; Ctrl/⌘+wheel zooms around the cursor and a plain wheel still scrolls. Waits for a
+   host-rendered mermaid svg through a MutationObserver. */
+(function () {
+  var MIN = 0.25, MAX = 8, STEP = 1.25;
+  function init(fig) {
+    var vp = fig.querySelector('.zoom-viewport'), stage = fig.querySelector('.zoom-stage');
+    var svg = stage && stage.querySelector('svg');
+    if (!vp || !svg || fig.dataset.zoomReady) return false;
+    fig.dataset.zoomReady = '1';
+    var vb = svg.viewBox && svg.viewBox.baseVal, rect = svg.getBoundingClientRect();
+    var base = (vb && vb.width) || rect.width || 960;
+    var ratio = (vb && vb.width) ? vb.height / vb.width : (rect.height / base) || 0.6;
+    svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.maxWidth = 'none';
+    var z = 1, level = fig.querySelector('.zoom-level');
+    function apply(nz, cx, cy) {
+      nz = Math.min(MAX, Math.max(MIN, nz));
+      var k = nz / z, r = vp.getBoundingClientRect();
+      var ax = cx == null ? 0 : cx - r.left + vp.scrollLeft, ay = cy == null ? 0 : cy - r.top + vp.scrollTop;
+      z = nz;
+      svg.style.width = Math.round(base * z) + 'px';
+      svg.style.height = Math.round(base * ratio * z) + 'px';
+      if (cx != null) { vp.scrollLeft = ax * k - (cx - r.left); vp.scrollTop = ay * k - (cy - r.top); }
+      if (level) level.textContent = Math.round(z * 100) + '%';
+    }
+    function fit() { apply((vp.clientWidth - 26) / base); vp.scrollLeft = 0; vp.scrollTop = 0; }
+    if (base > vp.clientWidth - 26) fit(); else apply(1);
+
+    fig.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-zoom]'); if (!b) return;
+      var a = b.getAttribute('data-zoom');
+      if (a === 'in') apply(z * STEP); else if (a === 'out') apply(z / STEP);
+      else if (a === 'fit') fit(); else if (a === 'reset') apply(1);
+      else if (a === 'full') document.fullscreenElement === fig ? document.exitFullscreen() : fig.requestFullscreen();
+    });
+    var full = fig.querySelector('[data-zoom="full"]');
+    if (full && !document.fullscreenEnabled) full.hidden = true;
+    fig.addEventListener('fullscreenchange', fit);
+
+    vp.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      apply(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY);
+    }, { passive: false });
+
+    vp.addEventListener('keydown', function (e) {
+      if (e.key === '+' || e.key === '=') apply(z * STEP);
+      else if (e.key === '-' || e.key === '_') apply(z / STEP);
+      else if (e.key === '0') fit(); else if (e.key === '1') apply(1); else return;
+      e.preventDefault();
+    });
+
+    var pts = new Map(), drag = null, pinch = null;
+    function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+    vp.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      vp.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      var p = Array.from(pts.values());
+      if (p.length === 1) { drag = { x: e.clientX, y: e.clientY, sl: vp.scrollLeft, st: vp.scrollTop }; vp.classList.add('dragging'); }
+      else if (p.length === 2) { drag = null; pinch = { d: dist(p[0], p[1]), z: z }; }
+    });
+    vp.addEventListener('pointermove', function (e) {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      var p = Array.from(pts.values());
+      if (pinch && p.length === 2) {
+        apply(pinch.z * dist(p[0], p[1]) / pinch.d, (p[0].x + p[1].x) / 2, (p[0].y + p[1].y) / 2);
+      } else if (drag) {
+        vp.scrollLeft = drag.sl - (e.clientX - drag.x); vp.scrollTop = drag.st - (e.clientY - drag.y);
+      }
+    });
+    function up(e) { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; vp.classList.remove('dragging'); } }
+    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up);
+    return true;
+  }
+  document.querySelectorAll('.zoomable').forEach(function (fig) {
+    if (init(fig)) return;
+    new MutationObserver(function (m, obs) { if (init(fig)) obs.disconnect(); }).observe(fig, { childList: true, subtree: true });
+  });
+})();
+</script>

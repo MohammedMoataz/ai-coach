@@ -54,6 +54,12 @@ Claude Code injects this automatically; in this harness it is your first move.
   Turns documentation, a spec or an upstream example into a code stub in this project's idiom, with the runnable check that proves it. Use for "/translate", "turn these docs into code", "port this example into our codebase". Not for checking whether a claim is true (see research).
   Full instructions: `$AICOACH_REPO/plugins/atlas-coach/skills/translate/SKILL.md`
 
+### design-coach
+
+- **artifact-style** — `[path/to/page.html]`
+  Checkable design rules for an Artifact page — text that never escapes its box, every SVG and mermaid diagram in a zoomable scrollable wrapper, the project's own fonts and palette when detectable (IBM Plex and a teal scale only as fallback), WCAG contrast in both themes, and a zero-dependency lint. Use before writing or publishing any Artifact HTML, alongside the native artifact-design skill; /investigation-coach:map and /strategy-coach:blueprint chain it, and a hook suggests it after a native artifact skill loads. Reads at most six project files, writes only the page, never fires unprompted.
+  Full instructions: `$AICOACH_REPO/plugins/design-coach/skills/artifact-style/SKILL.md`
+
 ### harness-coach
 
 - **context** *(user-fired)* — `[--plugins] [--session]`

@@ -32,7 +32,10 @@ maintains — without the subscription. `--visual miro` is for a live workshop, 
 ## The Artifact page
 
 One page for the whole blueprint, not one per process. Load the `artifact-design` skill before
-writing it. Contents, in order: the domain sentence, the actor list, then one section per process
+writing it, then `/design-coach:artifact-style` when that plugin is installed (skip by name when
+it is not) — it wraps every mermaid block so the reader can zoom and pan it, keeps text inside
+its box, uses the project's fonts and palette, and lints the file before it publishes. Contents,
+in order: the domain sentence, the actor list, then one section per process
 with its Mermaid fenced as ```mermaid (Artifacts render mermaid natively — no library, no CDN),
 and last the open questions. Give it a favicon and keep the same file path on re-runs so the URL
 is stable.

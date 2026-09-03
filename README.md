@@ -47,7 +47,7 @@ Want only part of it: `claude plugin install memory-coach@ai-coach` pulls `ai-co
 ### Not on Claude Code?
 
 The memory works everywhere MCP does — Codex, Cursor, opencode, Windsurf, Gemini CLI — through
-`adapters/mcp/server.js`, and the 25 workflows compile to Cursor rules and an
+`adapters/mcp/server.js`, and the 26 workflows compile to Cursor rules and an
 [AGENTS.md](https://agents.md) index. One shared `~/.ai-coach/` regardless of which harness opened
 the session, which is the point. What ports and what stays Claude's (the automatic hook layer),
 with verified per-harness install snippets: [`adapters/README.md`](adapters/README.md).
@@ -65,6 +65,7 @@ with verified per-harness install snippets: [`adapters/README.md`](adapters/READ
 | **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus three agents: `researcher`, `verifier`, and `reader`, which keeps a 200-page PDF out of your context. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the docs vault), `feature` — document the business, then specify what comes next. Inward by design; looking outward is atlas-coach. |
 | **analysis-coach** | `elicit`, `insight`, `story` — the business-analyst half — plus the `critic` agent: fresh-context review that has not seen the reasoning it grades. |
+| **design-coach** | `artifact-style` — how a published page should look, made checkable: text stays in its box, every diagram zooms, the project's own fonts and palette, WCAG contrast in both themes — plus a zero-dependency lint and the one hook outside the engine, which runs that lint before the Artifact tool publishes and asks when it fails. |
 | **ai-coach** | The bundle. Install this one. Also ships the three cross-plugin commands: `/ai-coach:start`, `/ai-coach:wrap`, `/ai-coach:sitrep`. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
@@ -72,7 +73,7 @@ Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The ful
 
 ### What it costs before you type
 
-**Roughly 1,700 tokens enter the model's context every session as of v1.15.0**, up from ~700 two
+**Roughly 1,900 tokens enter the model's context every session as of v1.16.0**, up from ~700 three
 releases ago — and the increase is a deliberate trade, not a regression. What a session pays for is
 only what the model can act on: the skills it may invoke itself, and the agents. Until v1.13.0 that was two skills
 (`recall` ~80, `dispatch` ~110) and six agents (~510 together). v1.14.0 adds four documentation
@@ -80,7 +81,8 @@ skills — `onboard`, `map`, `study`, `blueprint` — so that `--tour` and `/ai-
 chain them instead of printing four lines for you to type. Their four descriptions are 1,651
 characters, which at the ratio the two measured skills give is about 590 tokens. v1.15.0 adds
 `debrief`, `handoff` and `roster` so `/ai-coach:wrap` can chain them — 1,093 characters, about 390
-tokens more. The other sixteen skills
+tokens more. v1.16.0 adds `artifact-style` so `/map` and `/blueprint` can chain it before they
+publish a page — 598 characters, about 210 tokens. The other sixteen skills
 and all three commands stay user-only, and a user-only description is **not loaded into the
 model's context at all** — it exists in your `/` menu, and its cost is paid when you invoke it, like
 any skill body.
@@ -153,9 +155,10 @@ that arrived some other way.
 `/investigation-coach:onboard` · `/investigation-coach:map` · `/investigation-coach:study` ·
 `/atlas-coach:research` · `/atlas-coach:ingest` · `/atlas-coach:market` ·
 `/atlas-coach:translate` · `/strategy-coach:blueprint` · `/strategy-coach:feature` ·
-`/analysis-coach:elicit` · `/analysis-coach:insight` · `/analysis-coach:story`
+`/analysis-coach:elicit` · `/analysis-coach:insight` · `/analysis-coach:story` ·
+`/design-coach:artifact-style`
 
-Three commands ship in the bundle, because only the bundle knows all nine coaches exist:
+Three commands ship in the bundle, because only the bundle knows all ten coaches exist:
 `/ai-coach:start` (day one — reads the repo, works out which setup steps this project still needs
 and which flags they want, then hands you one line to paste, or runs the documentation steps itself
 with `--run`), `/ai-coach:wrap` (finds what identity is missing, asks for all of it in one
@@ -171,14 +174,16 @@ command which reaches that gate. Reading code and writing notes has no owner in 
 so `/start --run` simply performs those. A step whose plugin is
 not installed is skipped by name, never a failure.
 
-Nine of the twenty-five skills are model-invocable. `recall`, so Claude reaches for memory unprompted
+Ten of the twenty-six skills are model-invocable. `recall`, so Claude reaches for memory unprompted
 when a question matches prior work, and `dispatch`, the rules for a prompt whose reader cannot ask a
 follow-up — advice that has to be remembered before it applies is advice that never applies. Neither
 has a side effect. The other four — `onboard`, `map`, `study`, `blueprint` — do write files, and
 they are reachable only so that `--tour` and `/ai-coach:start --run` can chain them; each
 description says it never fires on its own. `debrief`, `handoff` and `roster` joined them in
 v1.15.0 for `/ai-coach:wrap`, and they keep every gate they had — the debrief still shows its four
-sections and waits. Everything else waits for you.
+sections and waits. `artifact-style` joined in v1.16.0 so `/map` and `/blueprint` can load it
+before they publish; it reads at most six project files and writes only the page. Everything else
+waits for you.
 
 Every CLI-and-format skill is pinned to Haiku at low effort — that work should never bill at
 frontier rates (`ingest` joins that tier: routing and refinement are mechanical). The rest stay on

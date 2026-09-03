@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "Skill", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/artifact-nudge.js\"", "timeout": 5, "statusMessage": "Checking for an artifact skill..." }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Artifact", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/artifact-lint.js\"", "timeout": 10, "statusMessage": "Linting the page..." }] }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "Trigger accuracy for design-coach:artifact-style. The boundary that matters: this skill owns how an Artifact PAGE is built (overflow, zoom wrappers, fonts, palette, lint); chart colour systems stay with the native dataviz skill, Figma-style mockups with the native design skill, and the business content of a page with strategy-coach:blueprint.",
+  "evals": [
+    { "prompt": "publish this report as an artifact page", "expect": "artifact-style" },
+    { "prompt": "the diagram on the page is cut off and the labels overflow — fix the artifact", "expect": "artifact-style" },
+    { "prompt": "make the architecture page use our project's fonts and colours", "expect": "artifact-style" },
+    { "prompt": "lint the html before I publish it", "expect": "artifact-style" },
+    { "prompt": "pick a categorical palette for these six series", "expect": "dataviz" },
+    { "prompt": "mock up the onboarding screen so I can tweak it by hand", "expect": "design" },
+    { "prompt": "document the business processes this system implements", "expect": "strategy-coach:blueprint" }
+  ]
+}
