@@ -13,7 +13,7 @@ width and scrolls inside `.tablewrap` instead of breaking words character by cha
 
 | Content | CSS (skeleton class) | Reveal | Why this and not another |
 |---|---|---|---|
-| table cell | `.trunc` — `max-width: 24ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0` | `title="full text"` (native hover tooltip, no JS) | the row must stay one line; the full value is one hover away |
+| table cell | `<td><span class="trunc" title="…">` — `.trunc` is `display: block; max-width: 24ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0` | `title="full text"` (native hover tooltip, no JS) | the row must stay one line; the full value is one hover away. The class goes on a block *inside* the cell: a `td` ignores `max-width` in auto table layout, so on the cell itself nothing truncates |
 | whole table | `.tablewrap { overflow-x: auto }` around it | scroll | WCAG 1.4.10 exempts data tables from reflow; the page never scrolls sideways |
 | card / section title | `.clamp2` — `display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden` | `title` | two lines keeps a card grid aligned; the prefixed form is what ships in every browser today |
 | URL, hash, id, path | `.anywhere` — `overflow-wrap: anywhere` | none needed — it breaks | hiding it makes it unrecoverable; breaking it keeps it copyable |

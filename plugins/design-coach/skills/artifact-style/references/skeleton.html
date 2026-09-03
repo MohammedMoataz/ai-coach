@@ -68,7 +68,7 @@ table { border-collapse: collapse; width: 100%; }
 caption { text-align: left; color: var(--muted); padding: 0 0 6px; font-size: 14px; }
 th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: normal; }
 thead th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
-.trunc { max-width: 24ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } /* pair with title="full text" */
+.trunc { display: block; max-width: 24ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } /* a block INSIDE the td (a td ignores max-width); pair with title="full text" */
 .clamp2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } /* pair with title="" */
 .anywhere { overflow-wrap: anywhere; }                        /* URLs, hashes, ids: break, never hide */
 .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -122,7 +122,7 @@ code { font-family: var(--mono); font-size: .92em; }
       <caption>What the table compares, one line.</caption>
       <thead><tr><th scope="col">Component</th><th scope="col">Talks to</th><th scope="col">Evidence</th></tr></thead>
       <tbody>
-        <tr><td>api</td><td>worker, db</td><td class="trunc" title="src/api/routes/orders.ts:42"><code>src/api/routes/orders.ts:42</code></td></tr>
+        <tr><td>api</td><td>worker, db</td><td><span class="trunc" title="src/api/routes/orders/create-order-handler.ts:142"><code>src/api/routes/orders/create-order-handler.ts:142</code></span></td></tr>
       </tbody>
     </table>
   </div>

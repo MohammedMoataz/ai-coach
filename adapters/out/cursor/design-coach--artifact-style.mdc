@@ -60,7 +60,7 @@ The skeleton sets `min-width: 0` on `.row > *` and `.grid > *` and `overflow-wra
 
 | Content | Fix | Never |
 |---|---|---|
-| table cell | `.trunc` + `title="full text"`; the table in `.tablewrap` | wrap a wide table onto the page |
+| table cell | a `.trunc` block inside the `td` + `title="full text"`; the table in `.tablewrap` | wrap a wide table onto the page; `.trunc` on the `td` itself (it ignores `max-width`) |
 | card / section title | `.clamp2` + `title` | let it push the card taller than its row |
 | URL, hash, id | `.anywhere` — break it | hide it: a truncated URL is unrecoverable |
 | code | `pre` scrolls, `white-space: pre` | wrap code |
