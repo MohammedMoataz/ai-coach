@@ -11,7 +11,7 @@ fullscreen to see both.
 figure.zoomable[style="--zoom-height: 320px"]   fixed height per figure (default 420px)
   figcaption                  the claim the picture makes, one sentence
   .zoom-toolbar               icon cluster overlaid bottom-right: zoom out · level · zoom in │ reset · fullscreen
-  .zoom-viewport[tabindex=0]  height: var(--zoom-height); overflow:auto; touch-action:none
+  .zoom-viewport[tabindex=0]  height: var(--zoom-height); overflow:auto; touch-action:none; scrollbars hidden
     .zoom-stage               centres a small drawing; grows with a zoomed one
       svg[viewBox][role=img][aria-label]      inline drawing
       — or —
@@ -35,7 +35,9 @@ above the drawing.
 One `<script>` at the end of the page initialises every `.zoomable`. It sizes the svg in CSS
 pixels — `width`/`height` in px, no `transform` — so the viewport's own scroll box grows with
 the zoom, text re-rasterises sharp, and native scrolling (arrow keys on the focused viewport,
-trackpad, scrollbar) keeps working.
+trackpad) keeps working. **No scrollbars are shown** (`scrollbar-width: none` +
+`::-webkit-scrollbar { display: none }`): a diagram viewer pans by drag and wheel, and a
+scrollbar on a drawing reads as a broken layout, not a control.
 
 | Gesture | Result |
 |---|---|

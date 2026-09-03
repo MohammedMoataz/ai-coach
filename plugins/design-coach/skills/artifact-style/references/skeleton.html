@@ -83,7 +83,8 @@ code { font-family: var(--mono); font-size: .92em; }
    Controls are the cluster markdown viewers use: icon buttons overlaid bottom-right. */
 .zoomable { position: relative; margin: 24px 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); --zoom-height: 420px; }
 .zoomable figcaption { padding: 10px 14px; font-size: 14px; color: var(--muted); border-bottom: 1px solid var(--border); }
-.zoom-viewport { height: var(--zoom-height); overflow: auto; overscroll-behavior: contain; touch-action: none; cursor: grab; }
+.zoom-viewport { height: var(--zoom-height); overflow: auto; overscroll-behavior: contain; touch-action: none; cursor: grab; scrollbar-width: none; } /* pans by drag/wheel; no scrollbars, like a diagram viewer */
+.zoom-viewport::-webkit-scrollbar { display: none; }
 .zoom-viewport:focus-visible { outline-offset: -2px; }
 .zoom-viewport.dragging { cursor: grabbing; user-select: none; }
 .zoom-stage { width: max-content; min-width: 100%; min-height: 100%; padding: 12px; display: grid; place-items: center; }
