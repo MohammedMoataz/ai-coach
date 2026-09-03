@@ -6,7 +6,7 @@
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "plugins": [
     {
       "name": "ai-coach-core",
@@ -112,6 +112,18 @@
         "requirements",
         "data-analysis",
         "reporting"
+      ]
+    },
+    {
+      "name": "design-coach",
+      "source": "./plugins/design-coach",
+      "description": "How a published page should look, made checkable: text that never leaves its box, every diagram in a zoomable wrapper, the project's own fonts and palette when it has them, WCAG contrast in both themes, and a lint that runs before the Artifact tool publishes — /artifact-style.",
+      "category": "productivity",
+      "tags": [
+        "design",
+        "artifact",
+        "diagrams",
+        "accessibility"
       ]
     },
     {

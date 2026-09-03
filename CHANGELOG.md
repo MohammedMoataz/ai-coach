@@ -3,6 +3,52 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.16.0 — The page is checked before it ships (2026-09-04)
+
+**design-coach 1.0.0 · ai-coach 1.16.0 · investigation-coach 1.5.1 · strategy-coach 1.5.1**
+
+Every Artifact page this coach has published — `/map`'s architecture, `/blueprint`'s processes,
+the landing page — was built on Claude Code's own `artifact-design` skill, and every one of them
+needed the same four fixes by hand afterwards: a label that had escaped its table cell, a diagram
+that could only be scrolled sideways and never read, a font picked fresh each time, a palette
+picked fresh each time. The native skill says "clipped text is a bug" and stops. This release adds
+the layer under that sentence.
+
+### design-coach, one skill
+
+`/design-coach:artifact-style` is loaded alongside the native skill and adds what it leaves
+implicit, as rules a script can check. Text never leaves its box — a fix per kind of content
+(truncate a table cell and put the full value on hover, clamp a card title, break a URL, scroll
+code, shorten a diagram label, never truncate one), and the root cause named: a flex child that
+defaults to `min-width: auto`. Every diagram, inline SVG or mermaid, sits in one wrapper the reader
+controls — fit, zoom around the cursor, drag, pinch, fullscreen, keyboard — with the script on the
+wrapper, never inside the drawing, so `artifact-diagramming`'s rule stands. Fonts and palette
+start from the project: a bounded read of its Tailwind config, `:root` tokens, theme object or
+font links, written up as a five-line design brief the reader sees; IBM Plex on a teal scale is
+what a repo gets when it declares nothing, never a house style. Dark mode is designed, not
+inverted, and both themes are held to WCAG 2.2 contrast.
+
+`scripts/check-artifact.js` is the check — zero dependencies, exit 1 on any error: a diagram
+outside its wrapper, a theme state missing or drifting from the other two, a body without a token
+background, a font stack without a generic tail, a resource from a host the Artifact CSP will
+silently drop, text below 4.5:1 or a stroke below 3:1 in either theme, a stray doctype. The
+skeleton the skill builds from passes it as shipped; that is the skill's self-test.
+
+### The one hook outside the engine
+
+Until now `ai-coach-core` shipped every hook and the coaches shipped skills only. design-coach
+ships two, and the exception is deliberate: a `PostToolUse` nudge that fires when a native
+artifact skill loads and says to load this one — the case where a page is built with no coach
+skill involved, which is most pages — and a `PreToolUse` lint on the Artifact tool that runs the
+same script on the file about to be published and *asks* when it fails. Asks, never blocks: the
+list of errors is in the prompt, and the decision stays with you. Neither touches memory or the
+engine; a sibling plugin's files are unreachable from a hook anyway.
+
+`/investigation-coach:map` and `/strategy-coach:blueprint` chain the skill by name before they
+publish, and skip it by name when the plugin is not installed. `artifact-style` is model-invocable
+so that chain can happen — about 210 tokens of description added to every session, on the same
+terms as the documentation skills in v1.14.0.
+
 ## v1.15.0 — One command, one question, one review (2026-09-02)
 
 **ai-coach 1.15.0 · memory-coach 1.4.0**

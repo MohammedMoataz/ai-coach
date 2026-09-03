@@ -40,7 +40,10 @@ do, and the reason not to reach for a subscription whiteboard instead.
    same sweep. An edge without evidence is either dropped or kept as INFERRED — never silently
    promoted, and never inherited from stack.md without its own `file:line`.
 2. **Render** (rules and canvas format in `references/canvas.md` — load before writing):
-   - **Artifact page** — load the `artifact-design` skill if it is available, then publish: a C4-style
+   - **Artifact page** — load the `artifact-design` skill if it is available, then
+     `/design-coach:artifact-style` (skip by name if that plugin is not installed — it puts every
+     diagram in a zoomable wrapper, keeps text inside its box, takes the project's own fonts and
+     palette, and lints the file before it publishes), then publish: a C4-style
      context + container view drawn as mermaid `flowchart`/`subgraph` (never mermaid's
      experimental C4 diagram type), one `sequenceDiagram` per core flow. Split any diagram past
      ~15-20 nodes. The page states its evidence discipline and marks INFERRED edges visibly.
