@@ -8,15 +8,29 @@ fullscreen to see both.
 ## The wrapper — copy from `skeleton.html` `<!-- §zoom -->`
 
 ```
-figure.zoomable
+figure.zoomable[style="--zoom-height: 320px"]   fixed height per figure (default 420px)
   figcaption                  the claim the picture makes, one sentence
-  .zoom-toolbar               buttons: − + Fit 1:1 ⛶   and a live zoom-level
-  .zoom-viewport[tabindex=0]  overflow:auto; max-height:70vh; touch-action:none
-    .zoom-stage
+  .zoom-toolbar               icon cluster overlaid bottom-right: zoom out · level · zoom in │ reset · fullscreen
+  .zoom-viewport[tabindex=0]  height: var(--zoom-height); overflow:auto; touch-action:none
+    .zoom-stage               centres a small drawing; grows with a zoomed one
       svg[viewBox][role=img][aria-label]      inline drawing
       — or —
       pre.mermaid                             host-rendered
 ```
+
+**The viewport's height is fixed** — set per figure with `--zoom-height`, never left to the
+drawing. Zooming changes what is inside the box, not the box, so the page never reflows or jumps
+while the reader is reading below it. Pick the height from the drawing's shape: 320 px for a
+wide flow, 420 px (default) for a container view, 560 px for a tall sequence diagram; fullscreen
+lifts the limit.
+
+**The controls are the cluster markdown viewers already taught readers** (GitHub's mermaid
+viewer, the Mermaid live editor): icon buttons overlaid at the bottom-right of the drawing, in
+this order — zoom out, the live level, zoom in, a separator, reset view, fullscreen. Icons are
+inline 16 px SVG strokes on `currentColor`; every button is a real `<button>` with `aria-label`
+and a `title` naming its key; 28 px targets (WCAG 2.5.8 asks 24). The cluster sits at 85 %
+opacity until the figure is hovered or focused. Nothing else — no text buttons, no toolbar row
+above the drawing.
 
 One `<script>` at the end of the page initialises every `.zoomable`. It sizes the svg in CSS
 pixels — `width`/`height` in px, no `transform` — so the viewport's own scroll box grows with
@@ -26,16 +40,16 @@ trackpad, scrollbar) keeps working.
 | Gesture | Result |
 |---|---|
 | Ctrl/⌘ + wheel (a trackpad pinch arrives this way) | zoom around the cursor |
-| plain wheel | scrolls, untouched |
+| plain wheel | scrolls the viewport; at its edge, stops (`overscroll-behavior: contain`) |
 | drag with mouse or one finger | pan |
 | two fingers | pinch zoom around the midpoint |
 | `+` `=` / `-` | zoom in / out (viewport focused) |
-| `0` / `1` | fit to width / actual size |
-| ⛶ | fullscreen on the figure (hidden when the host forbids it) |
-| Fit / 1:1 buttons | as named; ≥ 24 px targets (WCAG 2.5.8), real `<button>`s with `aria-label` |
+| `0` / reset button | contain: the whole drawing visible, never above 1:1 |
+| `1` | actual size |
+| fullscreen button | fullscreen on the figure (hidden when the host forbids it) |
 
-Initial state: fit to width when the drawing is wider than the viewport, 1:1 otherwise.
-`@media (prefers-reduced-motion: no-preference)` gates the one short transition.
+Initial state: reset (contain). `@media (prefers-reduced-motion: no-preference)` gates the one
+short transition.
 
 Nothing goes inside the `<svg>`: no `<script>`, `<style>`, or `<foreignObject>`
 (artifact-diagramming's rule; the lint enforces it). The script lives on the page, the wrapper

@@ -20,7 +20,7 @@ width and scrolls inside `.tablewrap` instead of breaking words character by cha
 | code | `pre { overflow-x: auto; white-space: pre }` | scroll | wrapped code changes meaning; a long line scrolls |
 | prose in a `<pre>` | `pre.wrap { white-space: pre-wrap }` | — | it is text, not code |
 | diagram / SVG label | shorten the words; or a smaller `font-size` on that `<text>` | — | an ellipsised node label is meaningless; a diagram may scroll (1.4.10) but its words must read |
-| KPI number | `.kpi { font-size: clamp(22px, 4vw, 36px) }` | — | numbers shrink; they are never clamped or truncated |
+| KPI number | `.kpi { font-size: clamp(22px, 4vw, 36px) }`, in a card | — | numbers shrink; they are never clamped or truncated. Never inside a table: every cell of a table shares one font size (the skeleton sets `th, td { font-size: 15px }`), and a figure that needs to be big is a card, not a row |
 | nav / TOC item | `.trunc` + `title` | hover | one line per item |
 | heading | `text-wrap: balance`, `clamp()` size | — | wraps by design; never nowrap |
 

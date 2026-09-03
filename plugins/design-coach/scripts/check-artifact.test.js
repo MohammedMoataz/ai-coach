@@ -31,7 +31,9 @@ assert.match(errorsOf(skeleton.replace('fonts.googleapis.com/css2', 'fonts.examp
 assert.match(errorsOf(skeleton.replace('<title>Page Name</title>', '')), /no <title>/);
 assert.match(errorsOf('<!doctype html><html>' + skeleton), /<!doctype> present/);
 assert.match(errorsOf(skeleton.replace('<defs>', '<style>.x{}</style><defs>')), /<style> inside an <svg>/);
-assert.match(errorsOf(skeleton.replace('<svg viewBox="0 0 640 200" role="img"', '<svg viewBox="0 0 640 200" role="img" class="x">').replace(/<figure class="zoomable">[\s\S]*?<div class="zoom-stage">/, '<div><div>')), /zoomable/);
+assert.match(errorsOf(skeleton + '<svg viewBox="0 0 640 200" role="img" aria-label="loose"></svg>'), /svg "loose" is not inside a figure\.zoomable/);
+// toolbar icons are 16px svgs without role="img" — never mistaken for diagrams
+assert.strictEqual(check(skeleton).errors.filter((e) => /offset/.test(e)).length, 0);
 // a mermaid block outside the wrapper is the same error
 assert.match(errorsOf(skeleton + '<pre class="mermaid">flowchart LR</pre>'), /mermaid block .* not inside/);
 // the one dark block that drifts from the other
@@ -39,6 +41,7 @@ assert.match(errorsOf(skeleton.replace('--accent-soft: #023b37;\n  }\n}', '--acc
 // warnings
 assert.match(check(skeleton.replace(/\.trunc \{[^}]*min-width: 0;/, '.trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;').replace(/\.row > \*, \.grid > \* \{ min-width: 0; \}/, '')).warnings.join('\n'), /min-width: 0/);
 assert.match(check(skeleton.replace('<div class="tablewrap">', '<div>')).warnings.join('\n'), /no scrolling ancestor/);
+assert.match(check(skeleton.replace('<td>api</td>', '<td><span class="kpi">9</span></td>')).warnings.join('\n'), /inside a table cell/);
 
 // contrast maths against the WCAG worked examples
 assert.strictEqual(contrast('#000', '#fff').toFixed(0), '21');

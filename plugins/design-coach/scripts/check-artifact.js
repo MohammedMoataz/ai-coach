@@ -122,6 +122,9 @@ function check(html) {
       if (!/class="[^"]*zoom-viewport/.test(seg) || !/class="[^"]*zoom-stage/.test(seg)) err(`figure.zoomable at offset ${node.index} lacks .zoom-viewport > .zoom-stage — copy the wrapper from skeleton.html`);
     }
     if (node.name === 'pre' && !node.classes.includes('mermaid')) pres++;
+    if (node.classes.includes('kpi') && stack.some((n) => n.name === 'td' || n.name === 'th')) {
+      warn(`.kpi at offset ${node.index} is inside a table cell — every cell shares one font size; a big number is a card, not a row`);
+    }
     if (node.name === 'table') {
       tables++;
       const scrolls = stack.some((n) => n.classes.includes('tablewrap') || /overflow(?:-x)?\s*:\s*(?:auto|scroll)/i.test(attr(n.attrs, 'style') || ''));

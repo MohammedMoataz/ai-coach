@@ -66,7 +66,7 @@ button, .btn { min-height: 28px; padding: 0 10px; border: 1px solid var(--border
 .tablewrap { overflow-x: auto; max-width: 100%; }              /* a table scrolls; the page never does */
 table { border-collapse: collapse; width: 100%; }
 caption { text-align: left; color: var(--muted); padding: 0 0 6px; font-size: 14px; }
-th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: normal; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: normal; font-size: 15px; } /* one size for every cell */
 thead th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
 .trunc { display: block; max-width: 24ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } /* a block INSIDE the td (a td ignores max-width); pair with title="full text" */
 .clamp2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } /* pair with title="" */
@@ -77,23 +77,28 @@ pre { overflow-x: auto; white-space: pre; margin: 0 0 12px; padding: 12px 14px; 
 pre.wrap { white-space: pre-wrap; }                            /* prose in a pre, not code */
 code { font-family: var(--mono); font-size: .92em; }
 
-/* §zoom — every diagram (inline svg or mermaid) lives in figure.zoomable. The script sizes the
-   svg in CSS pixels (no transforms, so the scroll box grows with it and text stays crisp). */
-.zoomable { margin: 24px 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-.zoomable figcaption { padding: 10px 14px 0; font-size: 14px; color: var(--muted); }
-.zoom-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; }
-.zoom-toolbar button { min-width: 28px; height: 28px; padding: 0 8px; font: 13px/1 var(--mono); }
-.zoom-toolbar button:hover { border-color: var(--accent); }
-.zoom-level { margin-left: auto; font: 12px/1 var(--mono); color: var(--muted); }
-.zoom-viewport { overflow: auto; max-height: 70vh; border-top: 1px solid var(--border); overscroll-behavior: contain; touch-action: none; cursor: grab; }
+/* §zoom — every diagram (inline svg or mermaid) lives in figure.zoomable. The viewport has a
+   FIXED height (--zoom-height, per figure) so zooming never reflows the page; the script sizes
+   the svg in CSS pixels inside it (no transforms, so the scroll box grows and text stays crisp).
+   Controls are the cluster markdown viewers use: icon buttons overlaid bottom-right. */
+.zoomable { position: relative; margin: 24px 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); --zoom-height: 420px; }
+.zoomable figcaption { padding: 10px 14px; font-size: 14px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.zoom-viewport { height: var(--zoom-height); overflow: auto; overscroll-behavior: contain; touch-action: none; cursor: grab; }
 .zoom-viewport:focus-visible { outline-offset: -2px; }
 .zoom-viewport.dragging { cursor: grabbing; user-select: none; }
-.zoom-stage { width: max-content; min-width: 100%; padding: 12px; }
+.zoom-stage { width: max-content; min-width: 100%; min-height: 100%; padding: 12px; display: grid; place-items: center; }
 .zoom-stage svg { display: block; max-width: none; }
 .zoom-stage svg text { font-family: var(--mono); }
 .zoom-stage .mermaid { margin: 0; padding: 0; background: none; white-space: normal; }
+.zoom-toolbar { position: absolute; right: 10px; bottom: 10px; z-index: 1; display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); opacity: .85; }
+.zoom-toolbar:hover, .zoom-toolbar:focus-within, .zoomable:hover .zoom-toolbar { opacity: 1; }
+.zoom-toolbar button { width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--text); display: grid; place-items: center; }
+.zoom-toolbar button:hover { background: var(--surface-2); color: var(--accent); }
+.zoom-toolbar button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.zoom-toolbar .sep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+.zoom-level { min-width: 4ch; padding: 0 6px; text-align: center; font: 11px/1 var(--mono); color: var(--muted); }
 .zoomable:fullscreen { display: flex; flex-direction: column; margin: 0; border: 0; border-radius: 0; background: var(--bg); }
-.zoomable:fullscreen .zoom-viewport { flex: 1; max-height: none; }
+.zoomable:fullscreen .zoom-viewport { flex: 1; height: auto; }
 @media (prefers-reduced-motion: no-preference) { .zoom-stage svg { transition: width .12s ease-out, height .12s ease-out; } }
 
 /* §print */
@@ -112,8 +117,8 @@ code { font-family: var(--mono); font-size: .92em; }
   <section class="grid">
     <div class="card">
       <h3 class="clamp2" title="A card title long enough to need a second line and then some">A card title long enough to need a second line and then some</h3>
-      <p class="kpi num">1,284</p>
-      <p class="muted">Label</p>
+      <p class="kpi num">1,284,930</p>
+      <p class="muted">Label — a KPI lives in a card, never in a table cell</p>
     </div>
   </section>
 
@@ -127,15 +132,16 @@ code { font-family: var(--mono); font-size: .92em; }
     </table>
   </div>
 
-  <figure class="zoomable">
+  <figure class="zoomable" style="--zoom-height: 320px">
     <figcaption>What this picture shows — the claim, not the title.</figcaption>
+    <!-- §zoom controls: the cluster markdown viewers show — zoom out, zoom in, level, reset (fit), fullscreen -->
     <div class="zoom-toolbar" role="group" aria-label="Diagram controls">
-      <button type="button" data-zoom="out" aria-label="Zoom out">&minus;</button>
-      <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
-      <button type="button" data-zoom="fit" aria-label="Fit to width">Fit</button>
-      <button type="button" data-zoom="reset" aria-label="Actual size">1:1</button>
-      <button type="button" data-zoom="full" aria-label="Fullscreen">&#x26F6;</button>
+      <button type="button" data-zoom="out" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14M5 7h4"/></svg></button>
       <span class="zoom-level" aria-live="polite"></span>
+      <button type="button" data-zoom="in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14M5 7h4M7 5v4"/></svg></button>
+      <span class="sep"></span>
+      <button type="button" data-zoom="fit" aria-label="Reset view" title="Reset view (0) · actual size (1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
+      <button type="button" data-zoom="full" aria-label="Fullscreen" title="Fullscreen"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2H14v4.5M6.5 14H2V9.5M14 2 9.5 6.5M2 14l4.5-4.5"/></svg></button>
     </div>
     <div class="zoom-viewport" tabindex="0" aria-label="Diagram; drag to pan, Ctrl+wheel or pinch to zoom, + - 0 1 keys">
       <div class="zoom-stage">
@@ -161,10 +167,11 @@ flowchart LR ...</pre> — the host renders it into an svg; the script waits for
 </main>
 
 <script>
-/* §zoom — one script, every .zoomable. Sizes the svg in px (no transforms), so the viewport's
-   own scroll box grows with the zoom. Pointer events: one finger/mouse drags to pan, two fingers
-   pinch; Ctrl/⌘+wheel zooms around the cursor and a plain wheel still scrolls. Waits for a
-   host-rendered mermaid svg through a MutationObserver. */
+/* §zoom — one script, every .zoomable. Sizes the svg in px (no transforms) inside a viewport of
+   fixed height, so the page never reflows. Reset = contain (whole drawing visible), or 1:1 when
+   it already fits. Pointer events: one finger/mouse drags to pan, two fingers pinch; Ctrl/⌘+wheel
+   zooms around the cursor and a plain wheel still scrolls. Waits for a host-rendered mermaid svg
+   through a MutationObserver. */
 (function () {
   var MIN = 0.25, MAX = 8, STEP = 1.25;
   function init(fig) {
@@ -187,8 +194,11 @@ flowchart LR ...</pre> — the host renders it into an svg; the script waits for
       if (cx != null) { vp.scrollLeft = ax * k - (cx - r.left); vp.scrollTop = ay * k - (cy - r.top); }
       if (level) level.textContent = Math.round(z * 100) + '%';
     }
-    function fit() { apply((vp.clientWidth - 26) / base); vp.scrollLeft = 0; vp.scrollTop = 0; }
-    if (base > vp.clientWidth - 26) fit(); else apply(1);
+    function fit() {
+      var s = Math.min((vp.clientWidth - 26) / base, (vp.clientHeight - 26) / (base * ratio));
+      apply(Math.min(1, s)); vp.scrollLeft = 0; vp.scrollTop = 0;
+    }
+    fit();
 
     fig.addEventListener('click', function (e) {
       var b = e.target.closest('[data-zoom]'); if (!b) return;

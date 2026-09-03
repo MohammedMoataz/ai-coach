@@ -65,7 +65,7 @@ The skeleton sets `min-width: 0` on `.row > *` and `.grid > *` and `overflow-wra
 | URL, hash, id | `.anywhere` — break it | hide it: a truncated URL is unrecoverable |
 | code | `pre` scrolls, `white-space: pre` | wrap code |
 | diagram label | shorten the words or shrink the font | truncate — an ellipsised node is meaningless |
-| KPI number | `.kpi` shrinks with `clamp()` | clamp lines |
+| KPI number | `.kpi` shrinks with `clamp()` — in a card | clamp lines; put it in a table (every cell shares one font size) |
 
 WCAG 1.4.10 is the license: tables, diagrams and code may scroll in two dimensions; everything
 else reflows at 320 px.
@@ -73,10 +73,12 @@ else reflows at 320 px.
 ### 2. Every diagram is zoomable — `$AICOACH_REPO/plugins/design-coach/skills/artifact-style/references/diagrams.md`
 
 Inline SVG or a mermaid block, it goes inside `figure.zoomable` from the skeleton: caption
-stating the claim, a toolbar (− + Fit 1:1 fullscreen), a scrolling viewport, the drawing. The
-script sizes the svg in CSS pixels — no transforms, so the scroll box grows with the zoom and
-text stays sharp. Ctrl/⌘+wheel and pinch zoom around the cursor; drag pans; a plain wheel still
-scrolls the page; `+ − 0 1` work from the keyboard. Mermaid is rendered by the host into an
+stating the claim, a viewport of **fixed height** (`--zoom-height` per figure — zooming changes
+what is in the box, never the box, so the page does not jump), the drawing, and the control
+cluster markdown viewers already use — icon buttons overlaid bottom-right: zoom out, level,
+zoom in, reset, fullscreen. The script sizes the svg in CSS pixels — no transforms, so the
+scroll box grows with the zoom and text stays sharp. Ctrl/⌘+wheel and pinch zoom around the
+cursor; drag pans; a plain wheel scrolls the viewport; `+ − 0 1` work from the keyboard. Mermaid is rendered by the host into an
 `svg` under your `<pre class="mermaid">` — the script waits for it with a `MutationObserver`,
 and grows mermaid's type with `%%{init:{'themeVariables':{'fontSize':'26px'}}}%%` because the
 host's default is unreadable at fit-to-width. Nothing is added inside the `<svg>` itself;
