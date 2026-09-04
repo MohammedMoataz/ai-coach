@@ -37,7 +37,7 @@ assert.strictEqual(check(skeleton).errors.filter((e) => /offset/.test(e)).length
 // a mermaid block outside the wrapper is the same error
 assert.match(errorsOf(skeleton + '<pre class="mermaid">flowchart LR</pre>'), /mermaid block .* not inside/);
 // the one dark block that drifts from the other
-assert.match(errorsOf(skeleton.replace('--accent-2-ink: #041f2b;\n  }\n}', '--accent-2-ink: #041f2b; --extra: #fff;\n  }\n}')), /different token names/);
+assert.match(errorsOf(skeleton.replace('--accent-2-ink: #00132d;\n  }\n}', '--accent-2-ink: #00132d; --extra: #fff;\n  }\n}')), /different token names/);
 // warnings
 assert.match(check(skeleton.replace(/\.trunc \{[^}]*min-width: 0;/, '.trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;').replace(/\.row > \*, \.grid > \* \{ min-width: 0; \}/, '')).warnings.join('\n'), /min-width: 0/);
 assert.match(check(skeleton.replace('<div class="tablewrap">', '<div>')).warnings.join('\n'), /no scrolling ancestor/);

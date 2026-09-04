@@ -100,11 +100,12 @@ query guarded by `:root:not([data-theme="light"])`, dark again under `:root[data
 is followed verbatim — the lint checks that the same names appear in all three. The fallback is
 five colours — sea `#05668d`, teal `#028090`, green `#00a896`, mint `#02c39a`, lime `#f0f3bd` —
 placed by contrast, not by mood: in light, lime-tinted paper, sea ink, teal links, mint
-highlights; in dark, deep-sea ground, lime ink, mint links. Every text/ground pair clears 4.5:1
-in both themes and the lint prints the numbers. Dark mode is a second placement of the same five,
-not an inversion: near-black sea not `#000`, a lighter surface for elevation, the lighter mint
-as the accent. Three hues plus neutrals at most on any one page; categorical series from
-Okabe-Ito; hue never carries magnitude.
+highlights. Dark stands on its own ground — a navy scale (`#00132d` `#001e45` `#002d67`
+`#00377e`) with cool off-white ink, mint links and teal control borders; the lime and the sea
+stay in the light theme. Every text/ground pair clears 4.5:1 in both themes and the lint prints
+the numbers. Dark mode is a second palette, not an inversion: navy not `#000`, a lighter navy
+for elevation, the lighter mint as the accent. Three hues plus neutrals at most on any one page;
+categorical series from Okabe-Ito; hue never carries magnitude.
 
 ## Related
 

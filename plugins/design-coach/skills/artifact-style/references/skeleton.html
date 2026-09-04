@@ -10,8 +10,8 @@
 /* §tokens — light on bare :root; the same names redefined twice for dark (system preference,
    then the viewer's explicit toggle). Fallback palette, five colours: sea #05668d · teal #028090
    · green #00a896 · mint #02c39a · lime #f0f3bd. Light: lime-tinted paper, sea ink, teal links,
-   mint highlights. Dark: deep sea ground, lime ink, mint links. Every text/ground pair below
-   clears WCAG 4.5:1 — the lint prints the numbers. */
+   mint highlights. Dark: a navy ground (#00132d #001e45 #002d67 #00377e), cool off-white ink,
+   mint links. Every text/ground pair below clears WCAG 4.5:1 — the lint prints the numbers. */
 :root {
   color-scheme: light;
   --bg: #fdfdf4;  --surface: #f6f8e3;  --surface-2: #f0f3bd;
@@ -26,20 +26,20 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #041f2b;  --surface: #063041;  --surface-2: #05668d;
-    --border: #0d5566;  --border-strong: #028090;
-    --text: #f0f3bd;  --muted: #9fd3cd;
-    --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #041f2b;
-    --accent-2: #00a896;  --accent-2-ink: #041f2b;
+    --bg: #00132d;  --surface: #001e45;  --surface-2: #002d67;
+    --border: #00377e;  --border-strong: #028090;
+    --text: #e8eef6;  --muted: #9fb3cc;
+    --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #00132d;
+    --accent-2: #00a896;  --accent-2-ink: #00132d;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #041f2b;  --surface: #063041;  --surface-2: #05668d;
-  --border: #0d5566;  --border-strong: #028090;
-  --text: #f0f3bd;  --muted: #9fd3cd;
-  --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #041f2b;
-  --accent-2: #00a896;  --accent-2-ink: #041f2b;
+  --bg: #00132d;  --surface: #001e45;  --surface-2: #002d67;
+  --border: #00377e;  --border-strong: #028090;
+  --text: #e8eef6;  --muted: #9fb3cc;
+  --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #00132d;
+  --accent-2: #00a896;  --accent-2-ink: #00132d;
 }
 
 /* §base */

@@ -42,49 +42,52 @@ IBM Plex Mono is a text face, not a display face, so its reasoning still holds.
 ## The fallback palette — five colours, sea to lime
 
 ```
-sea    #05668d    teal   #028090    green  #00a896    mint   #02c39a    lime   #f0f3bd
+light   sea #05668d · teal #028090 · green #00a896 · mint #02c39a · lime #f0f3bd
+dark    navy #00132d · #001e45 · #002d67 · #00377e   (+ the mint, green and teal above)
 ```
 
 Semantic names; components use the names, never the hex. Light on the bare `:root`, dark twice
 (the native three-state pattern — `artifact-design` explains it; the skeleton implements it; the
-lint checks that all three blocks define the same names). The five are *placed* by measured
-contrast, and the two themes place them differently: what is ink in one is ground in the other.
+lint checks that all three blocks define the same names). The colours are *placed* by measured
+contrast. Dark is not the light palette darkened — a darkened sea read badly — it stands on a
+navy ground of its own and borrows only the greens for accent.
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `--bg` | `#fdfdf4` lime-tinted paper | `#041f2b` deep sea | page ground (`body { background: var(--bg) }`) |
-| `--surface` | `#f6f8e3` | `#063041` | cards, sticky table head |
-| `--surface-2` | `#f0f3bd` **lime** | `#05668d` **sea** | code blocks, buttons, elevated |
-| `--border` | `#b8dfd8` | `#0d5566` | hairlines |
+| `--bg` | `#fdfdf4` lime-tinted paper | `#00132d` **navy** | page ground (`body { background: var(--bg) }`) |
+| `--surface` | `#f6f8e3` | `#001e45` **navy** | cards, sticky table head |
+| `--surface-2` | `#f0f3bd` **lime** | `#002d67` **navy** | code blocks, buttons, elevated |
+| `--border` | `#b8dfd8` | `#00377e` **navy** | hairlines |
 | `--border-strong` | `#86cfc3` | `#028090` **teal** | control borders |
-| `--text` | `#073b4f` deep sea | `#f0f3bd` **lime** | body text, `currentColor` for strokes |
-| `--muted` | `#05668d` **sea** | `#9fd3cd` | secondary text, captions |
+| `--text` | `#073b4f` deep sea | `#e8eef6` cool off-white | body text, `currentColor` for strokes |
+| `--muted` | `#05668d` **sea** | `#9fb3cc` | secondary text, captions |
 | `--accent` | `#028090` **teal** | `#02c39a` **mint** | links, emphasis strokes, primary fills |
 | `--accent-hover` | `#05668d` **sea** | `#5fe3c3` | hover state |
-| `--accent-contrast` | `#ffffff` | `#041f2b` | text on an `--accent` fill |
+| `--accent-contrast` | `#ffffff` | `#00132d` **navy** | text on an `--accent` fill |
 | `--accent-2` | `#02c39a` **mint** | `#00a896` **green** | tags, highlighted rows, a second series |
-| `--accent-2-ink` | `#073b4f` | `#041f2b` | text on an `--accent-2` fill |
+| `--accent-2-ink` | `#073b4f` | `#00132d` **navy** | text on an `--accent-2` fill |
 
-Bold cells are the five colours verbatim; the rest are tints and shades of them (`--text` light
-is the sea darkened; `--bg` light is white pulled toward the lime; `--muted` dark is the green
-lightened). Why the placement is what it is: on paper the mint reads at 2.3:1 and the green at
-3.0:1 — fills, never text — so the teal carries links there (4.57:1) and the sea carries
-secondary text (6.2:1). On the deep-sea ground the mint reads at 7.5:1 and the lime at 14.8:1, so
-they trade roles and become the dark theme's accent and ink. The lint would refuse any other
-arrangement; the table below is what it prints.
+Bold cells are palette colours verbatim; the rest are tints and shades (`--text` light is the
+sea darkened; `--bg` light is white pulled toward the lime; `--muted` dark is the navy lightened
+to a blue-grey). Why the placement is what it is: on paper the mint reads at 2.3:1 and the green
+at 3.0:1 — fills, never text — so the teal carries links there (4.57:1) and the sea carries
+secondary text (6.2:1). On the navy the mint reads at 8.2:1, so it carries links there; the ink
+is a cool off-white rather than the lime, because yellow text on a dark ground is the one
+combination readers reliably call ugly. The lint would refuse any other arrangement; the table
+below is what it prints.
 
 ### Contrast, as the lint computes it (WCAG 2.2)
 
 | Pair | Light | Dark | Needs |
 |---|---|---|---|
-| `--text` on `--bg` | 11.75 | 14.77 | 4.5 (1.4.3) |
-| `--text` on `--surface` | 11.13 | 12.12 | 4.5 |
-| `--text` on `--surface-2` | 10.45 | 5.55 | 4.5 — code on the lime / on the sea |
-| `--muted` on `--bg` | 6.24 | 10.25 | 4.5 |
-| `--muted` on `--surface` | 5.91 | 8.41 | 4.5 |
-| `--accent` on `--bg` | 4.57 | 7.50 | 3 as a stroke or fill (1.4.11); 4.5 as link text |
-| `--accent-contrast` on `--accent` | 4.67 | 7.50 | 4.5 |
-| `--accent-2-ink` on `--accent-2` | 5.31 | 5.70 | 4.5 |
+| `--text` on `--bg` | 11.75 | 15.91 | 4.5 (1.4.3) |
+| `--text` on `--surface` | 11.13 | 14.15 | 4.5 |
+| `--text` on `--surface-2` | 10.45 | 11.45 | 4.5 — code on the lime / on the navy |
+| `--muted` on `--bg` | 6.24 | 8.66 | 4.5 |
+| `--muted` on `--surface` | 5.91 | 7.70 | 4.5 |
+| `--accent` on `--bg` | 4.57 | 8.20 | 3 as a stroke or fill (1.4.11); 4.5 as link text |
+| `--accent-contrast` on `--accent` | 4.67 | 8.20 | 4.5 |
+| `--accent-2-ink` on `--accent-2` | 5.31 | 6.23 | 4.5 |
 
 One number to know: light `--accent` on `--surface` is 4.24 — a link inside a card is a shade
 under 4.5. Links in running text sit on `--bg` and pass; a link that must live on a card can use
@@ -93,13 +96,14 @@ under 4.5. Links in running text sit on `--bg` and pass; a link that must live o
 Run `node scripts/check-artifact.js <page> --verbose` to get this table for any palette,
 including a project's.
 
-## Dark mode is a second placement, not an inversion
+## Dark mode is a second palette, not an inversion
 
-- Near-black *of the palette's own hue* (`#041f2b`, the sea darkened), never `#000` — halation,
-  and no room for elevation.
-- Elevation is a *lighter* surface (`--surface-2` above `--surface` above `--bg`), not a shadow.
-- The accent gets lighter (mint, not teal); the ink is the lime, not white — the page stays in
-  its palette at night. Text loses a little weight visually on dark, so do not thin it further.
+- A deep hue with room above it (`#00132d` navy), never `#000` — halation, and no room for
+  elevation. Darkening the light palette's own hue was tried and read badly.
+- Elevation is a *lighter* surface (`--surface-2` above `--surface` above `--bg`), not a shadow —
+  here three steps of the navy scale.
+- The accent gets lighter (mint, not teal); the ink is a cool off-white, not pure white and not
+  the light theme's lime. Text loses a little weight visually on dark, so do not thin it further.
 - Same token names, redefined in both dark blocks; components never mention a theme.
 - `color-scheme: dark` in the dark blocks so form controls follow.
 
