@@ -17,8 +17,8 @@ fails the page before anyone squints at it. Load the native skill first; this on
 differently). Everything here applies to the single HTML file the Artifact tool publishes.
 
 **Precedence, same as artifact-design's: the user's words, then the project's own system, then
-the fallback.** IBM Plex on a teal scale is what a page gets when the repo declares nothing —
-never a house style to impose on a project that has one.
+the fallback.** IBM Plex on the sea-to-lime palette is what a page gets when the repo declares
+nothing — never a house style to impose on a project that has one.
 
 ## Steps
 
@@ -91,18 +91,20 @@ Google Fonts — the one font host the Artifact CSP admits — with `display=swa
 mono stack: the native dataviz skill's `system-ui` for chart type is overridden here so one
 page has one voice.
 
-### 4. Palette: the project's, else teal, dark mode designed not derived — `references/tokens.md`
+### 4. Palette: the project's, else sea-to-lime, dark mode designed not derived — `references/tokens.md`
 
 Semantic names, never raw hex in components: `--bg --surface --surface-2 --border
---border-strong --text --muted --accent --accent-hover --accent-contrast --accent-soft`. The
-native three-state pattern (light on bare `:root`, dark under the media query guarded by
-`:root:not([data-theme="light"])`, dark again under `:root[data-theme="dark"]`) is followed
-verbatim — the lint checks that the same names appear in all three. The fallback is a teal
-scale on near-white and near-black, with a slate `--muted` so secondary text clears 4.5:1 on
-every surface in both themes; `--accent` is a text-safe teal, not the "solid fill" step. Dark
-mode is a second palette, not an inversion: near-black not `#000`, a lighter surface for
-elevation, a lighter and less saturated accent. Three hues plus neutrals at most; categorical
-series from Okabe-Ito; hue never carries magnitude.
+--border-strong --text --muted --accent --accent-hover --accent-contrast --accent-2
+--accent-2-ink`. The native three-state pattern (light on bare `:root`, dark under the media
+query guarded by `:root:not([data-theme="light"])`, dark again under `:root[data-theme="dark"]`)
+is followed verbatim — the lint checks that the same names appear in all three. The fallback is
+five colours — sea `#05668d`, teal `#028090`, green `#00a896`, mint `#02c39a`, lime `#f0f3bd` —
+placed by contrast, not by mood: in light, lime-tinted paper, sea ink, teal links, mint
+highlights; in dark, deep-sea ground, lime ink, mint links. Every text/ground pair clears 4.5:1
+in both themes and the lint prints the numbers. Dark mode is a second placement of the same five,
+not an inversion: near-black sea not `#000`, a lighter surface for elevation, the lighter mint
+as the accent. Three hues plus neutrals at most on any one page; categorical series from
+Okabe-Ito; hue never carries magnitude.
 
 ## Related
 

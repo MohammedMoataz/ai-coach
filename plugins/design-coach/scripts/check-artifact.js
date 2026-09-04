@@ -172,7 +172,7 @@ function check(html) {
   if (tables && !/\.tablewrap\s*\{[^}]*overflow-x\s*:\s*auto/i.test(css) && !/overflow-x\s*:\s*auto/i.test(css)) warn('tables present but no overflow-x:auto rule in the CSS');
 
   // ---- contrast, both themes ----
-  const pairs = [['--text', '--bg', 4.5], ['--text', '--surface', 4.5], ['--muted', '--bg', 4.5], ['--muted', '--surface', 4.5], ['--accent', '--bg', 3], ['--accent-contrast', '--accent', 4.5]];
+  const pairs = [['--text', '--bg', 4.5], ['--text', '--surface', 4.5], ['--text', '--surface-2', 4.5], ['--muted', '--bg', 4.5], ['--muted', '--surface', 4.5], ['--accent', '--bg', 3], ['--accent-contrast', '--accent', 4.5], ['--accent-2-ink', '--accent-2', 4.5]];
   for (const [theme, t] of [['light', tL], ['dark', tM.size ? tM : tS]]) {
     if (!t.size) continue;
     for (const [fg, bg, min] of pairs) {

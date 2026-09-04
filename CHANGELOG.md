@@ -3,6 +3,21 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.16.1 — The fallback palette is the one that was meant (2026-09-05)
+
+**design-coach 1.0.1 · ai-coach 1.16.1**
+
+v1.16.0 shipped the fallback palette as a Radix/Tailwind teal scale. The palette that was meant
+is five colours — sea `#05668d`, teal `#028090`, green `#00a896`, mint `#02c39a`, lime `#f0f3bd`
+— so the skeleton's tokens are now placed from those: in light, lime-tinted paper with sea ink,
+teal links and mint highlights; in dark, a deep-sea ground with lime ink and mint links. Placement
+is by measured contrast, not by mood — `--accent` in light is the teal because the mint reads at
+2.3:1 on paper, and the mint carries the dark theme because the teal reads at 4.7:1 there and the
+mint at 7.5:1. `--accent-soft` became `--accent-2` with its own `--accent-2-ink`, so a highlight
+has a text colour that passes on it in both themes, and the lint now checks that pair and
+`--text` on `--surface-2`. `references/tokens.md` carries the full table with the lint's numbers.
+Fonts, overflow rules, the zoom wrapper: unchanged.
+
 ## v1.16.0 — The page is checked before it ships (2026-09-04)
 
 **design-coach 1.0.0 · ai-coach 1.16.0 · investigation-coach 1.5.1 · strategy-coach 1.5.1**

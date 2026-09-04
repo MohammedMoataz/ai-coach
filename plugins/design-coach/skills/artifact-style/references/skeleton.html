@@ -8,15 +8,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* §tokens — light on bare :root; the same names redefined twice for dark (system preference,
-   then the viewer's explicit toggle). Fallback palette: teal on near-black/near-white; --muted is
-   a slate so secondary text clears 4.5:1 on every surface in both themes. */
+   then the viewer's explicit toggle). Fallback palette, five colours: sea #05668d · teal #028090
+   · green #00a896 · mint #02c39a · lime #f0f3bd. Light: lime-tinted paper, sea ink, teal links,
+   mint highlights. Dark: deep sea ground, lime ink, mint links. Every text/ground pair below
+   clears WCAG 4.5:1 — the lint prints the numbers. */
 :root {
   color-scheme: light;
-  --bg: #fafefd;  --surface: #f3fbf9;  --surface-2: #e0f8f3;
-  --border: #a1ded2;  --border-strong: #83cdc1;
-  --text: #0d3d38;  --muted: #475569;
-  --accent: #0f766e;  --accent-hover: #115e59;  --accent-contrast: #ffffff;
-  --accent-soft: #ccf3ea;
+  --bg: #fdfdf4;  --surface: #f6f8e3;  --surface-2: #f0f3bd;
+  --border: #b8dfd8;  --border-strong: #86cfc3;
+  --text: #073b4f;  --muted: #05668d;
+  --accent: #028090;  --accent-hover: #05668d;  --accent-contrast: #ffffff;
+  --accent-2: #02c39a;  --accent-2-ink: #073b4f;
   --sans: "IBM Plex Sans", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace;
   --radius: 6px;
@@ -24,20 +26,20 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0d1514;  --surface: #111c1b;  --surface-2: #0d2d2a;
-    --border: #145750;  --border-strong: #1c6961;
-    --text: #adf0dd;  --muted: #94a3b8;
-    --accent: #2dd4bf;  --accent-hover: #5eead4;  --accent-contrast: #042f2e;
-    --accent-soft: #023b37;
+    --bg: #041f2b;  --surface: #063041;  --surface-2: #05668d;
+    --border: #0d5566;  --border-strong: #028090;
+    --text: #f0f3bd;  --muted: #9fd3cd;
+    --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #041f2b;
+    --accent-2: #00a896;  --accent-2-ink: #041f2b;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0d1514;  --surface: #111c1b;  --surface-2: #0d2d2a;
-  --border: #145750;  --border-strong: #1c6961;
-  --text: #adf0dd;  --muted: #94a3b8;
-  --accent: #2dd4bf;  --accent-hover: #5eead4;  --accent-contrast: #042f2e;
-  --accent-soft: #023b37;
+  --bg: #041f2b;  --surface: #063041;  --surface-2: #05668d;
+  --border: #0d5566;  --border-strong: #028090;
+  --text: #f0f3bd;  --muted: #9fd3cd;
+  --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #041f2b;
+  --accent-2: #00a896;  --accent-2-ink: #041f2b;
 }
 
 /* §base */
@@ -56,7 +58,7 @@ a:hover { color: var(--accent-hover); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; container-type: inline-size; }
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .row { display: flex; gap: 16px; flex-wrap: wrap; }
-.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font: 500 12px/1.6 var(--mono); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--accent-2); color: var(--accent-2-ink); font: 500 12px/1.6 var(--mono); }
 button, .btn { min-height: 28px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface-2); color: var(--text); font: 13px/1 var(--sans); cursor: pointer; }
 .btn-primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 

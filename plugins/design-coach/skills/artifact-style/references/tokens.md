@@ -39,63 +39,75 @@ Chart and diagram text uses `--mono` (the skeleton sets `.zoom-stage svg text`).
 `dataviz` skill pins chart type to `system-ui`; on an Artifact page one voice matters more, and
 IBM Plex Mono is a text face, not a display face, so its reasoning still holds.
 
-## The teal fallback palette
+## The fallback palette — five colours, sea to lime
+
+```
+sea    #05668d    teal   #028090    green  #00a896    mint   #02c39a    lime   #f0f3bd
+```
 
 Semantic names; components use the names, never the hex. Light on the bare `:root`, dark twice
 (the native three-state pattern — `artifact-design` explains it; the skeleton implements it; the
-lint checks that all three blocks define the same names).
+lint checks that all three blocks define the same names). The five are *placed* by measured
+contrast, and the two themes place them differently: what is ink in one is ground in the other.
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `--bg` | `#fafefd` | `#0d1514` | page ground (`body { background: var(--bg) }`) |
-| `--surface` | `#f3fbf9` | `#111c1b` | cards, sticky table head |
-| `--surface-2` | `#e0f8f3` | `#0d2d2a` | code blocks, buttons, elevated |
-| `--border` | `#a1ded2` | `#145750` | hairlines |
-| `--border-strong` | `#83cdc1` | `#1c6961` | control borders |
-| `--text` | `#0d3d38` | `#adf0dd` | body text, `currentColor` for strokes |
-| `--muted` | `#475569` | `#94a3b8` | secondary text, captions (slate, not teal — see below) |
-| `--accent` | `#0f766e` | `#2dd4bf` | links, emphasis strokes, primary fills |
-| `--accent-hover` | `#115e59` | `#5eead4` | hover state |
-| `--accent-contrast` | `#ffffff` | `#042f2e` | text on an `--accent` fill |
-| `--accent-soft` | `#ccf3ea` | `#023b37` | tags, highlighted rows |
+| `--bg` | `#fdfdf4` lime-tinted paper | `#041f2b` deep sea | page ground (`body { background: var(--bg) }`) |
+| `--surface` | `#f6f8e3` | `#063041` | cards, sticky table head |
+| `--surface-2` | `#f0f3bd` **lime** | `#05668d` **sea** | code blocks, buttons, elevated |
+| `--border` | `#b8dfd8` | `#0d5566` | hairlines |
+| `--border-strong` | `#86cfc3` | `#028090` **teal** | control borders |
+| `--text` | `#073b4f` deep sea | `#f0f3bd` **lime** | body text, `currentColor` for strokes |
+| `--muted` | `#05668d` **sea** | `#9fd3cd` | secondary text, captions |
+| `--accent` | `#028090` **teal** | `#02c39a` **mint** | links, emphasis strokes, primary fills |
+| `--accent-hover` | `#05668d` **sea** | `#5fe3c3` | hover state |
+| `--accent-contrast` | `#ffffff` | `#041f2b` | text on an `--accent` fill |
+| `--accent-2` | `#02c39a` **mint** | `#00a896` **green** | tags, highlighted rows, a second series |
+| `--accent-2-ink` | `#073b4f` | `#041f2b` | text on an `--accent-2` fill |
 
-Sources: bg/surface/border/text steps from Radix Colors Teal (light 1·2·3·6·7·12, dark
-1·2·3·6·7·12); accent from Tailwind teal-700/800 (light) and teal-400/300 (dark); muted from
-Tailwind slate-600/400; `--accent-contrast` dark is Tailwind teal-950.
-
-Two deliberate departures from "just use the scale": Radix's step 9 solid (`#12a594`) reads at
-3.0:1 on the light ground — enough for a fill, not for a link — so `--accent` is a text-safe
-teal instead and step 9 is not used; and a teal `--muted` (Radix 11, `#008573`) lands at 4.47:1,
-a hair under 4.5, so secondary text is slate. The lint would have caught both; the table below
-is what it prints.
+Bold cells are the five colours verbatim; the rest are tints and shades of them (`--text` light
+is the sea darkened; `--bg` light is white pulled toward the lime; `--muted` dark is the green
+lightened). Why the placement is what it is: on paper the mint reads at 2.3:1 and the green at
+3.0:1 — fills, never text — so the teal carries links there (4.57:1) and the sea carries
+secondary text (6.2:1). On the deep-sea ground the mint reads at 7.5:1 and the lime at 14.8:1, so
+they trade roles and become the dark theme's accent and ink. The lint would refuse any other
+arrangement; the table below is what it prints.
 
 ### Contrast, as the lint computes it (WCAG 2.2)
 
 | Pair | Light | Dark | Needs |
 |---|---|---|---|
-| `--text` on `--bg` | 11.86 | 14.35 | 4.5 (1.4.3) |
-| `--text` on `--surface` | 11.47 | 13.51 | 4.5 |
-| `--muted` on `--bg` | 7.45 | 7.22 | 4.5 |
-| `--muted` on `--surface` | 7.21 | 6.79 | 4.5 |
-| `--accent` on `--bg` | 5.38 | 9.94 | 3 as a stroke or fill (1.4.11); 4.5 as link text |
-| `--accent-contrast` on `--accent` | 5.47 | 7.77 | 4.5 |
+| `--text` on `--bg` | 11.75 | 14.77 | 4.5 (1.4.3) |
+| `--text` on `--surface` | 11.13 | 12.12 | 4.5 |
+| `--text` on `--surface-2` | 10.45 | 5.55 | 4.5 — code on the lime / on the sea |
+| `--muted` on `--bg` | 6.24 | 10.25 | 4.5 |
+| `--muted` on `--surface` | 5.91 | 8.41 | 4.5 |
+| `--accent` on `--bg` | 4.57 | 7.50 | 3 as a stroke or fill (1.4.11); 4.5 as link text |
+| `--accent-contrast` on `--accent` | 4.67 | 7.50 | 4.5 |
+| `--accent-2-ink` on `--accent-2` | 5.31 | 5.70 | 4.5 |
+
+One number to know: light `--accent` on `--surface` is 4.24 — a link inside a card is a shade
+under 4.5. Links in running text sit on `--bg` and pass; a link that must live on a card can use
+`--muted` (the sea, 5.9:1) instead.
 
 Run `node scripts/check-artifact.js <page> --verbose` to get this table for any palette,
 including a project's.
 
-## Dark mode is a second palette
+## Dark mode is a second placement, not an inversion
 
-- Near-black, never `#000` — halation, and no room for elevation.
+- Near-black *of the palette's own hue* (`#041f2b`, the sea darkened), never `#000` — halation,
+  and no room for elevation.
 - Elevation is a *lighter* surface (`--surface-2` above `--surface` above `--bg`), not a shadow.
-- The accent gets lighter and less saturated (teal-400, not teal-700 inverted); text loses a
-  little weight visually, so do not thin it further.
+- The accent gets lighter (mint, not teal); the ink is the lime, not white — the page stays in
+  its palette at night. Text loses a little weight visually on dark, so do not thin it further.
 - Same token names, redefined in both dark blocks; components never mention a theme.
-- `color-scheme: dark` in the dark blocks so form controls and scrollbars follow.
+- `color-scheme: dark` in the dark blocks so form controls follow.
 
 ## Colour discipline for a page about data or systems
 
-- Three hues plus neutrals, at most. On this fallback: teal, the slate neutrals, and one
-  warning colour if the content needs it (`#b45309` light / `#fbbf24` dark reads on both grounds).
+- Three hues plus neutrals, at most, on any one page. On this fallback: sea/teal as one family,
+  mint as the highlight, lime as paper — and one warning colour only if the content needs it
+  (`#b45309` light / `#fbbf24` dark reads on both grounds).
 - Colour carries meaning or it is absent (`investigation-coach:map`'s rule). Say what it means
   on the mark or in the caption.
 - Hue never encodes magnitude — length and position do (bars, positions on an axis).
@@ -110,8 +122,8 @@ including a project's.
 - WCAG 2.2 — 1.4.3 Contrast (Minimum), 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.5.8 Target
   Size (Minimum): https://www.w3.org/WAI/WCAG22/quickref/
 - MDN — `overflow-wrap`, `touch-action`, `color-scheme`, `prefers-reduced-motion`, `-webkit-line-clamp`
-- Radix Colors — palette composition and the 12-step semantics: https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale
-- Tailwind CSS default colours: https://tailwindcss.com/docs/colors
+- The five-colour palette: https://coolors.co/05668d-028090-00a896-02c39a-f0f3bd
+- Radix Colors — the 12-step semantics the token roles follow: https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale
 - Google Fonts CSS2 API: https://developers.google.com/fonts/docs/css2
 - HTTP Archive Web Almanac 2025, Fonts: https://almanac.httparchive.org/en/2025/fonts
 - Material Design, dark theme: https://m2.material.io/design/color/dark-theme.html

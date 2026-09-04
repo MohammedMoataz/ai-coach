@@ -1,8 +1,8 @@
 {
   "name": "design-coach",
   "displayName": "Design Coach",
-  "version": "1.0.0",
-  "description": "How a page this coach publishes should look, made checkable: text that never leaves its box, every diagram in a zoomable wrapper, the project's own fonts and palette when it has them and IBM Plex on teal only as the fallback, WCAG contrast in both themes. Ships one skill, one zero-dependency lint, and the one hook outside ai-coach-core — a nudge that loads the skill after a native artifact skill does, and a lint that asks before a failing page is published. Touches neither memory nor the engine.",
+  "version": "1.0.1",
+  "description": "How a page this coach publishes should look, made checkable: text that never leaves its box, every diagram in a zoomable wrapper, the project's own fonts and palette when it has them and IBM Plex on a sea-to-lime palette only as the fallback, WCAG contrast in both themes. Ships one skill, one zero-dependency lint, and the one hook outside ai-coach-core — a nudge that loads the skill after a native artifact skill does, and a lint that asks before a failing page is published. Touches neither memory nor the engine.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",

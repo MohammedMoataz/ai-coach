@@ -24,7 +24,7 @@ assert.ok(r.info.length >= 12, 'contrast computed for both themes');
 assert.match(errorsOf(skeleton.replace('class="zoomable"', 'class="figure"')), /not inside a figure\.zoomable/);
 assert.match(errorsOf(skeleton.replace(/:root\[data-theme="dark"\]/, ':root.never')), /data-theme="dark"/);
 assert.match(errorsOf(skeleton.replace(/@media \(prefers-color-scheme: dark\)/, '@media (min-width: 1px)')), /prefers-color-scheme/);
-assert.match(errorsOf(skeleton.replace('--text: #0d3d38;', '--text: #83cdc1;')), /--text .* below 4\.5:1/);
+assert.match(errorsOf(skeleton.replace('--text: #073b4f;', '--text: #86cfc3;')), /--text .* below 4\.5:1/);
 assert.match(errorsOf(skeleton.replace('background: var(--bg);', 'background: #fff;')), /body background is not a var/);
 assert.match(errorsOf(skeleton.replace(/Arial, sans-serif;/, 'Arial;')), /does not end in a generic family/);
 assert.match(errorsOf(skeleton.replace('fonts.googleapis.com/css2', 'fonts.example.com/css2')), /host not allowed/);
@@ -37,7 +37,7 @@ assert.strictEqual(check(skeleton).errors.filter((e) => /offset/.test(e)).length
 // a mermaid block outside the wrapper is the same error
 assert.match(errorsOf(skeleton + '<pre class="mermaid">flowchart LR</pre>'), /mermaid block .* not inside/);
 // the one dark block that drifts from the other
-assert.match(errorsOf(skeleton.replace('--accent-soft: #023b37;\n  }\n}', '--accent-soft: #023b37; --extra: #fff;\n  }\n}')), /different token names/);
+assert.match(errorsOf(skeleton.replace('--accent-2-ink: #041f2b;\n  }\n}', '--accent-2-ink: #041f2b; --extra: #fff;\n  }\n}')), /different token names/);
 // warnings
 assert.match(check(skeleton.replace(/\.trunc \{[^}]*min-width: 0;/, '.trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;').replace(/\.row > \*, \.grid > \* \{ min-width: 0; \}/, '')).warnings.join('\n'), /min-width: 0/);
 assert.match(check(skeleton.replace('<div class="tablewrap">', '<div>')).warnings.join('\n'), /no scrolling ancestor/);
