@@ -45,7 +45,13 @@ nothing — never a house style to impose on a project that has one.
 4. **Lint, then fix.** `node "$AICOACH_REPO/plugins/design-coach/scripts/check-artifact.js" <page.html>`
    — every `error:` is fixed before publishing; every `warn:` is either fixed or named in the
    reply. Show the summary line. The lint is Node-only; a harness without Node applies the
-   rules below by hand and says so.
+   rules below by hand and says so. **Then probe the rendered page once**: the lint cannot
+   measure text, so when a browser tool is available (the Playwright MCP, Chrome DevTools),
+   serve the file and evaluate the function `scripts/probe-overflow.js` prints — it lists every
+   HTML box whose text escaped it and every SVG label wider than its node, with the amount.
+   Fix what it lists by the ladder in rule 1 (shrink a label ≤ 10 %, otherwise shorten or wrap
+   it; never leave it), re-probe, and only then publish. No browser: say so, and look at the
+   page once at 320 px and once at 900 px after publishing.
 5. **Publish** with the native tool as usual — favicon, stable file path on re-runs, the design
    brief in the reply. A `PreToolUse` hook shipped with this plugin runs the same lint on the
    file the Artifact tool is about to publish and asks before a page with errors goes out.
@@ -73,13 +79,14 @@ else reflows at 320 px.
 
 ### 2. Every diagram is zoomable — `$AICOACH_REPO/plugins/design-coach/skills/artifact-style/references/diagrams.md`
 
-Inline SVG or a mermaid block, it goes inside `figure.zoomable` from the skeleton: caption
-stating the claim, a viewport of **fixed height** (`--zoom-height` per figure — zooming changes
-what is in the box, never the box, so the page does not jump), the drawing, and the control
-cluster markdown viewers already use — icon buttons overlaid bottom-right: zoom out, level,
-zoom in, reset, fullscreen. The script sizes the svg in CSS pixels — no transforms, so the
-scroll box grows with the zoom and text stays sharp. Ctrl/⌘+wheel and pinch zoom around the
-cursor; drag pans; a plain wheel scrolls the viewport; `+ − 0 1` work from the keyboard. Mermaid is rendered by the host into an
+Inline SVG or a mermaid block, it goes inside `figure.zoomable` from the skeleton — the pan/zoom
+canvas a Markdown preview gives a diagram: caption stating the claim, a viewport of **fixed
+starting height** (`--zoom-height` per figure, reader-resizable — zooming changes what is in
+the box, never the box, so the page does not jump), the drawing on an absolutely positioned
+canvas moved by `translate+scale` (nothing scrolls, no scrollbars), text tools top-right
+(`− 100% + ⤢ ⛶`, the level doubles as reset) and a one-line gesture hint bottom-left. Wheel
+pans, Ctrl/⌘+wheel and pinch zoom around the pointer, drag pans, double-click toggles fit and
+100 %, arrows/`+`/`−`/`0`/`f` from the keyboard. Mermaid is rendered by the host into an
 `svg` under your `<pre class="mermaid">` — the script waits for it with a `MutationObserver`,
 and grows mermaid's type with `%%{init:{'themeVariables':{'fontSize':'26px'}}}%%` because the
 host's default is unreadable at fit-to-width. Nothing is added inside the `<svg>` itself;

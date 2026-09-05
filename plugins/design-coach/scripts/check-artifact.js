@@ -164,6 +164,12 @@ function check(html) {
   }
   if (!/font-family|--sans|--mono|font\s*:/i.test(css)) err('no font declared anywhere — the page renders in the host default');
   if (/text-overflow\s*:\s*ellipsis/i.test(css) && !/min-width\s*:\s*0/i.test(css)) warn('text-overflow: ellipsis without any min-width: 0 — flex/grid children default to min-width:auto and the ellipsis never appears');
+  for (const m of css.matchAll(/grid-template-columns\s*:\s*([^;}]+)/gi)) {
+    // a bare `1fr` track has an automatic minimum: it grows to its widest unbreakable child and the row overflows
+    let bare = m[1], prev;
+    do { prev = bare; bare = bare.replace(/\b(?:minmax|min|max|clamp|fit-content|calc)\([^()]*\)/gi, ''); } while (bare !== prev);
+    if (/(?:^|[\s,(])\d*\.?\d+fr\b/.test(bare)) warn(`grid-template-columns: ${m[1].trim().slice(0, 50)} — a bare fr track's minimum is auto, so a wide child (nowrap text, a long token) widens the column past the page; write minmax(0, 1fr)`);
+  }
   if (pres && !block(css, /(?:^|[}\s,])pre(?:\.[\w-]+)?\s*(?:,[^{]*)?\{/)) warn('<pre> present but no `pre {` rule — code needs overflow-x:auto; white-space:pre');
   else if (pres) {
     const pre = block(css, /(?:^|[}\s,])pre(?:\.[\w-]+)?\s*(?:,[^{]*)?\{/);

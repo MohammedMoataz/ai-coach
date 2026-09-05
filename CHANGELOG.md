@@ -24,8 +24,22 @@ There are now two fallbacks, not one, shipped as drop-in token files under
 charcoal one step down — muted, for people and process. The skill picks one per project, names it
 in the design brief and keeps it; the test asserts `sea.css` is byte-for-byte the skeleton's token
 section and that `sage.css` dropped in its place passes the lint with the same zero warnings.
-`references/tokens.md` carries both tables with the lint's numbers. Fonts, overflow rules, the
-zoom wrapper: unchanged.
+`references/tokens.md` carries both tables with the lint's numbers.
+
+The zoom wrapper became the pan/zoom canvas the Extranet Monorepo page already shipped — the
+one a Markdown preview gives a diagram: the svg at its natural size on an absolutely positioned
+canvas, moved by `translate+scale` inside a clipped viewport of fixed starting height that the
+reader may drag taller; wheel pans, ctrl+wheel and pinch zoom around the pointer, double-click
+toggles fit and 100 %, text tools top-right (`− 100% + ⤢ ⛶`) and a one-line gesture hint
+bottom-left. Nothing scrolls, so nothing scrollbars.
+
+Two things the first page built with the skill taught. A `grid-template-columns` track written
+as a bare `1fr` has an automatic minimum, so one nowrap line widened a whole column past the
+page; the lint now warns on any bare `fr` and asks for `minmax(0, 1fr)`. And hand-drawn SVG
+labels overflow their node boxes in ways no static check can see — `scripts/probe-overflow.js`
+is the function to evaluate in a rendered page (Playwright, DevTools) that lists every HTML box
+whose text escaped it and every `<text>` wider than the `<rect>` it sits in; the skill runs it
+before publishing when a browser tool is available. Fonts and the overflow ladder: unchanged.
 
 ## v1.16.0 — The page is checked before it ships (2026-09-04)
 
