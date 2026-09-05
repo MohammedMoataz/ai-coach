@@ -1,0 +1,36 @@
+/* §tokens — light on bare :root; the same names redefined twice for dark (system preference,
+   then the viewer's explicit toggle). Fallback palette "sage", five colours: pale sage #cad2c5 ·
+   sage #84a98c · green #52796f · slate #354f52 · charcoal #2f3e46. Light: near-white paper,
+   charcoal ink, green links, pale-sage highlights. Dark: charcoal ground, sage-tinted off-white
+   ink, sage links. Every text/ground pair below clears WCAG 4.5:1 — the lint prints the numbers.
+   Drop-in: replaces the skeleton's §tokens section up to §base. */
+:root {
+  color-scheme: light;
+  --bg: #fcfdfb;  --surface: #eef2ec;  --surface-2: #dfe6dc;
+  --border: #cad2c5;  --border-strong: #84a98c;
+  --text: #2f3e46;  --muted: #354f52;
+  --accent: #52796f;  --accent-hover: #354f52;  --accent-contrast: #ffffff;
+  --accent-2: #cad2c5;  --accent-2-ink: #2f3e46;
+  --sans: "IBM Plex Sans", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #232f36;  --surface: #2f3e46;  --surface-2: #354f52;
+    --border: #52796f;  --border-strong: #84a98c;
+    --text: #eef2ec;  --muted: #cad2c5;
+    --accent: #84a98c;  --accent-hover: #a3c2a8;  --accent-contrast: #232f36;
+    --accent-2: #52796f;  --accent-2-ink: #ffffff;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #232f36;  --surface: #2f3e46;  --surface-2: #354f52;
+  --border: #52796f;  --border-strong: #84a98c;
+  --text: #eef2ec;  --muted: #cad2c5;
+  --accent: #84a98c;  --accent-hover: #a3c2a8;  --accent-contrast: #232f36;
+  --accent-2: #52796f;  --accent-2-ink: #ffffff;
+}
+

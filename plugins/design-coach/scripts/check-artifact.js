@@ -164,6 +164,12 @@ function check(html) {
   }
   if (!/font-family|--sans|--mono|font\s*:/i.test(css)) err('no font declared anywhere — the page renders in the host default');
   if (/text-overflow\s*:\s*ellipsis/i.test(css) && !/min-width\s*:\s*0/i.test(css)) warn('text-overflow: ellipsis without any min-width: 0 — flex/grid children default to min-width:auto and the ellipsis never appears');
+  for (const m of css.matchAll(/grid-template-columns\s*:\s*([^;}]+)/gi)) {
+    // a bare `1fr` track has an automatic minimum: it grows to its widest unbreakable child and the row overflows
+    let bare = m[1], prev;
+    do { prev = bare; bare = bare.replace(/\b(?:minmax|min|max|clamp|fit-content|calc)\([^()]*\)/gi, ''); } while (bare !== prev);
+    if (/(?:^|[\s,(])\d*\.?\d+fr\b/.test(bare)) warn(`grid-template-columns: ${m[1].trim().slice(0, 50)} — a bare fr track's minimum is auto, so a wide child (nowrap text, a long token) widens the column past the page; write minmax(0, 1fr)`);
+  }
   if (pres && !block(css, /(?:^|[}\s,])pre(?:\.[\w-]+)?\s*(?:,[^{]*)?\{/)) warn('<pre> present but no `pre {` rule — code needs overflow-x:auto; white-space:pre');
   else if (pres) {
     const pre = block(css, /(?:^|[}\s,])pre(?:\.[\w-]+)?\s*(?:,[^{]*)?\{/);
@@ -172,7 +178,7 @@ function check(html) {
   if (tables && !/\.tablewrap\s*\{[^}]*overflow-x\s*:\s*auto/i.test(css) && !/overflow-x\s*:\s*auto/i.test(css)) warn('tables present but no overflow-x:auto rule in the CSS');
 
   // ---- contrast, both themes ----
-  const pairs = [['--text', '--bg', 4.5], ['--text', '--surface', 4.5], ['--muted', '--bg', 4.5], ['--muted', '--surface', 4.5], ['--accent', '--bg', 3], ['--accent-contrast', '--accent', 4.5]];
+  const pairs = [['--text', '--bg', 4.5], ['--text', '--surface', 4.5], ['--text', '--surface-2', 4.5], ['--muted', '--bg', 4.5], ['--muted', '--surface', 4.5], ['--accent', '--bg', 3], ['--accent-contrast', '--accent', 4.5], ['--accent-2-ink', '--accent-2', 4.5]];
   for (const [theme, t] of [['light', tL], ['dark', tM.size ? tM : tS]]) {
     if (!t.size) continue;
     for (const [fg, bg, min] of pairs) {
