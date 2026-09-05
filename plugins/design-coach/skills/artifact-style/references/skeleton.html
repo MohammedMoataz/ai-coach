@@ -94,7 +94,7 @@ code { font-family: var(--mono); font-size: .92em; }
 .zoom-stage svg { display: block; max-width: none !important; height: auto; margin: 0; }
 .zoom-stage svg text { font-family: var(--mono); }
 .zoom-stage .mermaid { margin: 0; padding: 0; background: none; white-space: normal; }
-.zoom-toolbar { position: absolute; top: 8px; right: 10px; z-index: 2; display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); opacity: .85; }
+.zoom-toolbar { position: absolute; top: 8px; right: 10px; z-index: 2; /* inside the viewport, so a long caption never sits under it */ display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); opacity: .85; }
 .zoom-toolbar:hover, .zoom-toolbar:focus-within, .zoomable:hover .zoom-toolbar { opacity: 1; }
 .zoom-toolbar button { min-width: 26px; height: 26px; min-height: 0; padding: 0 7px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font: 500 11px/1 var(--mono); }
 .zoom-toolbar button:hover { background: var(--surface-2); color: var(--text); }
@@ -137,15 +137,16 @@ code { font-family: var(--mono); font-size: .92em; }
 
   <figure class="zoomable" style="--zoom-height: 320px">
     <figcaption>What this picture shows — the claim, not the title.</figcaption>
-    <!-- §zoom tools: what a Markdown preview shows top-right — zoom out, the level (click = 100%), zoom in, fit, fullscreen -->
-    <div class="zoom-toolbar" role="group" aria-label="Diagram zoom">
-      <button type="button" data-zoom="out" aria-label="Zoom out" title="Zoom out (−)">&minus;</button>
-      <button type="button" data-zoom="reset" aria-label="Reset to 100%" title="Reset to 100% (0)">100%</button>
-      <button type="button" data-zoom="in" aria-label="Zoom in" title="Zoom in (+)">+</button>
-      <button type="button" data-zoom="fit" aria-label="Fit to view" title="Fit to view (f)">&#x2922;</button>
-      <button type="button" data-zoom="full" aria-label="Fullscreen" title="Fullscreen">&#x26F6;</button>
-    </div>
     <div class="zoom-viewport" tabindex="0" aria-label="Client, API and database; pan and zoom">
+      <!-- §zoom tools: what a Markdown preview shows top-right — zoom out, the level (click = 100%), zoom in, fit, fullscreen -->
+      <div class="zoom-toolbar" role="group" aria-label="Diagram zoom">
+        <button type="button" data-zoom="out" aria-label="Zoom out" title="Zoom out (−)">&minus;</button>
+        <button type="button" data-zoom="reset" aria-label="Reset to 100%" title="Reset to 100% (0)">100%</button>
+        <button type="button" data-zoom="in" aria-label="Zoom in" title="Zoom in (+)">+</button>
+        <button type="button" data-zoom="fit" aria-label="Fit to view" title="Fit to view (f)">&#x2922;</button>
+        <button type="button" data-zoom="full" aria-label="Fullscreen" title="Fullscreen">&#x26F6;</button>
+      </div>
+      <span class="zoom-hint">drag or wheel to move · ctrl+wheel to zoom · double-click fits</span>
       <div class="zoom-stage">
         <svg viewBox="0 0 640 200" role="img" aria-label="Client calls the API, which writes to the database.">
           <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
@@ -165,7 +166,6 @@ code { font-family: var(--mono); font-size: .92em; }
 flowchart LR ...</pre> — the host renders it into a sibling svg; the script adopts it when it appears. -->
       </div>
     </div>
-    <span class="zoom-hint">drag or wheel to move · ctrl+wheel to zoom · double-click fits</span>
   </figure>
 </main>
 
