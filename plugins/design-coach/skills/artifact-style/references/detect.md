@@ -59,5 +59,8 @@ dark    --bg #0b1220 · --surface #111a2e · --text #e2e8f0 · --muted #94a3b8 �
 source  tailwind.config.ts:14 (colors) · src/app.css:3 (font) · dark values: fallback derived
 ```
 
-A brief whose every source reads `fallback` is fine. A brief that is missing is not — it is
-how the reader learns what the page inherited and what it invented.
+When nothing was found, the `source` line names which of the two fallback palettes the page
+uses — `fallback: sea` or `fallback: sage` (`tokens.md` says how to choose) — so the next page
+for the same project picks the same one. A brief whose every source reads `fallback` is fine. A
+brief that is missing is not — it is how the reader learns what the page inherited and what it
+invented.

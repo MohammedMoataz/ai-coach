@@ -43,6 +43,15 @@ assert.match(check(skeleton.replace(/\.trunc \{[^}]*min-width: 0;/, '.trunc { wh
 assert.match(check(skeleton.replace('<div class="tablewrap">', '<div>')).warnings.join('\n'), /no scrolling ancestor/);
 assert.match(check(skeleton.replace('<td>api</td>', '<td><span class="kpi">9</span></td>')).warnings.join('\n'), /inside a table cell/);
 
+// the two fallback palettes: sea.css IS the skeleton's token section (no drift), and sage.css
+// dropped in its place passes the same lint with the same zero warnings
+const palettes = path.join(root, 'skills/artifact-style/references/palettes');
+const section = /\/\* §tokens[\s\S]*?(?=\/\* §base \*\/)/;
+assert.strictEqual(skeleton.match(section)[0].trim(), fs.readFileSync(path.join(palettes, 'sea.css'), 'utf8').trim(), 'palettes/sea.css equals the skeleton token section');
+const sage = check(skeleton.replace(section, fs.readFileSync(path.join(palettes, 'sage.css'), 'utf8')));
+assert.deepStrictEqual(sage.errors, [], 'sage palette has no errors:\n' + sage.errors.join('\n'));
+assert.deepStrictEqual(sage.warnings, [], 'sage palette has no warnings:\n' + sage.warnings.join('\n'));
+
 // contrast maths against the WCAG worked examples
 assert.strictEqual(contrast('#000', '#fff').toFixed(0), '21');
 assert.strictEqual(contrast('#777777', '#ffffff').toFixed(2), '4.48');

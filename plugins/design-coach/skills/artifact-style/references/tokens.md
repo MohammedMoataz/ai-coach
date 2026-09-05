@@ -39,7 +39,25 @@ Chart and diagram text uses `--mono` (the skeleton sets `.zoom-stage svg text`).
 `dataviz` skill pins chart type to `system-ui`; on an Artifact page one voice matters more, and
 IBM Plex Mono is a text face, not a display face, so its reasoning still holds.
 
-## The fallback palette — five colours, sea to lime
+## Two fallback palettes
+
+When the project declares no palette, pick one of two — and keep it for every page of that
+project (the brief's `source` line says which: `fallback: sea` or `fallback: sage`). Each ships
+as a drop-in file under `references/palettes/` that replaces the skeleton's `§tokens` section up
+to `§base`; the skeleton carries **sea** inline, and the test asserts the file and the skeleton
+never drift.
+
+| | **sea** — `palettes/sea.css` | **sage** — `palettes/sage.css` |
+|---|---|---|
+| colours | sea `#05668d` · teal `#028090` · green `#00a896` · mint `#02c39a` · lime `#f0f3bd`; dark on navy `#00132d…#00377e` | pale sage `#cad2c5` · sage `#84a98c` · green `#52796f` · slate `#354f52` · charcoal `#2f3e46` |
+| temperature | cool, crisp, high-energy | muted, natural, quiet |
+| reach for it when | the subject is a system: architecture, APIs, pipelines, security, anything with a terminal in it | the subject is people and process: business blueprints, onboarding, research briefs, long prose |
+| dark ground | navy, a different hue from the light theme | the palette's own charcoal, darkened one step |
+
+Neither is a house style: the user's words win, then the project's own system, then one of
+these. The default when nothing points either way is sea.
+
+### sea — five colours, sea to lime, navy at night
 
 ```
 light   sea #05668d · teal #028090 · green #00a896 · mint #02c39a · lime #f0f3bd
@@ -93,7 +111,47 @@ One number to know: light `--accent` on `--surface` is 4.24 — a link inside a 
 under 4.5. Links in running text sit on `--bg` and pass; a link that must live on a card can use
 `--muted` (the sea, 5.9:1) instead.
 
-Run `node scripts/check-artifact.js <page> --verbose` to get this table for any palette,
+### sage — five colours, pale sage to charcoal
+
+```
+#cad2c5 pale sage · #84a98c sage · #52796f green · #354f52 slate · #2f3e46 charcoal
+```
+
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `--bg` | `#fcfdfb` near-white | `#232f36` charcoal, one step down | page ground |
+| `--surface` | `#eef2ec` | `#2f3e46` **charcoal** | cards, sticky table head |
+| `--surface-2` | `#dfe6dc` | `#354f52` **slate** | code blocks, buttons, elevated |
+| `--border` | `#cad2c5` **pale sage** | `#52796f` **green** | hairlines |
+| `--border-strong` | `#84a98c` **sage** | `#84a98c` **sage** | control borders |
+| `--text` | `#2f3e46` **charcoal** | `#eef2ec` sage-tinted off-white | body text, `currentColor` for strokes |
+| `--muted` | `#354f52` **slate** | `#cad2c5` **pale sage** | secondary text, captions |
+| `--accent` | `#52796f` **green** | `#84a98c` **sage** | links, emphasis strokes, primary fills |
+| `--accent-hover` | `#354f52` **slate** | `#a3c2a8` | hover state |
+| `--accent-contrast` | `#ffffff` | `#232f36` | text on an `--accent` fill |
+| `--accent-2` | `#cad2c5` **pale sage** | `#52796f` **green** | tags, highlighted rows, a second series |
+| `--accent-2-ink` | `#2f3e46` **charcoal** | `#ffffff` | text on an `--accent-2` fill |
+
+Why the placement: the green `#52796f` is the only mid tone that reads as text on paper, and
+only on a near-white (4.76:1 on `#fcfdfb`; 4.29 on the card surface — same near-miss as sea, same
+remedy: `--muted` for a link on a card). The sage `#84a98c` is a fill or a border in light and
+becomes the link colour in dark (5.25:1 on the charcoal). Slate and charcoal are close in value,
+so `--muted` in light leans on the slate's green cast rather than on lightness to read as
+secondary. The dark ground is the charcoal taken one step darker so the charcoal itself can be a
+card above it.
+
+| Pair | Light | Dark | Needs |
+|---|---|---|---|
+| `--text` on `--bg` | 10.84 | 12.11 | 4.5 (1.4.3) |
+| `--text` on `--surface` | 9.77 | 9.77 | 4.5 |
+| `--text` on `--surface-2` | 8.69 | 7.76 | 4.5 |
+| `--muted` on `--bg` | 8.61 | 8.84 | 4.5 |
+| `--muted` on `--surface` | 7.76 | 7.13 | 4.5 |
+| `--accent` on `--bg` | 4.76 | 5.25 | 3 as a stroke or fill (1.4.11); 4.5 as link text |
+| `--accent-contrast` on `--accent` | 4.86 | 5.25 | 4.5 |
+| `--accent-2-ink` on `--accent-2` | 7.13 | 4.86 | 4.5 |
+
+Run `node scripts/check-artifact.js <page> --verbose` to get either table for any palette,
 including a project's.
 
 ## Dark mode is a second palette, not an inversion

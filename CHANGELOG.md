@@ -16,8 +16,16 @@ teal control borders. Placement is by measured contrast, not by mood — `--acce
 teal because the mint reads at 2.3:1 on paper, and the mint carries the dark theme because it
 reads at 8.2:1 on the navy. `--accent-soft` became `--accent-2` with its own `--accent-2-ink`, so a highlight
 has a text colour that passes on it in both themes, and the lint now checks that pair and
-`--text` on `--surface-2`. `references/tokens.md` carries the full table with the lint's numbers.
-Fonts, overflow rules, the zoom wrapper: unchanged.
+`--text` on `--surface-2`.
+
+There are now two fallbacks, not one, shipped as drop-in token files under
+`references/palettes/`: **sea** (the above — cool, for systems) and **sage** — pale sage
+`#cad2c5`, sage `#84a98c`, green `#52796f`, slate `#354f52`, charcoal `#2f3e46`, dark on the
+charcoal one step down — muted, for people and process. The skill picks one per project, names it
+in the design brief and keeps it; the test asserts `sea.css` is byte-for-byte the skeleton's token
+section and that `sage.css` dropped in its place passes the lint with the same zero warnings.
+`references/tokens.md` carries both tables with the lint's numbers. Fonts, overflow rules, the
+zoom wrapper: unchanged.
 
 ## v1.16.0 — The page is checked before it ships (2026-09-04)
 

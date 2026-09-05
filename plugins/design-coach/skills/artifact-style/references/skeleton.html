@@ -8,10 +8,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* §tokens — light on bare :root; the same names redefined twice for dark (system preference,
-   then the viewer's explicit toggle). Fallback palette, five colours: sea #05668d · teal #028090
+   then the viewer's explicit toggle). Fallback palette "sea", five colours: sea #05668d · teal #028090
    · green #00a896 · mint #02c39a · lime #f0f3bd. Light: lime-tinted paper, sea ink, teal links,
    mint highlights. Dark: a navy ground (#00132d #001e45 #002d67 #00377e), cool off-white ink,
-   mint links. Every text/ground pair below clears WCAG 4.5:1 — the lint prints the numbers. */
+   mint links. Every text/ground pair below clears WCAG 4.5:1 — the lint prints the numbers.
+   Drop-in: replaces the skeleton's §tokens section up to §base. */
 :root {
   color-scheme: light;
   --bg: #fdfdf4;  --surface: #f6f8e3;  --surface-2: #f0f3bd;
