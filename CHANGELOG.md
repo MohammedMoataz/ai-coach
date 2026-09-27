@@ -3,6 +3,44 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.16.1 — The fallback palette is the one that was meant (2026-09-05)
+
+**design-coach 1.0.1 · ai-coach 1.16.1**
+
+v1.16.0 shipped the fallback palette as a Radix/Tailwind teal scale. The palette that was meant
+is five colours — sea `#05668d`, teal `#028090`, green `#00a896`, mint `#02c39a`, lime `#f0f3bd`
+— so the skeleton's light tokens are now placed from those: lime-tinted paper with sea ink, teal
+links and mint highlights. Dark got its own ground rather than a darkened sea, which read badly:
+a navy scale (`#00132d` `#001e45` `#002d67` `#00377e`) with cool off-white ink, mint links and
+teal control borders. Placement is by measured contrast, not by mood — `--accent` in light is the
+teal because the mint reads at 2.3:1 on paper, and the mint carries the dark theme because it
+reads at 8.2:1 on the navy. `--accent-soft` became `--accent-2` with its own `--accent-2-ink`, so a highlight
+has a text colour that passes on it in both themes, and the lint now checks that pair and
+`--text` on `--surface-2`.
+
+There are now two fallbacks, not one, shipped as drop-in token files under
+`references/palettes/`: **sea** (the above — cool, for systems) and **sage** — pale sage
+`#cad2c5`, sage `#84a98c`, green `#52796f`, slate `#354f52`, charcoal `#2f3e46`, dark on the
+charcoal one step down — muted, for people and process. The skill picks one per project, names it
+in the design brief and keeps it; the test asserts `sea.css` is byte-for-byte the skeleton's token
+section and that `sage.css` dropped in its place passes the lint with the same zero warnings.
+`references/tokens.md` carries both tables with the lint's numbers.
+
+The zoom wrapper became the pan/zoom canvas the Extranet Monorepo page already shipped — the
+one a Markdown preview gives a diagram: the svg at its natural size on an absolutely positioned
+canvas, moved by `translate+scale` inside a clipped viewport of fixed starting height that the
+reader may drag taller; wheel pans, ctrl+wheel and pinch zoom around the pointer, double-click
+toggles fit and 100 %, text tools top-right (`− 100% + ⤢ ⛶`) and a one-line gesture hint
+bottom-left. Nothing scrolls, so nothing scrollbars.
+
+Two things the first page built with the skill taught. A `grid-template-columns` track written
+as a bare `1fr` has an automatic minimum, so one nowrap line widened a whole column past the
+page; the lint now warns on any bare `fr` and asks for `minmax(0, 1fr)`. And hand-drawn SVG
+labels overflow their node boxes in ways no static check can see — `scripts/probe-overflow.js`
+is the function to evaluate in a rendered page (Playwright, DevTools) that lists every HTML box
+whose text escaped it and every `<text>` wider than the `<rect>` it sits in; the skill runs it
+before publishing when a browser tool is available. Fonts and the overflow ladder: unchanged.
+
 ## v1.16.0 — The page is checked before it ships (2026-09-04)
 
 **design-coach 1.0.0 · ai-coach 1.16.0 · investigation-coach 1.5.1 · strategy-coach 1.5.1**

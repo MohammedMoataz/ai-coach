@@ -33,15 +33,15 @@ Keep the names; change the hex. A project rarely has all eleven, so derive the r
 
 | Skeleton token | Take from the project | If absent |
 |---|---|---|
-| `--bg` | page background / `background` / `--color-background` | near-white light, near-black dark (`#0d1514`-class, never `#000`) |
-| `--surface`, `--surface-2` | card / paper / `--color-card`, elevated | one and two steps toward `--text` from `--bg` |
-| `--border`, `--border-strong` | `--color-border`, divider | a step of the accent hue at low chroma |
-| `--text` | foreground / `--color-foreground` | darkest (light) or lightest (dark) step of the neutral |
-| `--muted` | muted-foreground / secondary text | slate `#475569` light, `#94a3b8` dark |
-| `--accent` | primary / brand | teal `#0f766e` light, `#2dd4bf` dark |
-| `--accent-hover` | primary hover / darker step | one step darker (light) or lighter (dark) |
-| `--accent-contrast` | primary-foreground | white on a dark accent, `#042f2e`-class on a light one |
-| `--accent-soft` | primary/10, badge background | the accent at very low chroma |
+| `--bg` | page background / `background` / `--color-background` | lime-tinted near-white `#fdfdf4` light; navy `#00132d` dark (never `#000`) |
+| `--surface`, `--surface-2` | card / paper / `--color-card`, elevated | light: `#f6f8e3`, lime `#f0f3bd`; dark: navy `#001e45`, `#002d67` |
+| `--border`, `--border-strong` | `--color-border`, divider | light: `#b8dfd8`, `#86cfc3`; dark: navy `#00377e`, teal `#028090` |
+| `--text` | foreground / `--color-foreground` | deep sea `#073b4f` light; cool off-white `#e8eef6` dark |
+| `--muted` | muted-foreground / secondary text | sea `#05668d` light; `#9fb3cc` dark |
+| `--accent` | primary / brand | teal `#028090` light; mint `#02c39a` dark |
+| `--accent-hover` | primary hover / darker step | sea `#05668d` light; `#5fe3c3` dark |
+| `--accent-contrast` | primary-foreground | white on the light accent; navy `#00132d` on the dark one |
+| `--accent-2`, `--accent-2-ink` | secondary / badge background and its text | mint `#02c39a` + `#073b4f` light; green `#00a896` + `#00132d` dark |
 
 Then run the lint: it computes the contrast of every text token on every surface for both
 themes. A project colour that fails 4.5:1 is not "the brand" for body text — keep it for
@@ -59,5 +59,8 @@ dark    --bg #0b1220 · --surface #111a2e · --text #e2e8f0 · --muted #94a3b8 �
 source  tailwind.config.ts:14 (colors) · src/app.css:3 (font) · dark values: fallback derived
 ```
 
-A brief whose every source reads `fallback` is fine. A brief that is missing is not — it is
-how the reader learns what the page inherited and what it invented.
+When nothing was found, the `source` line names which of the two fallback palettes the page
+uses — `fallback: sea` or `fallback: sage` (`tokens.md` says how to choose) — so the next page
+for the same project picks the same one. A brief whose every source reads `fallback` is fine. A
+brief that is missing is not — it is how the reader learns what the page inherited and what it
+invented.

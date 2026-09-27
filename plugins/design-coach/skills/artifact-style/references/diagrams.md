@@ -7,51 +7,55 @@ fullscreen to see both.
 
 ## The wrapper — copy from `skeleton.html` `<!-- §zoom -->`
 
+It is the pan/zoom canvas a Markdown preview gives a diagram, the same one the Extranet
+Monorepo page shipped and readers already know how to drive:
+
 ```
-figure.zoomable[style="--zoom-height: 320px"]   fixed height per figure (default 420px)
+figure.zoomable[style="--zoom-height: 320px"]   starting height per figure (default 420px)
   figcaption                  the claim the picture makes, one sentence
-  .zoom-toolbar               icon cluster overlaid bottom-right: zoom out · level · zoom in │ reset · fullscreen
-  .zoom-viewport[tabindex=0]  height: var(--zoom-height); overflow:auto; touch-action:none; scrollbars hidden
-    .zoom-stage               centres a small drawing; grows with a zoomed one
+  .zoom-toolbar               text tools top-right:  −  100%  +  ⤢  ⛶   (the level IS the reset button)
+  .zoom-viewport[tabindex=0]  height: var(--zoom-height); overflow:hidden; resize:vertical — clips, never scrolls
+    .zoom-stage               absolute canvas at the svg's natural size; moved by translate+scale
       svg[viewBox][role=img][aria-label]      inline drawing
       — or —
-      pre.mermaid                             host-rendered
+      pre.mermaid                             host-rendered into a sibling svg, adopted on arrival
+  .zoom-hint                  bottom-left, one line: "drag or wheel to move · ctrl+wheel to zoom · double-click fits"
 ```
 
-**The viewport's height is fixed** — set per figure with `--zoom-height`, never left to the
-drawing. Zooming changes what is inside the box, not the box, so the page never reflows or jumps
-while the reader is reading below it. Pick the height from the drawing's shape: 320 px for a
-wide flow, 420 px (default) for a container view, 560 px for a tall sequence diagram; fullscreen
-lifts the limit.
+**The viewport's height is fixed at load** — set per figure with `--zoom-height`, never left
+to the drawing — so zooming changes what is inside the box, not the box, and the page never
+reflows while someone reads below it. The reader may drag the viewport's bottom edge
+(`resize: vertical`, 240–1400 px); an untouched diagram re-fits itself when they do. Pick the
+starting height from the drawing's shape: 320 px for a wide flow, 420 px (default) for a
+container view, 560 px for a tall sequence diagram; fullscreen lifts the limit.
 
-**The controls are the cluster markdown viewers already taught readers** (GitHub's mermaid
-viewer, the Mermaid live editor): icon buttons overlaid at the bottom-right of the drawing, in
-this order — zoom out, the live level, zoom in, a separator, reset view, fullscreen. Icons are
-inline 16 px SVG strokes on `currentColor`; every button is a real `<button>` with `aria-label`
-and a `title` naming its key; 28 px targets (WCAG 2.5.8 asks 24). The cluster sits at 85 %
-opacity until the figure is hovered or focused. Nothing else — no text buttons, no toolbar row
-above the drawing.
+**Nothing scrolls.** The viewport clips; the canvas moves with a `translate(...) scale(...)`
+transform on `.zoom-stage`. No scrollbars, no scroll chaining into the page — a scrollbar on a
+drawing reads as a broken layout, not a control.
 
-One `<script>` at the end of the page initialises every `.zoomable`. It sizes the svg in CSS
-pixels — `width`/`height` in px, no `transform` — so the viewport's own scroll box grows with
-the zoom, text re-rasterises sharp, and native scrolling (arrow keys on the focused viewport,
-trackpad) keeps working. **No scrollbars are shown** (`scrollbar-width: none` +
-`::-webkit-scrollbar { display: none }`): a diagram viewer pans by drag and wheel, and a
-scrollbar on a drawing reads as a broken layout, not a control.
+**The tools are text, top-right, faded until hovered** — the cluster GitHub's preview and the
+Mermaid live editor taught readers: zoom out, the live level (clicking it resets to 100 %), zoom
+in, fit (⤢), fullscreen (⛶, hidden when the host forbids it). Real `<button>`s with `aria-label`
+and a `title` naming the key; mono 11 px; 26 px targets (WCAG 2.5.8 asks 24). The hint
+bottom-left says the three gestures in one line and hides under 560 px.
 
 | Gesture | Result |
 |---|---|
-| Ctrl/⌘ + wheel (a trackpad pinch arrives this way) | zoom around the cursor |
-| plain wheel | scrolls the viewport; at its edge, stops (`overscroll-behavior: contain`) |
+| plain wheel / trackpad two-finger scroll | pan (the page does not scroll while the pointer is on the drawing) |
+| Ctrl/⌘ + wheel (a trackpad pinch arrives this way) | zoom around the pointer |
 | drag with mouse or one finger | pan |
 | two fingers | pinch zoom around the midpoint |
+| double-click | fit ⇄ 100 % (zooms to the clicked point) |
 | `+` `=` / `-` | zoom in / out (viewport focused) |
-| `0` / reset button | contain: the whole drawing visible, never above 1:1 |
-| `1` | actual size |
-| fullscreen button | fullscreen on the figure (hidden when the host forbids it) |
+| `0` / the level button | 100 % |
+| `f` / ⤢ | fit: the whole drawing visible, never above 100 % |
+| arrow keys | pan by 40 px |
+| ⛶ | fullscreen on the figure |
 
-Initial state: reset (contain). `@media (prefers-reduced-motion: no-preference)` gates the one
-short transition.
+Initial state: fit. The svg keeps its natural size (from `viewBox`, or mermaid's `max-width`);
+the transform does the scaling, so text re-rasterises sharp at every level.
+`@media (prefers-reduced-motion: no-preference)` gates the one 60 ms transition, and dragging
+turns it off.
 
 Nothing goes inside the `<svg>`: no `<script>`, `<style>`, or `<foreignObject>`
 (artifact-diagramming's rule; the lint enforces it). The script lives on the page, the wrapper
@@ -63,11 +67,13 @@ The host renders `<pre class="mermaid">` natively — no library, no CDN. Two th
 undocumented and both matter:
 
 - The rendered `svg` appears **under your wrapper but not as `pre.mermaid svg`** — the host
-  replaces or wraps the block (observed as `.mermaid-box svg`). The script therefore watches the
-  whole figure with a `MutationObserver` and initialises on the first `svg` that appears; never
-  select by the host's class name, it can change.
-- The host's default type is tiny once the drawing is fitted. Grow it in the source:
-  `%%{init:{'themeVariables':{'fontSize':'26px'}}}%%` as the first line of the block. The lint
+  renders the block into a sibling `<div class="mermaid-diagram">` holding the svg, and does it
+  again on a theme change. The script therefore watches the whole figure with a
+  `MutationObserver`, adopts the first `svg` that appears, and only re-sizes a re-rendered one;
+  never select by the host's class name, it can change.
+- Size the type in the source, and turn HTML labels off so the svg measures its own text:
+  `%%{init:{'flowchart':{'htmlLabels':false},'themeVariables':{'fontSize':'16px'}}}%%` as the
+  first line of the block (16 px reads at fit; 26 px only when the drawing is small). The lint
   cannot see the rendered size; check it once by eye.
 
 Mermaid in the page follows the same theme as the rest: it inherits `currentColor`. Do not

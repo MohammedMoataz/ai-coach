@@ -1,0 +1,36 @@
+/* §tokens — light on bare :root; the same names redefined twice for dark (system preference,
+   then the viewer's explicit toggle). Fallback palette "sea", five colours: sea #05668d · teal #028090
+   · green #00a896 · mint #02c39a · lime #f0f3bd. Light: lime-tinted paper, sea ink, teal links,
+   mint highlights. Dark: a navy ground (#00132d #001e45 #002d67 #00377e), cool off-white ink,
+   mint links. Every text/ground pair below clears WCAG 4.5:1 — the lint prints the numbers.
+   Drop-in: replaces the skeleton's §tokens section up to §base. */
+:root {
+  color-scheme: light;
+  --bg: #fdfdf4;  --surface: #f6f8e3;  --surface-2: #f0f3bd;
+  --border: #b8dfd8;  --border-strong: #86cfc3;
+  --text: #073b4f;  --muted: #05668d;
+  --accent: #028090;  --accent-hover: #05668d;  --accent-contrast: #ffffff;
+  --accent-2: #02c39a;  --accent-2-ink: #073b4f;
+  --sans: "IBM Plex Sans", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #00132d;  --surface: #001e45;  --surface-2: #002d67;
+    --border: #00377e;  --border-strong: #028090;
+    --text: #e8eef6;  --muted: #9fb3cc;
+    --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #00132d;
+    --accent-2: #00a896;  --accent-2-ink: #00132d;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #00132d;  --surface: #001e45;  --surface-2: #002d67;
+  --border: #00377e;  --border-strong: #028090;
+  --text: #e8eef6;  --muted: #9fb3cc;
+  --accent: #02c39a;  --accent-hover: #5fe3c3;  --accent-contrast: #00132d;
+  --accent-2: #00a896;  --accent-2-ink: #00132d;
+}
+
