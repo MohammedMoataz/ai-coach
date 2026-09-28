@@ -30,14 +30,17 @@ fails silently to the tail. Always `display=swap`.
 | body | 16 px / 1.55, `--sans` |
 | measure | `.prose { max-width: 68ch }` — 60–72 ch |
 | scale (×1.25) | 12 · 14 · 16 · 20 · 25 · 31 · 39 px; `h1` fluid: `clamp(26px, 4vw, 39px)` |
-| code, labels, numbers | `--mono`, 13 px; `font-variant-numeric: tabular-nums` on numbers |
+| code, ids, numbers | `--mono`, 13 px; `font-variant-numeric: tabular-nums` on numbers |
+| diagram labels | `--sans`, inherited: mermaid at the host's 16 px; inline svg 14 px node, 12 px arrow |
 | spacing | 8 px ramp: 8 · 16 · 24 · 32 · 40 · 64 (4 px inside a component) |
 | targets | ≥ 24 × 24 CSS px for anything clickable (WCAG 2.5.8); 28 px in the skeleton |
 | motion | ≤ 200 ms, `opacity`/`transform`/size only, gated by `prefers-reduced-motion` |
 
-Chart and diagram text uses `--mono` (the skeleton sets `.zoom-stage svg text`). The native
-`dataviz` skill pins chart type to `system-ui`; on an Artifact page one voice matters more, and
-IBM Plex Mono is a text face, not a display face, so its reasoning still holds.
+Chart and diagram text uses `--sans`, inherited — no rule sets it. It is the face the host
+measures mermaid in, so a label fits the box drawn for it; a mono override was the skeleton's
+own cause of text escaping its nodes (`references/diagrams.md`). Diagram sizes: mermaid at the
+host's 16 px, untouched; an inline svg at 14 px on a node, 12 px on an arrow. The native
+`dataviz` skill pins chart type to `system-ui`; on an Artifact page one voice matters more.
 
 ## Two fallback palettes
 

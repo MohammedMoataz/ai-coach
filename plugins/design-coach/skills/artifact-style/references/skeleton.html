@@ -92,7 +92,10 @@ code { font-family: var(--mono); font-size: .92em; }
 .zoom-viewport.dragging { cursor: grabbing; user-select: none; }
 .zoom-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 .zoom-stage svg { display: block; max-width: none !important; height: auto; margin: 0; }
-.zoom-stage svg text { font-family: var(--mono); }
+/* No font rule reaches into a diagram. Mermaid measures every label in the page's sans at the
+   host's 16 px and sizes each box to that; restyling its text (a mono face, a size, letter-spacing)
+   after the fact is what pushes words out of their boxes and onto each other. An inline svg
+   inherits the same sans and sets font-size per <text>. */
 .zoom-stage .mermaid { margin: 0; padding: 0; background: none; white-space: normal; }
 .zoom-toolbar { position: absolute; top: 8px; right: 10px; z-index: 2; /* inside the viewport, so a long caption never sits under it */ display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); opacity: .85; }
 .zoom-toolbar:hover, .zoom-toolbar:focus-within, .zoomable:hover .zoom-toolbar { opacity: 1; }
@@ -157,13 +160,13 @@ code { font-family: var(--mono); font-size: .92em; }
             <line x1="180" y1="100" x2="238" y2="100" marker-end="url(#arr)"/>
             <line x1="400" y1="100" x2="458" y2="100" marker-end="url(#arr)"/>
           </g>
-          <g fill="currentColor" font-size="13" text-anchor="middle">
+          <g fill="currentColor" font-size="14" text-anchor="middle">
             <text x="100" y="105">client</text><text x="320" y="105">api</text><text x="540" y="105">db</text>
-            <text x="209" y="90" font-size="11">HTTP</text><text x="429" y="90" font-size="11">writes</text>
+            <text x="209" y="90" font-size="12">HTTP</text><text x="429" y="90" font-size="12">writes</text>
           </g>
         </svg>
-        <!-- or: <pre class="mermaid">%%{init:{'flowchart':{'htmlLabels':false},'themeVariables':{'fontSize':'16px'}}}%%
-flowchart LR ...</pre> — the host renders it into a sibling svg; the script adopts it when it appears. -->
+        <!-- or: <pre class="mermaid">flowchart LR ...</pre> — no %%{init}%% line: the host's defaults
+             (16 px, the page's sans) are the size. It renders into a sibling svg; the script adopts it. -->
       </div>
     </div>
   </figure>
@@ -176,7 +179,7 @@ flowchart LR ...</pre> — the host renders it into a sibling svg; the script ad
    the page never reflows. Wheel pans, ctrl/⌘+wheel zooms around the pointer, drag pans, two
    fingers pinch, double-click toggles fit and 100%, arrows/+/−/0/f from the keyboard. A
    host-rendered mermaid svg arrives later and is adopted when it appears; a re-rendered one
-   (theme change) is only re-sized. */
+   (theme change, late font) is re-sized and, if untouched, re-fitted. */
 (function () {
   var MIN = 0.15, MAX = 6, STEP = 1.25;
   function naturalSize(svg) {
@@ -200,7 +203,7 @@ flowchart LR ...</pre> — the host renders it into a sibling svg; the script ad
     var vp = fig.querySelector('.zoom-viewport'), stage = fig.querySelector('.zoom-stage');
     var svg = stage && stage.querySelector('svg');
     if (!vp || !svg) return;
-    if (fig.__zoom) { if (!svg.dataset.zoomReady) { adopt(fig, svg); fig.__zoom.apply(); } return; }
+    if (fig.__zoom) { if (!svg.dataset.zoomReady) { adopt(fig, svg); if (fig.__zoom.touched || !fig.__zoom.fit()) fig.__zoom.apply(); } return; }
     var S = fig.__zoom = { z: 1, tx: 16, ty: 44, touched: false, base: { w: 900, h: 540 } };
     var label = fig.querySelector('[data-zoom="reset"]');
     var clampZ = function (v) { return Math.min(MAX, Math.max(MIN, v)); };
@@ -218,6 +221,7 @@ flowchart LR ...</pre> — the host renders it into a sibling svg; the script ad
       S.apply(); return true;
     }
     function reset() { S.z = 1; S.tx = 16; S.ty = 44; S.apply(); }
+    S.fit = fit;
     adopt(fig, svg);
     fig.addEventListener('click', function (e) {
       var b = e.target.closest('[data-zoom]'); if (!b) return;
@@ -278,8 +282,30 @@ flowchart LR ...</pre> — the host renders it into a sibling svg; the script ad
     // reader drags the viewport's resize handle, an untouched diagram fits itself again.
     if (window.ResizeObserver) new ResizeObserver(function () { if (!S.touched) fit(); }).observe(vp);
   }
-  function scan() { document.querySelectorAll('.zoomable').forEach(setup); }
+  // The host renders mermaid as soon as its script runs, usually before the page's web font has
+  // arrived: every label is measured in the fallback face and then drawn in the real one, so words
+  // spill past their boxes and onto each other. Once the fonts are ready, each host svg is rendered
+  // once more with the host's own mermaid and settings and swapped in place (marked, so it is not
+  // redone); one the host re-renders later, on a theme change, gets the same single pass.
+  var fontsReady = false, seq = 0;
+  function remeasure() {
+    var m = window.mermaid;
+    if (!fontsReady || !m || typeof m.render !== 'function') return;
+    document.querySelectorAll('.zoomable pre.mermaid').forEach(function (pre) {
+      var stage = pre.closest('.zoom-stage'), cur = stage && stage.querySelector('svg');
+      if (!cur || cur.dataset.measured || pre.dataset.measuring) return;
+      pre.dataset.measuring = '1';
+      m.render('dc-mermaid-' + (seq++), pre.textContent).then(function (r) {
+        var t = document.createElement('template'); t.innerHTML = r.svg;
+        var fresh = t.content.querySelector('svg'), now = stage.querySelector('svg');
+        delete pre.dataset.measuring;
+        if (fresh && now) { fresh.dataset.measured = '1'; now.replaceWith(fresh); }
+      }, function () { cur.dataset.measured = '1'; delete pre.dataset.measuring; });
+    });
+  }
+  function scan() { document.querySelectorAll('.zoomable').forEach(setup); remeasure(); }
   scan();
   new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+  if (document.fonts && document.fonts.ready) window.addEventListener('load', function () { document.fonts.ready.then(function () { fontsReady = true; remeasure(); }); });
 })();
 </script>

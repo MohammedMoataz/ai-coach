@@ -2,7 +2,8 @@
 'use strict';
 // Zero-dependency lint for an Artifact page (the single HTML file the Artifact tool publishes).
 // It checks the things design-coach:artifact-style promises and a reader would otherwise catch
-// by eye after publishing: every diagram inside a zoomable wrapper, the three theme states with
+// by eye after publishing: every diagram inside a zoomable wrapper, diagram text left at the size
+// and face it was measured in, the three theme states with
 // matching token names, text/background contrast in both themes, a font stack that ends in a
 // generic family, resources only from hosts the Artifact CSP admits, and the host's own
 // invariants (no doctype/html/head/body, a <title> in the first 8 KB, under 16 MB).
@@ -98,7 +99,7 @@ function check(html) {
 
   // ---- structure: diagrams, wrappers, tables, svg contents ----
   const has = (stack, cls) => stack.some((n) => n.classes.includes(cls));
-  let zoomables = 0, pres = 0, tables = 0;
+  let zoomables = 0, pres = 0, tables = 0, mermaids = 0;
   walk(html, (node, stack) => {
     const inSvg = stack.some((n) => n.name === 'svg');
     if (node.name === 'svg' && !inSvg) {
@@ -114,7 +115,16 @@ function check(html) {
     if (inSvg && (node.name === 'script' || node.name === 'style' || node.name === 'foreignobject')) {
       err(`<${node.name}> inside an <svg> — artifact-diagramming forbids it; put script and style on the page, not in the drawing`);
     }
+    if (inSvg && /^(?:text|tspan|g)$/.test(node.name)) {
+      const size = parseFloat(attr(node.attrs, 'font-size') || (/font-size\s*:\s*([\d.]+)/i.exec(attr(node.attrs, 'style') || '') || [])[1]);
+      if (size < 12) warn(`<${node.name} font-size="${size}"> at offset ${node.index} — diagram labels are ≥ 12 px at 1:1 (14 for a node, 12 for an arrow)`);
+    }
     if (node.classes.includes('mermaid') && !has(stack, 'zoomable')) err(`mermaid block at offset ${node.index} is not inside a figure.zoomable`);
+    if (node.name === 'pre' && node.classes.includes('mermaid')) {
+      mermaids++;
+      const src = html.slice(node.index, html.indexOf('</pre', node.index));
+      if (/%%\{\s*init[\s\S]*?fontSize/i.test(src)) warn(`mermaid block at offset ${node.index} sets fontSize in %%{init}%% — the host's 16 px is the size; a larger one makes every label oversized and the drawing sprawl`);
+    }
     if (node.classes.includes('zoomable')) {
       zoomables++;
       const seg = html.slice(node.index, node.index + 4000);
@@ -132,6 +142,8 @@ function check(html) {
     }
   });
   if (zoomables && !/data-zoom|zoom-viewport/.test(html.slice(html.lastIndexOf('<script')))) warn('figure.zoomable present but no zoom script found in the last <script> — copy §zoom from skeleton.html');
+  const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).join('\n');
+  if (mermaids && !(/fonts\.ready/.test(scripts) && /\.render\(/.test(scripts))) warn('mermaid present but the zoom script has no late-font pass (document.fonts.ready → mermaid.render) — the host measures labels before the web font arrives and they spill out of their boxes; copy §zoom from skeleton.html');
 
   // ---- css ----
   const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n');
@@ -163,6 +175,13 @@ function check(html) {
     if (!GENERIC.test(value)) err(`${m[1]}: "${value.slice(0, 60)}" does not end in a generic family — a face that fails to load falls back to the browser default`);
   }
   if (!/font-family|--sans|--mono|font\s*:/i.test(css)) err('no font declared anywhere — the page renders in the host default');
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    // mermaid sized every box to the text it measured; restyling that text afterwards overflows it
+    const sel = m[1].trim(), body = m[2];
+    if (!/(?:svg|mermaid)/i.test(sel) || /button|toolbar/i.test(sel)) continue;
+    if (!/(?:\btext\b|tspan|label|foreignObject|\.mermaid\b|svg\s*$)/i.test(sel.split(',').pop()) && !/\btext\b|tspan|label/i.test(sel)) continue;
+    if (/(?:^|[\s;])(?:font(?:-family|-size|-weight|-stretch)?|letter-spacing|word-spacing)\s*:/i.test(body)) warn(`\`${sel.slice(0, 60)} {\` restyles diagram text — mermaid measured each label in the page font at 16 px and sized its box to that; a different face, size or spacing pushes words out of boxes and onto each other. Leave diagram text alone; set font-size per <text> in an inline svg`);
+  }
   if (/text-overflow\s*:\s*ellipsis/i.test(css) && !/min-width\s*:\s*0/i.test(css)) warn('text-overflow: ellipsis without any min-width: 0 — flex/grid children default to min-width:auto and the ellipsis never appears');
   for (const m of css.matchAll(/grid-template-columns\s*:\s*([^;}]+)/gi)) {
     // a bare `1fr` track has an automatic minimum: it grows to its widest unbreakable child and the row overflows
