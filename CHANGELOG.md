@@ -3,6 +3,36 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.16.2 — Diagram text at the size it was measured in (2026-09-28)
+
+**design-coach 1.0.2 · ai-coach 1.16.2**
+
+Diagrams on a published page read too big, and their labels still ran out of their boxes and
+onto each other. A page whose diagrams were left at the host's defaults (mermaid at 16 px in
+the page's sans, no `%%{init}%%` line) looked right, so those defaults are now the rule.
+SKILL.md still asked for `fontSize: 26px`; that is gone, and the lint warns on any `fontSize`
+in an init line.
+
+The overlaps had two causes, both reproduced in a browser against the host's own runtime
+(mermaid 11.16.1, same settings) on the six diagrams of a real page. First, the skeleton's own
+`.zoom-stage svg text { font-family: var(--mono) }`. Mermaid sizes every node, note and message
+gap to text it measured in the page's sans, and the rule then drew that text in a wider mono, so
+labels ran over the numbered circles of a sequence diagram. The rule is gone, and the lint warns
+on any CSS that restyles diagram text. Second, the host renders the moment its script runs,
+before IBM Plex has arrived, so on a first load every label was measured in the fallback face
+and came out 1–18 px too wide. The zoom script now renders each diagram once more when
+`document.fonts.ready` resolves and swaps the svg in place. The lint warns on a page whose
+script lacks that pass. With a cold font load, the probe found 54 problems on the old skeleton
+and 3 on the new one: two 1 px touches on a long self-message label and a 1 px viewBox edge,
+both mermaid's own geometry.
+
+`scripts/probe-overflow.js` used to probe only `svg[role=img]`, so it never looked at a mermaid
+diagram. It also compared `getBBox()` values across mermaid's translated groups. It now covers
+every diagram, compares positions on screen, measures `foreignObject` labels, and reports two
+new kinds: `svg-label-overlap` (text on text) and `svg-label-crosses-shape`. Inline svg labels
+are 14 px on a node and 12 px on an arrow, in the page's sans; the skeleton's 11 px arrow labels
+broke its own ≥ 12 px rule, and the lint now warns below 12.
+
 ## v1.16.1 — The fallback palette is the one that was meant (2026-09-05)
 
 **design-coach 1.0.1 · ai-coach 1.16.1**

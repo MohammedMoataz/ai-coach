@@ -38,6 +38,14 @@ assert.strictEqual(check(skeleton).errors.filter((e) => /offset/.test(e)).length
 assert.match(errorsOf(skeleton + '<pre class="mermaid">flowchart LR</pre>'), /mermaid block .* not inside/);
 // the one dark block that drifts from the other
 assert.match(errorsOf(skeleton.replace('--accent-2-ink: #00132d;\n  }\n}', '--accent-2-ink: #00132d; --extra: #fff;\n  }\n}')), /different token names/);
+// diagram type: the host's size and face, never restyled after measurement
+const mermaidPage = skeleton.replace(/<svg viewBox="0 0 640 200"[\s\S]*?<\/svg>/, '<pre class="mermaid">flowchart LR\n  a --> b</pre>');
+assert.deepStrictEqual(check(mermaidPage).warnings, [], 'a mermaid block in the skeleton wrapper passes clean');
+assert.match(check(mermaidPage.replace('<pre class="mermaid">', '<pre class="mermaid">%%{init:{\'themeVariables\':{\'fontSize\':\'26px\'}}}%%\n')).warnings.join('\n'), /sets fontSize/);
+assert.match(check(mermaidPage.replace('/* §print */', '.zoom-stage svg text { font-family: var(--mono); }\n/* §print */')).warnings.join('\n'), /restyles diagram text/);
+assert.match(check(mermaidPage.replace('/* §print */', '.mermaid .nodeLabel { font-size: 20px; }\n/* §print */')).warnings.join('\n'), /restyles diagram text/);
+assert.match(check(mermaidPage.replace(/fonts\.ready/g, 'fonts.never')).warnings.join('\n'), /late-font pass/);
+assert.match(check(skeleton.replace('font-size="12">HTTP', 'font-size="10">HTTP')).warnings.join('\n'), /≥ 12 px/);
 // warnings
 assert.match(check(skeleton.replace(/\.trunc \{[^}]*min-width: 0;/, '.trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;').replace(/\.row > \*, \.grid > \* \{ min-width: 0; \}/, '')).warnings.join('\n'), /min-width: 0/);
 assert.match(check(skeleton.replace('<div class="tablewrap">', '<div>')).warnings.join('\n'), /no scrolling ancestor/);

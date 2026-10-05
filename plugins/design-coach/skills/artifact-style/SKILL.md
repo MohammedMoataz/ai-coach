@@ -41,9 +41,11 @@ nothing — never a house style to impose on a project that has one.
    rules below by hand and says so. **Then probe the rendered page once**: the lint cannot
    measure text, so when a browser tool is available (the Playwright MCP, Chrome DevTools),
    serve the file and evaluate the function `scripts/probe-overflow.js` prints — it lists every
-   HTML box whose text escaped it and every SVG label wider than its node, with the amount.
-   Fix what it lists by the ladder in rule 1 (shrink a label ≤ 10 %, otherwise shorten or wrap
-   it; never leave it), re-probe, and only then publish. No browser: say so, and look at the
+   HTML box whose text escaped it and, in every diagram (inline svg and host-rendered mermaid
+   alike), each label wider than its node, straddling a node it is not in, or drawn on another
+   label, with the amount. Probe after the fonts have loaded, with the figures at fit. Fix what
+   it lists by the ladder in rule 1 (in an inline svg widen the node or shrink a label ≤ 10 %;
+   in mermaid shorten the words — never resize its text), re-probe, and only then publish. No browser: say so, and look at the
    page once at 320 px and once at 900 px after publishing.
 5. **Publish** with the native tool as usual — favicon, stable file path on re-runs, the design
    brief in the reply. A `PreToolUse` hook shipped with this plugin runs the same lint on the
@@ -64,7 +66,7 @@ The skeleton sets `min-width: 0` on `.row > *` and `.grid > *` and `overflow-wra
 | card / section title | `.clamp2` + `title` | let it push the card taller than its row |
 | URL, hash, id | `.anywhere` — break it | hide it: a truncated URL is unrecoverable |
 | code | `pre` scrolls, `white-space: pre` | wrap code |
-| diagram label | shorten the words or shrink the font | truncate — an ellipsised node is meaningless |
+| diagram label | shorten the words; in an inline svg widen the node or shrink that `<text>` ≤ 10 % | truncate — an ellipsised node is meaningless; restyle mermaid's text in CSS |
 | KPI number | `.kpi` shrinks with `clamp()` — in a card | clamp lines; put it in a table (every cell shares one font size) |
 
 WCAG 1.4.10 is the license: tables, diagrams and code may scroll in two dimensions; everything
@@ -80,13 +82,21 @@ canvas moved by `translate+scale` (nothing scrolls, no scrollbars), text tools t
 (`− 100% + ⤢ ⛶`, the level doubles as reset) and a one-line gesture hint bottom-left. Wheel
 pans, Ctrl/⌘+wheel and pinch zoom around the pointer, drag pans, double-click toggles fit and
 100 %, arrows/`+`/`−`/`0`/`f` from the keyboard. Mermaid is rendered by the host into an
-`svg` under your `<pre class="mermaid">` — the script waits for it with a `MutationObserver`,
-and grows mermaid's type with `%%{init:{'themeVariables':{'fontSize':'26px'}}}%%` because the
-host's default is unreadable at fit-to-width. Nothing is added inside the `<svg>` itself;
-artifact-diagramming's ban on script and style there stands.
+`svg` under your `<pre class="mermaid">` — the script waits for it with a `MutationObserver`.
+
+**Diagram type stays at the size and face it was measured in.** The host draws mermaid at 16 px
+in the page's sans and sizes every node, note and message gap to text measured in exactly that.
+So: no `%%{init}%%` `fontSize` (26 px made every label oversized and the drawing sprawl), and no
+CSS that reaches into a diagram's text — a mono face, a size, letter-spacing applied after the
+measurement is what pushes words out of their boxes and onto each other. The one thing the host
+gets wrong on its own is timing: it measures before the web font has arrived, so the skeleton's
+script renders each diagram once more when `document.fonts.ready` resolves. An inline svg
+inherits the same sans and sets its sizes per `<text>`: 14 px on a node, 12 px on an arrow.
+Nothing is added inside the `<svg>` itself; artifact-diagramming's ban on script and style
+there stands.
 
 Drawing rules the native skill leaves implicit: ≤ 7 nodes per view (split past that), a verb
-or protocol on every arrow, labels ≥ 12 px at 1:1, a legend only when the same encoding repeats
+or protocol on every arrow, labels ≥ 12 px at 1:1 and a few words long, a legend only when the same encoding repeats
 across figures, and a caption that states the takeaway rather than the title.
 
 ### 3. Fonts: the project's, else IBM Plex, else Arial — `references/tokens.md`
@@ -95,9 +105,9 @@ A detected font is used with its own fallbacks appended. Otherwise the skeleton'
 `"IBM Plex Sans", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif` and
 `"IBM Plex Mono", "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace`, loaded from
 Google Fonts — the one font host the Artifact CSP admits — with `display=swap`. Body 16 px /
-1.55, measure 60–72 ch, headings on a 1.25 scale. Chart and diagram text follows the page's
-mono stack: the native dataviz skill's `system-ui` for chart type is overridden here so one
-page has one voice.
+1.55, measure 60–72 ch, headings on a 1.25 scale. Chart and diagram text is the page's sans —
+the face the host measures mermaid in, so one page has one voice and every label fits the box
+drawn for it; mono stays for code, ids and numbers in HTML.
 
 ### 4. Palette: the project's, else one of two, dark mode designed not derived — `references/tokens.md`
 
