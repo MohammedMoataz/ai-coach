@@ -1462,8 +1462,12 @@ function summarySet(id, mode, text) {
   let r;
   if (mode === 'drop') r = db().prepare(`UPDATE sessions SET summary = NULL, summary_ok = NULL WHERE ${own}`).run(id);
   else if (mode === 'approve') r = db().prepare(`UPDATE sessions SET summary_ok = 1 WHERE ${own}`).run(id);
-  else r = db().prepare(`UPDATE sessions SET summary = ?, summary_ok = 1 WHERE ${own}`)
-    .run(scrubPrivate(text).slice(0, 500), id);
+  else {
+    // an empty edit is not an approval of anything; checked here so every caller gets it
+    const t = scrubPrivate(text).trim().slice(0, 500);
+    if (!t) return false;
+    r = db().prepare(`UPDATE sessions SET summary = ?, summary_ok = 1 WHERE ${own}`).run(t, id);
+  }
   return r.changes > 0;
 }
 function sessionActivity(id, maxRows) {
@@ -2376,13 +2380,14 @@ function dispatch(cmd, a, flagValue) {
       for (let i = 0; i < a.length; i++) {
         if (a[i] === '--project') proj = a[++i];
         else if (a[i] === '--task') t = a[++i];
-        else if (a[i] === '--provenance') prov = a[++i];
+        // present-but-empty must fail, not fall back to `human`: that is the label this flag exists to avoid
+        else if (a[i] === '--provenance') prov = a[i + 1] && !a[i + 1].startsWith('-') ? a[++i] : '';
         else rest.push(a[i]);
       }
       // --provenance (or AICOACH_PROVENANCE) lets a caller that is a model say so; the MCP adapter
       // sets `distilled`.
       // `imported` is refused here: only seedImport may claim a row came from a teammate.
-      if (prov && prov !== 'human' && prov !== 'distilled') { console.error('--provenance must be human or distilled'); process.exitCode = 2; break; }
+      if (prov !== null && prov !== 'human' && prov !== 'distilled') { console.error('--provenance must be human or distilled'); process.exitCode = 2; break; }
       const extra = {};
       if (t) extra.task = t;
       if (prov) extra.provenance = prov;

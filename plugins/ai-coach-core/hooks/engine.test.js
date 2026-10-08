@@ -912,6 +912,8 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   e.seedExport(leakSeed);
   row = fs.readFileSync(leakSeed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((r) => r.kind === 'session');
   assert.strictEqual(row.summary, 'refund approval split by leg [private]', 'the edit is what travels');
+  assert.strictEqual(e.summarySet('leak-1', 'edit', '   '), false, 'an empty edit is refused');
+  assert.strictEqual(e.summarySet('leak-1', 'edit', undefined), false, 'so is a missing one');
 
   // a new summary written over an approved one needs a fresh review
   e.sessionEnd('leak-1', 'something else entirely happened');
