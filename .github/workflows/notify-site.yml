@@ -1,0 +1,33 @@
+name: Notify site
+
+# The public site (MohammedMoataz/ai-coach-website) builds its coach, skill, agent and command
+# pages from this repo's main at build time. When any of those sources change, ask it to rebuild.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .claude-plugin/marketplace.json
+      - plugins/*/skills/**/SKILL.md
+      - plugins/*/agents/*.md
+      - plugins/ai-coach/commands/*.md
+  workflow_dispatch:
+
+# The dispatch authenticates with its own token, scoped to the site repo only; this workflow's
+# GITHUB_TOKEN needs nothing.
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the site to rebuild
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "SITE_DISPATCH_TOKEN is not set; the site will not rebuild on this change." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh api repos/MohammedMoataz/ai-coach-website/dispatches \
+            -f event_type=ai-coach-updated \
+            -f "client_payload[sha]=$GITHUB_SHA"
