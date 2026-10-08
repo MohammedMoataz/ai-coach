@@ -276,9 +276,18 @@ travels. Publish twice under one name on one day and the second **replaces** the
 $ engine debrief-show 2026-08-20/sara@example.com/orders-csv-export
 ```
 
-Sessions still travel, as attribution only: who worked which branch, when, and how rough it was.
-The one-line session summary stays on the machine that made it — every fallback it ever had was raw
-prompt text, and this file lives in git.
+Sessions travel too: who worked which branch, when, how rough it was, and a one-line summary of
+what happened. **The summary travels only once you have read it.** A model writes it at session
+end, every fallback it ever had was raw prompt text, and this file lives in git, so `/handoff` puts
+each new summary in front of you to approve, edit or drop, and the engine holds back any nobody
+approved. A held-back session still travels, as attribution.
+
+```
+$ engine summaries --pending
+4f1c…  [pending]   2026-10-08 · orders-csv-export · feature/orders-csv
+    Added CSV export for orders; refunds split by settlement leg.
+$ engine summary-set 4f1c… --approve
+```
 
 ## Coaching from evidence, not etiquette
 

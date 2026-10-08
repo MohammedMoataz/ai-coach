@@ -78,6 +78,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   -- prompt text -- credentials, customer data, whatever was typed -- into a git-committed file.
   -- sessionEnd() now refuses a summary that is the prompt. The shared CONCLUSION is a debrief.
   summary      TEXT,
+  -- 1 once a person has read this summary and approved it (as written or edited) for a seed.
+  -- seedExport ships only approved summaries, so a model's paraphrase of what was asked never
+  -- reaches git unread; /memory-coach:handoff runs the review. Reset when the summary changes.
+  summary_ok   INTEGER,
   -- How badly this session went: corrections raised plus failed tool calls, as a single number.
   -- Locally this is computed live from the rows and stays NULL. It is filled only on a session
   -- imported from a teammate, because `corrections` and `observations` do not travel — they carry

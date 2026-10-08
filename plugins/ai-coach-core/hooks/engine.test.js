@@ -896,7 +896,35 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   assert.strictEqual(sRow.id, undefined, 'a local session uuid never travels — it means nothing elsewhere');
   assert.ok(sRow.skey, 'it travels as date/author/name instead');
   assert.strictEqual(sRow.summary, undefined,
-    'the one-line summary stays on this machine: a session travels as attribution only');
+    'an unreviewed summary is held back: nothing a model paraphrased reaches git unread');
+  assert.strictEqual(e.seedExport(leakSeed).summariesHeld, 1, 'and the export says how many it held');
+  assert.strictEqual(e.summaryList({ pending: true }).length, 1, 'it waits in the review list');
+
+  // approve as written: it travels
+  assert.ok(e.summarySet('leak-1', 'approve'), 'approve');
+  e.seedExport(leakSeed);
+  let row = fs.readFileSync(leakSeed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((r) => r.kind === 'session');
+  assert.strictEqual(row.summary, 'split the refund approval switch', 'an approved summary travels: it says what happened');
+  assert.strictEqual(e.summaryList({ pending: true }).length, 0, 'nothing left to review');
+
+  // edit: the edited text travels, approved; <private> is scrubbed from edits too
+  assert.ok(e.summarySet('leak-1', 'edit', 'refund approval split by leg <private>ACME</private>'), 'edit');
+  e.seedExport(leakSeed);
+  row = fs.readFileSync(leakSeed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((r) => r.kind === 'session');
+  assert.strictEqual(row.summary, 'refund approval split by leg [private]', 'the edit is what travels');
+
+  // a new summary written over an approved one needs a fresh review
+  e.sessionEnd('leak-1', 'something else entirely happened');
+  assert.strictEqual(e.summaryList({ pending: true }).length, 1, 'changed text is unreviewed text');
+  e.sessionEnd('leak-1', null);
+  assert.strictEqual(e.summaryList({ pending: true }).length, 1, 'closing again without a summary keeps the state');
+
+  // drop: the session still travels, as attribution
+  assert.ok(e.summarySet('leak-1', 'drop'), 'drop');
+  e.seedExport(leakSeed);
+  row = fs.readFileSync(leakSeed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((r) => r.kind === 'session');
+  assert.ok(row && row.summary === undefined, 'a dropped summary is gone; the session row still travels');
+  assert.strictEqual(e.summarySet('no-such', 'approve'), false, 'an unknown session is refused, not silently ok');
   // the compatibility contract of the whole format
   for (const r of rows) {
     if (r.kind !== 'memory') {
@@ -1057,8 +1085,10 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   e.seedImport(skewSeed, skewProj);
   const stored = e.db().prepare("SELECT created, summary FROM sessions WHERE name = 'from the future'").get();
   assert.ok(stored.created < '2099', 'a future-dated timestamp is clamped to now, not trusted: ' + stored.created);
-  assert.strictEqual(stored.summary, null,
-    'a summary in an older seed is dropped on import: summaries stay on the machine that wrote them');
+  assert.strictEqual(stored.summary, 'a clock 70 years fast',
+    'a teammate\'s summary is kept on import: it is what tells you what happened');
+  assert.strictEqual(e.summaryList({ pending: true }).filter((s) => s.summary === 'a clock 70 years fast').length, 0,
+    'and it is not put up for your review: its author approved it before it left');
   assert.ok(!e.brief(4000, skewProj).includes('a clock 70 years fast'),
     "and a skewed clock cannot pin someone else's session as my last session");
 }

@@ -3,19 +3,32 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
-## v1.16.3 — The code does what the docs say (2026-10-08)
+## v1.17.0 — Summaries you have read, and code that does what the docs say (2026-10-08)
 
-**ai-coach-core 1.8.2 · security-coach 1.2.1 · ai-coach 1.16.3**
+**ai-coach-core 1.9.0 · memory-coach 1.5.0 · security-coach 1.2.1 · ai-coach 1.17.0**
 
 A full read of the engine against the README turned up places where the two had drifted. Each is
-fixed on the side that was wrong, with a test that fails on the old behaviour.
+fixed on the side that was wrong, with a test that fails on the old behaviour. One of them became a
+feature.
 
-- **The session summary no longer travels in a seed.** The README and `/memory-coach:handoff`
-  promised that sessions travel as attribution only and the one-line summary stays on the machine
-  that wrote it, and the brief code already assumed imported sessions have none. `seedExport`
-  still selected `summary`. It no longer does, and `seedImport` drops the field from older seeds
-  that carry it. The summary is a model's paraphrase of what was asked; the shared conclusion is a
-  debrief.
+- **A session summary travels once you have approved it.** `seedExport` shipped every session's
+  one-line summary, unread, into a git-committed file, while the README and `/memory-coach:handoff`
+  said it never left the machine. Neither was right: the summary is what tells a teammate what
+  happened on a branch, and it is also a model's paraphrase of what was asked, whose every fallback
+  was raw prompt text. So it travels, but only after a person reads it.
+  - New column `sessions.summary_ok` (schema v3). `seedExport` ships a summary only when it is
+    approved, or when it arrived from a teammate who approved it; the rest are held back, the
+    session still travels as attribution, and the export prints how many it held.
+  - New engine verbs: `summaries [--pending] [--task] [--repo] [--json]` lists them;
+    `summary-set <id> --approve | --drop | "<edited text>"` records the decision. An edit is
+    scrubbed of `<private>` and approved as typed. A new summary written over an approved one goes
+    back to pending.
+  - `/memory-coach:handoff` gains step 0: list the pending summaries and ask once — approve all,
+    go one by one (approve, edit, drop), or hold them all back. It flags names, amounts,
+    credentials and internal hosts, but never edits or approves on the user's behalf, and
+    `/ai-coach:wrap` reaching the step approves nothing.
+  - `seedImport` keeps a teammate's summary and marks it approved, so it is never put up for your
+    review.
 - **`<private>…</private>` is stripped before prompt text reaches disk, everywhere.** Only
   observations and the plan-review call scrubbed it. `sessions.first_prompt` and the excerpt a
   correction copies from it stored it raw, and the raw first prompt went to the session-end Haiku
