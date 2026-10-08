@@ -14,7 +14,7 @@ process.stdin.on('end', () => {
     const input = data.tool_input || {};
     // <private>...</private> is stripped here, at the boundary, before anything is written.
     // Redacting later would mean the secret was already on disk.
-    const scrub = (s) => String(s || '').replace(/<private>[\s\S]*?<\/private>/gi, '[private]');
+    const scrub = engine.scrubPrivate;
     // failures are the richest learning signal — mark them so session-end distillation sees them
     // engine.FAIL_PREFIX, not a literal: four readers match this prefix with LIKE, and a copy
     // here would let a rename pass tests while silently emptying every one of them.

@@ -68,11 +68,13 @@ Exceptional Conditions.
   `/security-coach:triage ingest --source audit` — never auto-ingest scanner noise into the
   findings table. The `--source audit` matters: a scanner hit and a pentester's finding are not
   worth the same, and a finding that lies about where it came from is one nobody can weigh.
-- **`--triage` chains the two**: after the report, hand the findings the user confirms are worth
-  tracking straight to `/security-coach:triage ingest --source audit`, without asking them to
-  retype anything. It still validates each finding through triage's own gate and it still asks
-  before recording — the flag removes a retyped command, not a decision. Without the flag, the
-  hand-off stays an offer.
+- **`--triage` chains the two**: after the report, record the findings the user confirms are worth
+  tracking, without asking them to retype anything. `triage` is user-only, so it cannot be
+  invoked through the Skill tool — read `$AICOACH_REPO/plugins/security-coach/skills/triage/SKILL.md` and follow
+  its `ingest` steps here with `--source audit`: the `.gitignore` check, each finding validated
+  through triage's own gate, `ENGINE finding-add`, then the regenerated findings table. It still
+  asks before recording — the flag removes a retyped command, not a decision. Without the flag,
+  the hand-off stays an offer of `/security-coach:triage ingest --source audit`.
 
 Load `$AICOACH_REPO/plugins/security-coach/skills/audit/references/standards.md` only when the user asks for the reasoning, the tool comparison, or
 category detail.

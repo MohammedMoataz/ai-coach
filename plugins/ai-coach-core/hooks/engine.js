@@ -82,6 +82,7 @@ function migrate(d, tables) {
     add('sessions', 'name_source', "TEXT DEFAULT 'auto'");
     add('sessions', 'repo', 'TEXT');
     add('sessions', 'outcomes', 'INTEGER');
+    add('sessions', 'summary_ok', 'INTEGER'); // v3: a summary travels only once a person approved it
   }
 
   // ---- v1 -> v2: identity normalizes onto `authors`, and `workspace` becomes derived ----
@@ -148,7 +149,7 @@ function requireSqlite() {
 // current number is known to have every table and column already, so open() can skip both the
 // schema exec and migrate()'s PRAGMA probes. That work was being redone on every hook process —
 // and observe.js is a fresh process on every Edit, Write and Bash.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 // The team-seed wire format. Two literal 3s used to encode it — one stamped on export, one guarding
 // the "newer than this engine" warning on import — and they had to be changed together with nothing
@@ -1089,7 +1090,7 @@ function brief(maxChars, proj) {
   const shown = new Set();
   if (t) try {
     // No summary/first_prompt requirement any more: a finished session is worth listing for its
-    // attribution alone, and an imported one legitimately has neither (summary stays local now).
+    // attribution alone, and an imported one may have no summary (it travels only once its author approved it).
     // LIMITs sized past what the cap can print: the character budget is the real limit, and
     // reading every session and memory of a long-lived branch to then print a handful of them
     // was work whose cost grew forever while its output stayed the same size.
@@ -1118,7 +1119,7 @@ function brief(maxChars, proj) {
       } catch (err) { log('brief.branchDebriefs', err); }
       for (const s of prior) {
         const who = s.username || s.author || 'unknown';
-        // an imported session has no summary and never had a first_prompt, so fall back to how
+        // an imported session may have no summary and never had a first_prompt, so fall back to how
         // rough it was — without this every teammate's line rendered as "· null"
         const what = s.summary || s.first_prompt
           || `${s.outcomes == null ? 0 : s.outcomes} corrections+failures`;
@@ -1351,10 +1352,16 @@ function sessionLabel(row) {
   const who = row.username || whoLabel(row, authorMap(db(), [row.author]));
   return `${row.name}@${who}`;
 }
+// <private>…</private> is the user's way of saying "not this part". It is honoured at every point
+// prompt or tool text is written down or handed to another process — one function, so the next
+// writer of prompt text has nothing to re-implement.
+function scrubPrivate(s) {
+  return String(s == null ? '' : s).replace(/<private>[\s\S]*?<\/private>/gi, '[private]');
+}
 function firstPrompt(id, prompt) {
   if (!id || !prompt) return;
   db().prepare('UPDATE sessions SET first_prompt = ? WHERE id = ? AND first_prompt IS NULL')
-    .run(String(prompt).slice(0, 300), id);
+    .run(scrubPrivate(prompt).slice(0, 300), id);
 }
 // Has this session already been given the spotlighting reminder? The reminder is ~480 characters
 // of model-facing context and it says the same thing every time; a session reading many flagged
@@ -1393,7 +1400,7 @@ function correction(sessionId, message, signal) {
     : null;
   db().prepare('INSERT INTO corrections(session_id, signal, message, prompt_excerpt) VALUES(?,?,?,?)')
     .run(sessionId || null, sig, String(message || '').slice(0, 500),
-      s && s.first_prompt ? String(s.first_prompt).slice(0, 200) : null);
+      s && s.first_prompt ? scrubPrivate(s.first_prompt).slice(0, 200) : null);
   return sig;
 }
 function corrections(opts) {
@@ -1413,10 +1420,11 @@ function markCorrectionsRecorded(ids) {
   for (const id of ids) { stmt.run(Number(id)); n++; }
   return n;
 }
-// `summary` travels in the team seed, so it must never be the prompt. It used to be exactly that:
-// SessionEnd wrote first_prompt.slice(0,200) unconditionally and only *upgraded* it when the model
-// call succeeded — and when that call fails (no `claude` on PATH, cooldown, unparseable reply) the
-// raw prompt is what shipped into a git-committed file. schema.sql says prompt text is never stored
+// `summary` must never be the prompt. It used to be exactly that: SessionEnd wrote
+// first_prompt.slice(0,200) unconditionally and only *upgraded* it when the model call succeeded —
+// and when that call fails (no `claude` on PATH, cooldown, unparseable reply) the raw prompt is
+// what shipped into a git-committed file. The seed no longer carries summaries at all (see
+// seedExport); this guard stays because a summary that repeats the prompt is no summary. schema.sql says prompt text is never stored
 // because it carries credentials and customer data; this is the guard that makes that true.
 // It lives in the shared function on purpose: one check here beats a fix in each caller, and the
 // next person who reaches for "something better than nothing" cannot reopen the hole.
@@ -1429,8 +1437,38 @@ function sessionEnd(id, summary) {
     // A "summary" that is the prompt, or opens with it, IS prompt text however it got here.
     if (fp && (norm(s) === fp || fp.startsWith(norm(s)) || norm(s).startsWith(fp.slice(0, 60)))) s = null;
   }
-  db().prepare("UPDATE sessions SET summary = COALESCE(?, summary), ended = datetime('now') WHERE id = ?")
-    .run(s, id);
+  // A new summary is new text nobody has read, so any earlier approval no longer covers it.
+  db().prepare(`UPDATE sessions SET summary = COALESCE(?, summary),
+      summary_ok = CASE WHEN ? IS NULL OR ? IS summary THEN summary_ok END,
+      ended = datetime('now') WHERE id = ?`)
+    .run(s, s, s, id);
+}
+
+// The review a handoff runs before a summary may travel. Only this machine's own sessions are
+// reviewable: an imported one was approved by its author before it arrived.
+function summaryList(f) {
+  const o = f || {};
+  let sql = `SELECT id, name, task, repo, created, summary, summary_ok FROM sessions
+     WHERE summary IS NOT NULL AND ended IS NOT NULL AND id NOT LIKE 'seed:%'`;
+  const p = [];
+  if (o.pending) sql += ' AND summary_ok IS NULL';
+  if (o.task) { sql += ' AND task = ?'; p.push(o.task); }
+  if (o.repo) { sql += ' AND lower(repo) = ?'; p.push(String(o.repo).toLowerCase()); }
+  sql += ' ORDER BY created DESC, rowid DESC';
+  return db().prepare(sql).all(...p);
+}
+function summarySet(id, mode, text) {
+  const own = "id = ? AND id NOT LIKE 'seed:%' AND summary IS NOT NULL";
+  let r;
+  if (mode === 'drop') r = db().prepare(`UPDATE sessions SET summary = NULL, summary_ok = NULL WHERE ${own}`).run(id);
+  else if (mode === 'approve') r = db().prepare(`UPDATE sessions SET summary_ok = 1 WHERE ${own}`).run(id);
+  else {
+    // an empty edit is not an approval of anything; checked here so every caller gets it
+    const t = scrubPrivate(text).trim().slice(0, 500);
+    if (!t) return false;
+    r = db().prepare(`UPDATE sessions SET summary = ?, summary_ok = 1 WHERE ${own}`).run(t, id);
+  }
+  return r.changes > 0;
 }
 function sessionActivity(id, maxRows) {
   const s = db().prepare('SELECT * FROM sessions WHERE id = ?').get(id);
@@ -2082,7 +2120,7 @@ function seedExport(file, opts) {
   for (const r of rows) lines.push(JSON.stringify({ kind: 'memory', ...r }));
 
   let sessions = [];
-  let signals = 0;
+  let signals = 0, summariesHeld = 0;
   let debriefs = [];
   if (o.sessions !== false) {
     // Sessions are ATTRIBUTION now: who worked which branch, when, and how rough it was. The
@@ -2091,7 +2129,13 @@ function seedExport(file, opts) {
     //
     // `outcomes` is computed at export time rather than shipped raw: the corrections and failed
     // tool calls behind the number carry message text, and only counts are allowed to travel.
-    let ssql = `SELECT id, name, author, repo, task, summary, created, ended,
+    // `summary` travels only once a person approved it (summary_ok = 1, set by /memory-coach:handoff's
+    // review through `summary-set`). It is a model's paraphrase of what was asked, and every
+    // fallback it ever had was raw prompt text, so nothing unread reaches git. A row imported from a
+    // teammate was approved by them before it reached you; relaying it keeps it.
+    let ssql = `SELECT id, name, author, repo, task, created, ended,
+        CASE WHEN summary_ok = 1 OR id LIKE 'seed:%' THEN summary END AS summary,
+        (summary IS NOT NULL AND summary_ok IS NULL AND id NOT LIKE 'seed:%') AS held,
         COALESCE(outcomes, 0)
         + (SELECT COUNT(*) FROM corrections c WHERE c.session_id = sessions.id)
         + (SELECT COUNT(*) FROM observations o WHERE o.session_id = sessions.id
@@ -2105,8 +2149,9 @@ function seedExport(file, opts) {
     sessions = db().prepare(ssql).all(...sp);
     const skeyOf = (s) => debriefKey(s.author, s.name || s.id, s.created);
     for (const s of sessions) {
-      const { id, ...rest } = s; // the local uuid stays local
-      lines.push(JSON.stringify({ kind: 'session', skey: skeyOf(s), ...rest }));
+      const { id, held, summary, ...rest } = s; // the local uuid stays local
+      if (held) summariesHeld++;
+      lines.push(JSON.stringify({ kind: 'session', skey: skeyOf(s), ...rest, ...(summary ? { summary } : {}) }));
     }
 
     // Prompt signals ride along with the sessions they belong to — flags and a length, never a
@@ -2145,7 +2190,7 @@ function seedExport(file, opts) {
   const tmp = file + '.tmp' + process.pid;
   fs.writeFileSync(tmp, pass ? seal(body, pass) : body);
   fs.renameSync(tmp, file);
-  return { memories: rows.length, sessions: sessions.length, signals, debriefs: debriefs.length, encrypted: !!pass };
+  return { memories: rows.length, sessions: sessions.length, signals, debriefs: debriefs.length, summariesHeld, encrypted: !!pass };
 }
 
 function seedImport(file, dir) {
@@ -2211,9 +2256,10 @@ function seedImport(file, dir) {
       if (existing) {
         c.sessionsDup++;
       } else {
-        d.prepare('INSERT OR IGNORE INTO sessions(id, project, repo, author, name, task, summary, outcomes, created, ended) VALUES(?,?,?,?,?,?,?,?,?,?)')
+        // A summary that arrived in a seed was approved by its author before it left their machine.
+        d.prepare('INSERT OR IGNORE INTO sessions(id, project, repo, author, name, task, summary, summary_ok, outcomes, created, ended) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
           .run(localId, here, r.repo || null, canon(r.author),
-            r.name || null, r.task || null, r.summary || null,
+            r.name || null, r.task || null, r.summary ? String(r.summary).slice(0, 500) : null, r.summary ? 1 : null,
             r.outcomes == null ? null : Number(r.outcomes),
             clampTs(r.created), clampTs(r.ended || r.created));
         c.sessions++;
@@ -2330,14 +2376,23 @@ function dispatch(cmd, a, flagValue) {
   switch (cmd) {
     case 'init': db(); console.log('project db ready:', path.join(tenantDir(active().project), 'coach.db')); break;
     case 'add': {
-      const rest = []; let proj = null, t = null;
+      const rest = []; let proj = null, t = null, prov = process.env.AICOACH_PROVENANCE || null;
       for (let i = 0; i < a.length; i++) {
         if (a[i] === '--project') proj = a[++i];
         else if (a[i] === '--task') t = a[++i];
+        // present-but-empty must fail, not fall back to `human`: that is the label this flag exists to avoid
+        else if (a[i] === '--provenance') prov = a[i + 1] && !a[i + 1].startsWith('-') ? a[++i] : '';
         else rest.push(a[i]);
       }
+      // --provenance (or AICOACH_PROVENANCE) lets a caller that is a model say so; the MCP adapter
+      // sets `distilled`.
+      // `imported` is refused here: only seedImport may claim a row came from a teammate.
+      if (prov !== null && prov !== 'human' && prov !== 'distilled') { console.error('--provenance must be human or distilled'); process.exitCode = 2; break; }
+      const extra = {};
+      if (t) extra.task = t;
+      if (prov) extra.provenance = prov;
       // default project = current repo — a memory added here belongs here unless told otherwise
-      add(rest[0], rest[1], rest[2], proj || process.cwd(), rest[3] || null, t ? { task: t } : undefined);
+      add(rest[0], rest[1], rest[2], proj || process.cwd(), rest[3] || null, Object.keys(extra).length ? extra : undefined);
       console.log('added');
       break;
     }
@@ -2493,6 +2548,42 @@ function dispatch(cmd, a, flagValue) {
         + (r.signals ? ` / ${r.signals} prompt signals` : '')
         + (r.encrypted ? ' (encrypted)' : '')
         + ` (project: ${active().project}${rp ? `, repo: ${rp}` : ''}${t ? `, task: ${t}` : ''})`);
+      // Say it out loud: a held summary is a session that travelled without its "what happened".
+      if (r.summariesHeld) console.log(`${r.summariesHeld} session summaries not reviewed — held back. Review: engine summaries --pending`);
+      break;
+    }
+    case 'summaries': {
+      // What a handoff would carry as each session's "what happened", and whether a person has
+      // approved it. --pending lists only the ones a seed would hold back.
+      const f = { pending: false };
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] === '--pending') f.pending = true;
+        else if (a[i] === '--task') f.task = a[++i];
+        else if (a[i] === '--repo') f.repo = a[++i];
+        else if (a[i] === '--json') f.json = true;
+      }
+      const rows = summaryList(f);
+      if (f.json) { console.log(JSON.stringify(rows)); break; }
+      if (!rows.length) { console.log(f.pending ? 'no summaries waiting for review' : 'no session summaries'); break; }
+      for (const r of rows) {
+        console.log(`${r.id}  ${r.summary_ok ? '[approved]' : '[pending] '}  ${String(r.created).slice(0, 10)} · ${r.name || '(unnamed)'}${r.task ? ' · ' + r.task : ''}`);
+        console.log('    ' + r.summary);
+      }
+      break;
+    }
+    case 'summary-set': {
+      // --approve: ship it as written · --drop: clear it, the session travels as attribution only ·
+      // anything else: the edited text, approved as typed.
+      const id = a[0];
+      const mode = a[1] === '--approve' ? 'approve' : a[1] === '--drop' ? 'drop' : 'edit';
+      const text = mode === 'edit' ? a.slice(1).join(' ') : null;
+      if (!id || (mode === 'edit' && !text.trim())) {
+        console.error('usage: summary-set <session-id> --approve | --drop | "<edited summary>"');
+        process.exitCode = 2; break;
+      }
+      const ok = summarySet(id, mode, text);
+      if (!ok) { console.error('no session ' + id + ' with a summary of yours'); process.exitCode = 1; break; }
+      console.log(mode === 'drop' ? `summary dropped: ${id}` : `summary approved: ${id}`);
       break;
     }
     case 'seed-import': {
@@ -2732,14 +2823,14 @@ function dispatch(cmd, a, flagValue) {
     default:
       console.log('usage: engine.js <init|add|forget|search|brief|stats|session-start|session-end|name|observe|prune|'
         + 'debrief-publish|debriefs|debrief-show|session-digest|'
-        + 'seed-export|seed-import|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|'
+        + 'seed-export|seed-import|summaries|summary-set|trust|trust-list|team-list|whoami|project|repos|projects|rekey|corrections|correction-done|'
         + 'prompt-stats|prompt-check|injection-scan|finding-add|finding-update|findings|partners-seen>');
   }
 }
 
 module.exports = {
   db, userDb, openTenant, useProject, active, log, bootstrap, BIN_DIR, add, forget, memId, hasText, norm, search, brief,
-  sessionStart, firstPrompt, observe, injectionSeen, sessionEnd, sessionActivity, pruneObservations,
+  sessionStart, firstPrompt, scrubPrivate, observe, injectionSeen, sessionEnd, summaryList, summarySet, sessionActivity, pruneObservations,
   claudeRun, cooldownPath, gitPaths, originUrl, headBranch, SCHEMA_VERSION,
   correction, corrections, correctionSignal, markCorrectionsRecorded,
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,

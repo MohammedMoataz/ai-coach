@@ -65,7 +65,7 @@ with verified per-harness install snippets: [`adapters/README.md`](adapters/READ
 | **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus three agents: `researcher`, `verifier`, and `reader`, which keeps a 200-page PDF out of your context. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the docs vault), `feature` — document the business, then specify what comes next. Inward by design; looking outward is atlas-coach. |
 | **analysis-coach** | `elicit`, `insight`, `story` — the business-analyst half — plus the `critic` agent: fresh-context review that has not seen the reasoning it grades. |
-| **design-coach** | `artifact-style` — how a published page should look, made checkable: text stays in its box, every diagram zooms, the project's own fonts and palette, WCAG contrast in both themes — plus a zero-dependency lint and the one hook outside the engine, which runs that lint before the Artifact tool publishes and asks when it fails. |
+| **design-coach** | `artifact-style` — how a published page should look, made checkable: text stays in its box, every diagram zooms, the project's own fonts and palette, WCAG contrast in both themes — plus a zero-dependency lint and the only two hooks outside the engine: one runs that lint before the Artifact tool publishes and asks when it fails, the other reminds Claude to load the skill when a native design skill loads. |
 | **ai-coach** | The bundle. Install this one. Also ships the three cross-plugin commands: `/ai-coach:start`, `/ai-coach:wrap`, `/ai-coach:sitrep`. |
 
 Skills are invoked namespaced — `/memory-coach:recall`, not `/recall`. The full list is under
@@ -88,10 +88,10 @@ model's context at all** — it exists in your `/` menu, and its cost is paid wh
 any skill body.
 
 The ~700 figure was measured rather than assumed: a live probe with positive controls saw exactly
-`recall` and `dispatch` and none of the user-only items, commands included. The 1,700 above is that
-measurement plus arithmetic on seven new descriptions, which is weaker evidence — the honest label
-is "expected", and a live probe is still owed. What is not in doubt is the direction: seven
-descriptions that were free are not free any more. It matters how you check, because
+`recall` and `dispatch` and none of the user-only items, commands included. The 1,900 above is that
+measurement plus arithmetic on eight new descriptions (700 + 590 + 390 + 210), which is weaker
+evidence — the honest label is "expected", and a live probe is still owed. What is not in doubt is
+the direction: eight descriptions that were free are not free any more. It matters how you check, because
 `claude plugin details` — this repo's own stated instrument — projects **every** description as
 always-on regardless of `disable-model-invocation`, which put the pre-v1.10.1 figure near four times
 the real one. Use the CLI for per-component sizes; use a live session for what is actually loaded.
@@ -215,8 +215,9 @@ do without it — a missing sibling degrades a run, never fails it.
 The seams are stated, not implied. "How does X work here" → investigation-coach; "what should we
 build and why" → strategy-coach. `/analysis-coach:elicit` gathers requirements while they are
 still being argued about; `/strategy-coach:feature` reads its output once they are settled.
-`/security-coach:audit --triage` hands confirmed findings straight into the tracking table with
-`--source audit`, because a scanner hit and a pentester's finding are not worth the same.
+`/security-coach:audit --triage` records confirmed findings in the tracking table with
+`--source audit`, because a scanner hit and a pentester's finding are not worth the same. It
+follows triage's own ingest steps inline rather than invoking it — triage is user-only.
 `/investigation-coach:onboard --tour` runs onboard, then map, then study — the later two read what
 the first wrote instead of sweeping the repo again. `/prompt-coach:scope` is the front of that same
 chain: it shapes a big ask, gates it, and then names whichever skill should own the writing —
@@ -275,9 +276,18 @@ travels. Publish twice under one name on one day and the second **replaces** the
 $ engine debrief-show 2026-08-20/sara@example.com/orders-csv-export
 ```
 
-Sessions still travel, as attribution only: who worked which branch, when, and how rough it was.
-The one-line session summary stays on the machine that made it — every fallback it ever had was raw
-prompt text, and this file lives in git.
+Sessions travel too: who worked which branch, when, how rough it was, and a one-line summary of
+what happened. **The summary travels only once you have read it.** A model writes it at session
+end, every fallback it ever had was raw prompt text, and this file lives in git, so `/handoff` puts
+each new summary in front of you to approve, edit or drop, and the engine holds back any nobody
+approved. A held-back session still travels, as attribution.
+
+```
+$ engine summaries --pending
+4f1c…  [pending]   2026-10-08 · orders-csv-export · feature/orders-csv
+    Added CSV export for orders; refunds split by settlement leg.
+$ engine summary-set 4f1c… --approve
+```
 
 ## Coaching from evidence, not etiquette
 
@@ -424,6 +434,7 @@ person might reach for.
 | `AICOACH_OFF` | Silences the "your Node is too old" message on stderr. It does not disable anything else. |
 | `AICOACH_AUTHOR` / `AICOACH_USERNAME` / `AICOACH_ROLE` | Override the identity read from git and the roster. |
 | `AICOACH_PROJECT` / `AICOACH_TASK` | Override the resolved project key and the branch a memory files under. |
+| `AICOACH_PROVENANCE` | `distilled` marks an `engine add` as model-written (same as `--provenance distilled`). The MCP server sets it on every `memory_add`. `imported` is refused: only a seed import may claim that. |
 
 ## Uninstall
 

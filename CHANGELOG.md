@@ -3,6 +3,54 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.17.0 — Summaries you have read, and code that does what the docs say (2026-10-08)
+
+**ai-coach-core 1.9.0 · memory-coach 1.5.0 · security-coach 1.2.1 · ai-coach 1.17.0**
+
+A full read of the engine against the README turned up places where the two had drifted. Each is
+fixed on the side that was wrong, with a test that fails on the old behaviour. One of them became a
+feature.
+
+- **A session summary travels once you have approved it.** `seedExport` shipped every session's
+  one-line summary, unread, into a git-committed file, while the README and `/memory-coach:handoff`
+  said it never left the machine. Neither was right: the summary is what tells a teammate what
+  happened on a branch, and it is also a model's paraphrase of what was asked, whose every fallback
+  was raw prompt text. So it travels, but only after a person reads it.
+  - New column `sessions.summary_ok` (schema v3). `seedExport` ships a summary only when it is
+    approved, or when it arrived from a teammate who approved it; the rest are held back, the
+    session still travels as attribution, and the export prints how many it held.
+  - New engine verbs: `summaries [--pending] [--task] [--repo] [--json]` lists them;
+    `summary-set <id> --approve | --drop | "<edited text>"` records the decision. An edit is
+    scrubbed of `<private>` and approved as typed. A new summary written over an approved one goes
+    back to pending.
+  - `/memory-coach:handoff` gains step 0: list the pending summaries and ask once — approve all,
+    go one by one (approve, edit, drop), or hold them all back. It flags names, amounts,
+    credentials and internal hosts, but never edits or approves on the user's behalf, and
+    `/ai-coach:wrap` reaching the step approves nothing.
+  - `seedImport` keeps a teammate's summary and marks it approved, so it is never put up for your
+    review.
+- **`<private>…</private>` is stripped before prompt text reaches disk, everywhere.** Only
+  observations and the plan-review call scrubbed it. `sessions.first_prompt` and the excerpt a
+  correction copies from it stored it raw, and the raw first prompt went to the session-end Haiku
+  call. One `scrubPrivate()` in the engine now covers all four, and `observe.js` and `prompt.js`
+  use it instead of their own copies.
+- **`plan_review` is its own switch.** `prompt.js` exited when `coach` was off before plan review
+  was reached, so hiding hints also turned plan-mode review off. `coach` now silences only the
+  hints.
+- **An MCP `memory_add` is stored `distilled`, not `human`.** The caller of an MCP tool is a model.
+  `engine add` takes `--provenance distilled` (or `AICOACH_PROVENANCE`), refuses `imported`, and the
+  MCP server sets the variable, which an older installed engine ignores rather than misreads. The
+  tool's type enum offered `constraint`, which the engine silently turned into `note`; it now lists
+  the engine's four types. The MCP test pins `AICOACH_ENGINE` to this checkout, where it had been
+  grading whichever engine happened to be installed.
+- **Docs corrected where the code was right.** `ai-coach-core`'s `coach` setting said the coach
+  line is never injected into the model's context; it rides in the brief, which the model reads.
+  `/security-coach:audit --triage` said it hands findings to `triage`, which is user-only and cannot
+  be invoked; it now follows triage's ingest steps inline. The adapters table credited opencode
+  with session-end distillation; its idle handler only stamps the session's end. The README's
+  token paragraph said 1,700 and "seven" next to a 1,900 headline; it is 1,900 from eight
+  descriptions. design-coach ships two hooks, not one.
+
 ## v1.16.2 — Diagram text at the size it was measured in (2026-09-28)
 
 **design-coach 1.0.2 · ai-coach 1.16.2**

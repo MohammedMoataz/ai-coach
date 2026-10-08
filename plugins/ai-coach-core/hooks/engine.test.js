@@ -895,6 +895,38 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   assert.ok(sRow, 'the session still travels as attribution');
   assert.strictEqual(sRow.id, undefined, 'a local session uuid never travels — it means nothing elsewhere');
   assert.ok(sRow.skey, 'it travels as date/author/name instead');
+  assert.strictEqual(sRow.summary, undefined,
+    'an unreviewed summary is held back: nothing a model paraphrased reaches git unread');
+  assert.strictEqual(e.seedExport(leakSeed).summariesHeld, 1, 'and the export says how many it held');
+  assert.strictEqual(e.summaryList({ pending: true }).length, 1, 'it waits in the review list');
+
+  // approve as written: it travels
+  assert.ok(e.summarySet('leak-1', 'approve'), 'approve');
+  e.seedExport(leakSeed);
+  let row = fs.readFileSync(leakSeed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((r) => r.kind === 'session');
+  assert.strictEqual(row.summary, 'split the refund approval switch', 'an approved summary travels: it says what happened');
+  assert.strictEqual(e.summaryList({ pending: true }).length, 0, 'nothing left to review');
+
+  // edit: the edited text travels, approved; <private> is scrubbed from edits too
+  assert.ok(e.summarySet('leak-1', 'edit', 'refund approval split by leg <private>ACME</private>'), 'edit');
+  e.seedExport(leakSeed);
+  row = fs.readFileSync(leakSeed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((r) => r.kind === 'session');
+  assert.strictEqual(row.summary, 'refund approval split by leg [private]', 'the edit is what travels');
+  assert.strictEqual(e.summarySet('leak-1', 'edit', '   '), false, 'an empty edit is refused');
+  assert.strictEqual(e.summarySet('leak-1', 'edit', undefined), false, 'so is a missing one');
+
+  // a new summary written over an approved one needs a fresh review
+  e.sessionEnd('leak-1', 'something else entirely happened');
+  assert.strictEqual(e.summaryList({ pending: true }).length, 1, 'changed text is unreviewed text');
+  e.sessionEnd('leak-1', null);
+  assert.strictEqual(e.summaryList({ pending: true }).length, 1, 'closing again without a summary keeps the state');
+
+  // drop: the session still travels, as attribution
+  assert.ok(e.summarySet('leak-1', 'drop'), 'drop');
+  e.seedExport(leakSeed);
+  row = fs.readFileSync(leakSeed, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((r) => r.kind === 'session');
+  assert.ok(row && row.summary === undefined, 'a dropped summary is gone; the session row still travels');
+  assert.strictEqual(e.summarySet('no-such', 'approve'), false, 'an unknown session is refused, not silently ok');
   // the compatibility contract of the whole format
   for (const r of rows) {
     if (r.kind !== 'memory') {
@@ -1024,6 +1056,23 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   assert.strictEqual(e.canon(null), null, 'null stays null');
 }
 
+// <private>…</private> is stripped before prompt text reaches disk — the first prompt, and the
+// excerpt a correction copies from it. observe.js and plan review already scrubbed; these two
+// stored it raw, which made the README's "before anything reaches disk" untrue.
+{
+  const privProj = path.join(tmp, 'privproj');
+  e.useProject(privProj);
+  e.sessionStart('priv-1', privProj);
+  e.firstPrompt('priv-1', 'deploy with <private>hunter2-PRIVATE-CANARY</private> then check the build');
+  const fp = e.sessionActivity('priv-1').session.first_prompt;
+  assert.ok(!fp.includes('PRIVATE-CANARY'), 'first_prompt is scrubbed: ' + fp);
+  assert.ok(fp.includes('[private]'), 'and says something was removed: ' + fp);
+  e.correction('priv-1', 'the build failed');
+  const c = e.corrections({ sessionId: 'priv-1' })[0];
+  assert.ok(c && !String(c.prompt_excerpt).includes('PRIVATE-CANARY'), 'the correction excerpt is scrubbed too');
+  assert.strictEqual(e.scrubPrivate('a <PRIVATE>x\ny</private> b'), 'a [private] b', 'case-insensitive, multi-line');
+}
+
 // a future-dated carried timestamp cannot pin "most recent" or dodge the prune
 {
   const skewProj = path.join(tmp, 'skewproj');
@@ -1036,8 +1085,12 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
       created: '2099-01-01 00:00:00', ended: '2099-01-01 00:00:00' }),
   ].join('\n') + '\n');
   e.seedImport(skewSeed, skewProj);
-  const stored = e.db().prepare("SELECT created FROM sessions WHERE name = 'from the future'").get();
+  const stored = e.db().prepare("SELECT created, summary FROM sessions WHERE name = 'from the future'").get();
   assert.ok(stored.created < '2099', 'a future-dated timestamp is clamped to now, not trusted: ' + stored.created);
+  assert.strictEqual(stored.summary, 'a clock 70 years fast',
+    'a teammate\'s summary is kept on import: it is what tells you what happened');
+  assert.strictEqual(e.summaryList({ pending: true }).filter((s) => s.summary === 'a clock 70 years fast').length, 0,
+    'and it is not put up for your review: its author approved it before it left');
   assert.ok(!e.brief(4000, skewProj).includes('a clock 70 years fast'),
     "and a skewed clock cannot pin someone else's session as my last session");
 }
