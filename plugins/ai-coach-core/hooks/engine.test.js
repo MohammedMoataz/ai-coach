@@ -895,6 +895,8 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   assert.ok(sRow, 'the session still travels as attribution');
   assert.strictEqual(sRow.id, undefined, 'a local session uuid never travels — it means nothing elsewhere');
   assert.ok(sRow.skey, 'it travels as date/author/name instead');
+  assert.strictEqual(sRow.summary, undefined,
+    'the one-line summary stays on this machine: a session travels as attribution only');
   // the compatibility contract of the whole format
   for (const r of rows) {
     if (r.kind !== 'memory') {
@@ -1024,6 +1026,23 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
   assert.strictEqual(e.canon(null), null, 'null stays null');
 }
 
+// <private>…</private> is stripped before prompt text reaches disk — the first prompt, and the
+// excerpt a correction copies from it. observe.js and plan review already scrubbed; these two
+// stored it raw, which made the README's "before anything reaches disk" untrue.
+{
+  const privProj = path.join(tmp, 'privproj');
+  e.useProject(privProj);
+  e.sessionStart('priv-1', privProj);
+  e.firstPrompt('priv-1', 'deploy with <private>hunter2-PRIVATE-CANARY</private> then check the build');
+  const fp = e.sessionActivity('priv-1').session.first_prompt;
+  assert.ok(!fp.includes('PRIVATE-CANARY'), 'first_prompt is scrubbed: ' + fp);
+  assert.ok(fp.includes('[private]'), 'and says something was removed: ' + fp);
+  e.correction('priv-1', 'the build failed');
+  const c = e.corrections({ sessionId: 'priv-1' })[0];
+  assert.ok(c && !String(c.prompt_excerpt).includes('PRIVATE-CANARY'), 'the correction excerpt is scrubbed too');
+  assert.strictEqual(e.scrubPrivate('a <PRIVATE>x\ny</private> b'), 'a [private] b', 'case-insensitive, multi-line');
+}
+
 // a future-dated carried timestamp cannot pin "most recent" or dodge the prune
 {
   const skewProj = path.join(tmp, 'skewproj');
@@ -1036,8 +1055,10 @@ assert.ok(!e.brief(40000, provProj).includes('more ranked below the cap'), 'no m
       created: '2099-01-01 00:00:00', ended: '2099-01-01 00:00:00' }),
   ].join('\n') + '\n');
   e.seedImport(skewSeed, skewProj);
-  const stored = e.db().prepare("SELECT created FROM sessions WHERE name = 'from the future'").get();
+  const stored = e.db().prepare("SELECT created, summary FROM sessions WHERE name = 'from the future'").get();
   assert.ok(stored.created < '2099', 'a future-dated timestamp is clamped to now, not trusted: ' + stored.created);
+  assert.strictEqual(stored.summary, null,
+    'a summary in an older seed is dropped on import: summaries stay on the machine that wrote them');
   assert.ok(!e.brief(4000, skewProj).includes('a clock 70 years fast'),
     "and a skewed clock cannot pin someone else's session as my last session");
 }

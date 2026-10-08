@@ -3,6 +3,41 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.16.3 — The code does what the docs say (2026-10-08)
+
+**ai-coach-core 1.8.2 · security-coach 1.2.1 · ai-coach 1.16.3**
+
+A full read of the engine against the README turned up places where the two had drifted. Each is
+fixed on the side that was wrong, with a test that fails on the old behaviour.
+
+- **The session summary no longer travels in a seed.** The README and `/memory-coach:handoff`
+  promised that sessions travel as attribution only and the one-line summary stays on the machine
+  that wrote it, and the brief code already assumed imported sessions have none. `seedExport`
+  still selected `summary`. It no longer does, and `seedImport` drops the field from older seeds
+  that carry it. The summary is a model's paraphrase of what was asked; the shared conclusion is a
+  debrief.
+- **`<private>…</private>` is stripped before prompt text reaches disk, everywhere.** Only
+  observations and the plan-review call scrubbed it. `sessions.first_prompt` and the excerpt a
+  correction copies from it stored it raw, and the raw first prompt went to the session-end Haiku
+  call. One `scrubPrivate()` in the engine now covers all four, and `observe.js` and `prompt.js`
+  use it instead of their own copies.
+- **`plan_review` is its own switch.** `prompt.js` exited when `coach` was off before plan review
+  was reached, so hiding hints also turned plan-mode review off. `coach` now silences only the
+  hints.
+- **An MCP `memory_add` is stored `distilled`, not `human`.** The caller of an MCP tool is a model.
+  `engine add` takes `--provenance distilled` (or `AICOACH_PROVENANCE`), refuses `imported`, and the
+  MCP server sets the variable, which an older installed engine ignores rather than misreads. The
+  tool's type enum offered `constraint`, which the engine silently turned into `note`; it now lists
+  the engine's four types. The MCP test pins `AICOACH_ENGINE` to this checkout, where it had been
+  grading whichever engine happened to be installed.
+- **Docs corrected where the code was right.** `ai-coach-core`'s `coach` setting said the coach
+  line is never injected into the model's context; it rides in the brief, which the model reads.
+  `/security-coach:audit --triage` said it hands findings to `triage`, which is user-only and cannot
+  be invoked; it now follows triage's ingest steps inline. The adapters table credited opencode
+  with session-end distillation; its idle handler only stamps the session's end. The README's
+  token paragraph said 1,700 and "seven" next to a 1,900 headline; it is 1,900 from eight
+  descriptions. design-coach ships two hooks, not one.
+
 ## v1.16.2 — Diagram text at the size it was measured in (2026-09-28)
 
 **design-coach 1.0.2 · ai-coach 1.16.2**

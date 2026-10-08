@@ -48,10 +48,11 @@ process.stdin.on('end', () => {
         verdict.hints.length ? 1 : 0);
     } catch (err) { engine.log('prompt.signal', err); }
 
-    if (!engine.optOn('coach', 'on')) process.exit(0);
     if (verdict.exempt) process.exit(0);
 
-    const notes = verdict.hints.slice();
+    // Two display switches, each governing only its own line. `coach` used to exit here before
+    // plan review was reached, so turning hints off quietly turned plan review off with them.
+    const notes = engine.optOn('coach', 'on') ? verdict.hints.slice() : [];
     const planMode = (data.permission_mode || data.permissionMode) === 'plan';
     if (planMode && engine.optOn('plan_review', 'on')) {
       const review = haikuReview(engine, prompt);
@@ -84,7 +85,7 @@ PROMPT: `;
 
 function haikuReview(engine, prompt) {
   // strip anything the user marked private before it leaves for another process
-  const safe = prompt.replace(/<private>[\s\S]*?<\/private>/gi, '[private]').slice(0, 2000);
+  const safe = engine.scrubPrivate(prompt).slice(0, 2000);
   // 12s sits inside the hook's own 20s budget, with margin. Backoff and logging live in the
   // engine, and are scoped to 'coach' so a session-end failure cannot silence plan review.
   const r = engine.claudeRun('coach', JUDGE + safe, 12000);

@@ -32,9 +32,10 @@ function enginePath() {
   return path.join(__dirname, '..', '..', 'plugins', 'ai-coach-core', 'hooks', 'engine.js');
 }
 
-function engine(args) {
+function engine(args, env) {
   const r = spawnSync(process.execPath, [enginePath(), ...args], {
     encoding: 'utf8', timeout: 30000, cwd: process.cwd(),
+    env: env ? { ...process.env, ...env } : process.env,
   });
   if (r.error) throw new Error('engine did not run: ' + r.error.message);
   if (r.status !== 0) throw new Error(('engine ' + args[0] + ' failed: ' + (r.stderr || r.stdout || 'exit ' + r.status)).trim());
@@ -58,18 +59,23 @@ const TOOLS = [
   },
   {
     name: 'memory_add',
-    description: 'Save one durable fact to the team\'s project memory: a learning, a constraint, a reference, or a note. Use for something worth knowing next session — not for narrating this one. One fact per call; confidence defaults sensibly.',
+    description: 'Save one durable fact to the team\'s project memory: a learning, a pattern, a reference, or a note. Use for something worth knowing next session — not for narrating this one. One fact per call; confidence defaults sensibly. Stored as model-written (distilled), never as a person\'s decision.',
     inputSchema: {
       type: 'object',
       properties: {
-        type: { type: 'string', enum: ['learning', 'constraint', 'reference', 'note'], description: 'What kind of fact this is.' },
+        type: { type: 'string', enum: ['learning', 'pattern', 'reference', 'note'], description: 'What kind of fact this is.' },
         text: { type: 'string', description: 'The fact, one or two sentences, self-contained.' },
         confidence: { type: 'number', minimum: 0, maximum: 1, description: 'How sure. Omit for the default.' },
       },
       required: ['type', 'text'],
     },
+    // The caller of an MCP tool is a model, so its writes are labelled distilled: "nothing a
+    // model wrote can pass for something a person decided" holds in every harness, not just this one.
+    // An env var rather than a flag: this server often runs from a checkout against an installed
+    // engine of another version, and an older engine ignores the variable where it would have
+    // misread a flag as the memory's type and text.
     run: (a) => engine(['add', String(a.type), String(a.text),
-      ...(a.confidence != null ? [String(a.confidence)] : [])]),
+      ...(a.confidence != null ? [String(a.confidence)] : [])], { AICOACH_PROVENANCE: 'distilled' }),
   },
   {
     name: 'memory_brief',

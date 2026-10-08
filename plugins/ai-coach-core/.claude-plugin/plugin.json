@@ -1,7 +1,7 @@
 {
   "name": "ai-coach-core",
   "displayName": "AI Coach Core",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "The engine every AI Coach plugin runs on. Owns the session brief, the memory database, the secrets guard, and every hook — so the coach plugins above it ship skills and nothing else.",
   "author": { "name": "Moataz", "email": "m.moataz@ignteq.org" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
@@ -19,7 +19,7 @@
     "coach": {
       "type": "boolean",
       "title": "Coaching",
-      "description": "The coach line in the session brief, and one-line hints on vague prompts. Shown to you only — nothing is injected into the model's context. Display only: turning this off does not stop failures being recorded (see Record failures).",
+      "description": "The coach line in the session brief, and one-line hints on vague prompts. The hints are shown to you only; the coach line rides in the brief, which the model reads too, so it can act on it. Display only: turning this off does not stop failures being recorded (see Record failures), and plan-mode review has its own switch.",
       "default": true
     },
     "corrections": {

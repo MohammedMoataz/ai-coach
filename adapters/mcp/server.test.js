@@ -10,7 +10,10 @@ const path = require('node:path');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-coach-mcp-'));
 const srv = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
-  env: { ...process.env, AICOACH_DB: path.join(tmp, 'm.db'), AICOACH_AUTHOR: 'mcp-tester@example.com', FORCE_COLOR: '0' },
+  // AICOACH_ENGINE pins the engine in this checkout: without it the server prefers an installed
+  // ~/.ai-coach/bin/engine.js, and the test would grade whatever version happens to be installed.
+  env: { ...process.env, AICOACH_DB: path.join(tmp, 'm.db'), AICOACH_AUTHOR: 'mcp-tester@example.com', FORCE_COLOR: '0',
+    AICOACH_ENGINE: path.join(__dirname, '..', '..', 'plugins', 'ai-coach-core', 'hooks', 'engine.js') },
   cwd: tmp, // a non-repo cwd: the engine must still answer, filing under the directory tenant
 });
 
@@ -69,6 +72,9 @@ const text = (r) => r.result.content.map((c) => c.text).join('\n');
   assert.ok(!r.result.isError, 'memory_add succeeds: ' + text(r));
   r = await request('tools/call', { name: 'memory_search', arguments: { query: 'widgets' } });
   assert.ok(text(r).includes('mcp adapter smoke fact'), 'added memory is searchable: ' + text(r));
+  // A model calling memory_add is a model writing memory: it is stored distilled, never as human.
+  r = await request('tools/call', { name: 'memory_search', arguments: { query: 'widgets', full: true } });
+  assert.ok(text(r).includes('distilled'), 'an MCP write is labelled distilled: ' + text(r));
 
   // whoami answers, attributed to the injected tester identity
   r = await request('tools/call', { name: 'whoami', arguments: {} });

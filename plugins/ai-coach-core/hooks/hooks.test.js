@@ -166,6 +166,13 @@ assert.ok(r.stdout.includes('9/10'), 'plan mode triggers review: ' + r.stdout);
 r = run('prompt.js', { session_id: 'c2', cwd: '/demo/proj', permission_mode: 'plan', prompt: 'fix the login flow it keeps redirecting me back' },
   { AICOACH_CLAUDE_BIN: 'node ' + stubOk, AICOACH_PLAN_REVIEW: 'off' });
 assert.ok(!r.stdout.includes('9/10'), 'plan_review off = hints only');
+const hintText = JSON.parse(r.stdout).systemMessage.replace('[coach] ', '');
+// plan_review is its own setting. `coach` silences the hints; it used to exit before the review
+// was reached, so turning hints off quietly turned plan review off with them.
+r = run('prompt.js', { session_id: 'c2b', cwd: '/demo/proj', permission_mode: 'plan', prompt: 'fix the login flow it keeps redirecting me back' },
+  { AICOACH_CLAUDE_BIN: 'node ' + stubOk, AICOACH_COACH: 'off' });
+assert.ok(r.stdout.includes('9/10'), 'coach off still reviews in plan mode: ' + r.stdout);
+assert.ok(hintText && !r.stdout.includes(hintText.split(' | ')[0]), 'but no hint rides along with it: ' + r.stdout);
 
 const stubFail = path.join(tmp, 'stub-fail.js');
 const stubCount = path.join(tmp, 'stub-count');

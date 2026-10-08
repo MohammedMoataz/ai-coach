@@ -1351,10 +1351,16 @@ function sessionLabel(row) {
   const who = row.username || whoLabel(row, authorMap(db(), [row.author]));
   return `${row.name}@${who}`;
 }
+// <private>…</private> is the user's way of saying "not this part". It is honoured at every point
+// prompt or tool text is written down or handed to another process — one function, so the next
+// writer of prompt text has nothing to re-implement.
+function scrubPrivate(s) {
+  return String(s == null ? '' : s).replace(/<private>[\s\S]*?<\/private>/gi, '[private]');
+}
 function firstPrompt(id, prompt) {
   if (!id || !prompt) return;
   db().prepare('UPDATE sessions SET first_prompt = ? WHERE id = ? AND first_prompt IS NULL')
-    .run(String(prompt).slice(0, 300), id);
+    .run(scrubPrivate(prompt).slice(0, 300), id);
 }
 // Has this session already been given the spotlighting reminder? The reminder is ~480 characters
 // of model-facing context and it says the same thing every time; a session reading many flagged
@@ -1393,7 +1399,7 @@ function correction(sessionId, message, signal) {
     : null;
   db().prepare('INSERT INTO corrections(session_id, signal, message, prompt_excerpt) VALUES(?,?,?,?)')
     .run(sessionId || null, sig, String(message || '').slice(0, 500),
-      s && s.first_prompt ? String(s.first_prompt).slice(0, 200) : null);
+      s && s.first_prompt ? scrubPrivate(s.first_prompt).slice(0, 200) : null);
   return sig;
 }
 function corrections(opts) {
@@ -1413,10 +1419,11 @@ function markCorrectionsRecorded(ids) {
   for (const id of ids) { stmt.run(Number(id)); n++; }
   return n;
 }
-// `summary` travels in the team seed, so it must never be the prompt. It used to be exactly that:
-// SessionEnd wrote first_prompt.slice(0,200) unconditionally and only *upgraded* it when the model
-// call succeeded — and when that call fails (no `claude` on PATH, cooldown, unparseable reply) the
-// raw prompt is what shipped into a git-committed file. schema.sql says prompt text is never stored
+// `summary` must never be the prompt. It used to be exactly that: SessionEnd wrote
+// first_prompt.slice(0,200) unconditionally and only *upgraded* it when the model call succeeded —
+// and when that call fails (no `claude` on PATH, cooldown, unparseable reply) the raw prompt is
+// what shipped into a git-committed file. The seed no longer carries summaries at all (see
+// seedExport); this guard stays because a summary that repeats the prompt is no summary. schema.sql says prompt text is never stored
 // because it carries credentials and customer data; this is the guard that makes that true.
 // It lives in the shared function on purpose: one check here beats a fix in each caller, and the
 // next person who reaches for "something better than nothing" cannot reopen the hole.
@@ -2091,7 +2098,9 @@ function seedExport(file, opts) {
     //
     // `outcomes` is computed at export time rather than shipped raw: the corrections and failed
     // tool calls behind the number carry message text, and only counts are allowed to travel.
-    let ssql = `SELECT id, name, author, repo, task, summary, created, ended,
+    // No `summary`: it stays on the machine that wrote it. It is a model's paraphrase of what was
+    // asked, and every fallback it ever had was raw prompt text; the shared conclusion is a debrief.
+    let ssql = `SELECT id, name, author, repo, task, created, ended,
         COALESCE(outcomes, 0)
         + (SELECT COUNT(*) FROM corrections c WHERE c.session_id = sessions.id)
         + (SELECT COUNT(*) FROM observations o WHERE o.session_id = sessions.id
@@ -2213,7 +2222,8 @@ function seedImport(file, dir) {
       } else {
         d.prepare('INSERT OR IGNORE INTO sessions(id, project, repo, author, name, task, summary, outcomes, created, ended) VALUES(?,?,?,?,?,?,?,?,?,?)')
           .run(localId, here, r.repo || null, canon(r.author),
-            r.name || null, r.task || null, r.summary || null,
+            // summary is deliberately not taken, even from an older seed that still carried one
+            r.name || null, r.task || null, null,
             r.outcomes == null ? null : Number(r.outcomes),
             clampTs(r.created), clampTs(r.ended || r.created));
         c.sessions++;
@@ -2330,14 +2340,22 @@ function dispatch(cmd, a, flagValue) {
   switch (cmd) {
     case 'init': db(); console.log('project db ready:', path.join(tenantDir(active().project), 'coach.db')); break;
     case 'add': {
-      const rest = []; let proj = null, t = null;
+      const rest = []; let proj = null, t = null, prov = process.env.AICOACH_PROVENANCE || null;
       for (let i = 0; i < a.length; i++) {
         if (a[i] === '--project') proj = a[++i];
         else if (a[i] === '--task') t = a[++i];
+        else if (a[i] === '--provenance') prov = a[++i];
         else rest.push(a[i]);
       }
+      // --provenance (or AICOACH_PROVENANCE) lets a caller that is a model say so; the MCP adapter
+      // sets `distilled`.
+      // `imported` is refused here: only seedImport may claim a row came from a teammate.
+      if (prov && prov !== 'human' && prov !== 'distilled') { console.error('--provenance must be human or distilled'); process.exitCode = 2; break; }
+      const extra = {};
+      if (t) extra.task = t;
+      if (prov) extra.provenance = prov;
       // default project = current repo — a memory added here belongs here unless told otherwise
-      add(rest[0], rest[1], rest[2], proj || process.cwd(), rest[3] || null, t ? { task: t } : undefined);
+      add(rest[0], rest[1], rest[2], proj || process.cwd(), rest[3] || null, Object.keys(extra).length ? extra : undefined);
       console.log('added');
       break;
     }
@@ -2739,7 +2757,7 @@ function dispatch(cmd, a, flagValue) {
 
 module.exports = {
   db, userDb, openTenant, useProject, active, log, bootstrap, BIN_DIR, add, forget, memId, hasText, norm, search, brief,
-  sessionStart, firstPrompt, observe, injectionSeen, sessionEnd, sessionActivity, pruneObservations,
+  sessionStart, firstPrompt, scrubPrivate, observe, injectionSeen, sessionEnd, sessionActivity, pruneObservations,
   claudeRun, cooldownPath, gitPaths, originUrl, headBranch, SCHEMA_VERSION,
   correction, corrections, correctionSignal, markCorrectionsRecorded,
   evaluatePrompt, promptSignal, promptStats, PROMPT_RULES,

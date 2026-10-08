@@ -18,7 +18,7 @@ welcome.
 | Observation / failure recording | automatic | **shim** | **shim** (no failure event) | **shim** | **plugin** | **shim** † | — |
 | Prompt signals | automatic | **shim** | **shim** | — (no prompt event) | — | **shim** † | — |
 | Secrets guard (blocking, opt-in) | hook | **shim** — deny + ask | **shim** — deny only, no ask tier | **shim** — deny + ask | **plugin** — deny only | **shim** † | — |
-| Session-end distillation | automatic | **shim** | — (no end event) | **shim** (Stop) | **plugin** (idle) | **shim** † | — |
+| Session-end distillation | automatic | **shim** | — (no end event) | **shim** (Stop) | — (idle stamps the end; no distillation) | **shim** † | — |
 | Session-start memory brief | injected | recorded, brief by convention | by convention | by convention | by convention | by convention | `memory_brief` tool |
 | User-only skills | machine-enforced | convention, labelled | convention, labelled | convention, labelled | convention, labelled | convention, labelled | — |
 
@@ -59,7 +59,8 @@ the same machine share one memory, which is the point.
 `memory_brief`, `debriefs_list`, `debrief_show`, `prompt_check`, `whoami`. Publishing verbs
 (`seed-export`, `debrief-publish`) are deliberately absent: an MCP tool is model-invoked by
 definition, and publishing is a person's act — on other harnesses, run those through the engine
-CLI yourself.
+CLI yourself. For the same reason, whatever `memory_add` writes is stored `distilled`: the caller
+is a model, and a model's line must never read as something a person decided.
 
 **Codex CLI** — `~/.codex/config.toml`:
 
