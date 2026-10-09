@@ -2,7 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "ai-coach",
   "owner": {
-    "name": "Moataz",
+    "name": "Mohammed Moataz",
+    "email": "imohammedmoataz@gmail.com",
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",

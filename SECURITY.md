@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Email **m.moataz@ignteq.org** with what you found and how to reproduce it. Please do not open a
+Email **imohammedmoataz@gmail.com** with what you found and how to reproduce it. Please do not open a
 public issue for anything exploitable. Expect an acknowledgement within a week.
 
 ## What this software touches
