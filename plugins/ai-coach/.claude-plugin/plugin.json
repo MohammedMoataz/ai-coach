@@ -4,8 +4,8 @@
   "version": "1.17.0",
   "description": "Install this one. Pulls in the engine and every coach released so far, plus the three cross-plugin commands — /start, /wrap, /sitrep. The commands are user-only, so the bundle still adds nothing to the model's context at session start.",
   "author": {
-    "name": "Moataz",
-    "email": "m.moataz@ignteq.org"
+    "name": "Mohammed Moataz",
+    "email": "imohammedmoataz@gmail.com"
   },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",
