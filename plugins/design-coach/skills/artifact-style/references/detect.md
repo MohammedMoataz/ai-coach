@@ -41,7 +41,7 @@ Keep the names; change the hex. A project rarely has all eleven, so derive the r
 | `--accent` | primary / brand | teal `#028090` light; mint `#02c39a` dark |
 | `--accent-hover` | primary hover / darker step | sea `#05668d` light; `#5fe3c3` dark |
 | `--accent-contrast` | primary-foreground | white on the light accent; navy `#00132d` on the dark one |
-| `--accent-2`, `--accent-2-ink` | secondary / badge background and its text | mint `#02c39a` + `#073b4f` light; green `#00a896` + `#00132d` dark |
+| `--accent-2`, `--accent-2-ink` | secondary / badge background and its text | mint `#59f1c5` + `#073b4f` light; aqua `#6deed9` + `#00132d` dark |
 
 Then run the lint: it computes the contrast of every text token on every surface for both
 themes. A project colour that fails 4.5:1 is not "the brand" for body text — keep it for

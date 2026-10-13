@@ -10,7 +10,7 @@
   --border: #cad2c5;  --border-strong: #84a98c;
   --text: #2f3e46;  --muted: #354f52;
   --accent: #52796f;  --accent-hover: #354f52;  --accent-contrast: #ffffff;
-  --accent-2: #cad2c5;  --accent-2-ink: #2f3e46;
+  --accent-2: #d3dcce;  --accent-2-ink: #2f3e46;
   --sans: "IBM Plex Sans", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace;
   --radius: 6px;
@@ -22,7 +22,7 @@
     --border: #52796f;  --border-strong: #84a98c;
     --text: #eef2ec;  --muted: #cad2c5;
     --accent: #84a98c;  --accent-hover: #a3c2a8;  --accent-contrast: #232f36;
-    --accent-2: #52796f;  --accent-2-ink: #ffffff;
+    --accent-2: #b7e2d6;  --accent-2-ink: #232f36;
   }
 }
 :root[data-theme="dark"] {
@@ -31,6 +31,6 @@
   --border: #52796f;  --border-strong: #84a98c;
   --text: #eef2ec;  --muted: #cad2c5;
   --accent: #84a98c;  --accent-hover: #a3c2a8;  --accent-contrast: #232f36;
-  --accent-2: #52796f;  --accent-2-ink: #ffffff;
+  --accent-2: #b7e2d6;  --accent-2-ink: #232f36;
 }
 

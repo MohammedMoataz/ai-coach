@@ -85,13 +85,13 @@ navy ground of its own and borrows only the greens for accent.
 | `--accent` | `#028090` **teal** | `#02c39a` **mint** | links, emphasis strokes, primary fills |
 | `--accent-hover` | `#05668d` **sea** | `#5fe3c3` | hover state |
 | `--accent-contrast` | `#ffffff` | `#00132d` **navy** | text on an `--accent` fill |
-| `--accent-2` | `#02c39a` **mint** | `#00a896` **green** | tags, highlighted rows, a second series |
+| `--accent-2` | `#59f1c5` light mint | `#6deed9` light aqua | tags, highlighted rows, a second series |
 | `--accent-2-ink` | `#073b4f` | `#00132d` **navy** | text on an `--accent-2` fill |
 
 Bold cells are palette colours verbatim; the rest are tints and shades (`--text` light is the
 sea darkened; `--bg` light is white pulled toward the lime; `--muted` dark is the navy lightened
-to a blue-grey). Why the placement is what it is: on paper the mint reads at 2.3:1 and the green
-at 3.0:1 — fills, never text — so the teal carries links there (4.57:1) and the sea carries
+to a blue-grey). Why the placement is what it is: on paper the mint (`#02c39a`) reads at 2.3:1, the green
+at 3.0:1 and the `--accent-2` tint at 1.4:1 — fills, never text — so the teal carries links there (4.57:1) and the sea carries
 secondary text (6.2:1). On the navy the mint reads at 8.2:1, so it carries links there; the ink
 is a cool off-white rather than the lime, because yellow text on a dark ground is the one
 combination readers reliably call ugly. The lint would refuse any other arrangement; the table
@@ -108,7 +108,7 @@ below is what it prints.
 | `--muted` on `--surface` | 5.91 | 7.70 | 4.5 |
 | `--accent` on `--bg` | 4.57 | 8.20 | 3 as a stroke or fill (1.4.11); 4.5 as link text |
 | `--accent-contrast` on `--accent` | 4.67 | 8.20 | 4.5 |
-| `--accent-2-ink` on `--accent-2` | 5.31 | 6.23 | 4.5 |
+| `--accent-2-ink` on `--accent-2` | 8.48 | 13.16 | 4.5 |
 
 One number to know: light `--accent` on `--surface` is 4.24 — a link inside a card is a shade
 under 4.5. Links in running text sit on `--bg` and pass; a link that must live on a card can use
@@ -132,8 +132,8 @@ under 4.5. Links in running text sit on `--bg` and pass; a link that must live o
 | `--accent` | `#52796f` **green** | `#84a98c` **sage** | links, emphasis strokes, primary fills |
 | `--accent-hover` | `#354f52` **slate** | `#a3c2a8` | hover state |
 | `--accent-contrast` | `#ffffff` | `#232f36` | text on an `--accent` fill |
-| `--accent-2` | `#cad2c5` **pale sage** | `#52796f` **green** | tags, highlighted rows, a second series |
-| `--accent-2-ink` | `#2f3e46` **charcoal** | `#ffffff` | text on an `--accent-2` fill |
+| `--accent-2` | `#d3dcce` pale sage tint | `#b7e2d6` pale mint | tags, highlighted rows, a second series |
+| `--accent-2-ink` | `#2f3e46` **charcoal** | `#232f36` | text on an `--accent-2` fill |
 
 Why the placement: the green `#52796f` is the only mid tone that reads as text on paper, and
 only on a near-white (4.76:1 on `#fcfdfb`; 4.29 on the card surface — same near-miss as sea, same
@@ -152,7 +152,7 @@ card above it.
 | `--muted` on `--surface` | 7.76 | 7.13 | 4.5 |
 | `--accent` on `--bg` | 4.76 | 5.25 | 3 as a stroke or fill (1.4.11); 4.5 as link text |
 | `--accent-contrast` on `--accent` | 4.86 | 5.25 | 4.5 |
-| `--accent-2-ink` on `--accent-2` | 7.13 | 4.86 | 4.5 |
+| `--accent-2-ink` on `--accent-2` | 7.85 | 9.71 | 4.5 |
 
 Run `node scripts/check-artifact.js <page> --verbose` to get either table for any palette,
 including a project's.
