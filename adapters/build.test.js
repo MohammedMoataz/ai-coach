@@ -63,5 +63,15 @@ assert.ok(plain.includes('`$AICOACH_REPO/plugins/demo-coach/skills/plain/referen
 assert.ok(plain.includes('"$AICOACH_REPO/plugins/demo-coach/scripts/check.js"'),
   'and a ${CLAUDE_PLUGIN_ROOT}/scripts/ path is not rewritten twice');
 
+// ---- #46: POSIX-only variables come with their PowerShell and cmd spellings ----
+for (const [name, text] of [['the Cursor rule header', plain], ['AGENTS.md', agents]]) {
+  assert.ok(text.includes('$env:AICOACH_REPO') && text.includes('%AICOACH_REPO%'),
+    name + ' says how to spell $AICOACH_REPO in PowerShell and cmd');
+  assert.ok(text.includes('$env:USERPROFILE') && text.includes('%USERPROFILE%'),
+    name + ' says how to spell the installed engine path in PowerShell and cmd');
+}
+assert.ok(agents.includes('node "$env:USERPROFILE\\.ai-coach\\bin\\engine.js"'),
+  'the AGENTS.md ENGINE definition has the PowerShell form the skills themselves use');
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('build.test.js: ALL PASS');
