@@ -21,8 +21,16 @@ const fs = require('node:fs');
 const readline = require('node:readline');
 const { spawnSync } = require('node:child_process');
 
-const PROTOCOL_FALLBACK = '2025-06-18';
+// Newest first; the newest is what an unknown client version is answered with. 2025-03-26 is not
+// claimed on purpose: it obliged a server to accept JSON-RPC batches, which this one refuses
+// (2025-06-18 removed batching again).
+const PROTOCOL_VERSIONS = ['2025-06-18', '2024-11-05'];
 const VERSION = '1.0.0';
+// spawnSync's default maxBuffer is 1 MB, and `search --full` over a large memory passes it (ENOBUFS).
+// ponytail: still a ceiling — past 64 MB of matches the call fails; an engine-side --limit is the upgrade.
+const MAX_BUFFER = 64 * 1024 * 1024;
+// What a model is handed from one search. Ranked output is cut at a memory boundary, never mid-hit.
+const MAX_RESULT_CHARS = 50000;
 
 function enginePath() {
   if (process.env.AICOACH_ENGINE) return process.env.AICOACH_ENGINE;
@@ -34,12 +42,44 @@ function enginePath() {
 
 function engine(args, env) {
   const r = spawnSync(process.execPath, [enginePath(), ...args], {
-    encoding: 'utf8', timeout: 30000, cwd: process.cwd(),
+    encoding: 'utf8', timeout: 30000, cwd: process.cwd(), maxBuffer: MAX_BUFFER,
     env: env ? { ...process.env, ...env } : process.env,
   });
   if (r.error) throw new Error('engine did not run: ' + r.error.message);
   if (r.status !== 0) throw new Error(('engine ' + args[0] + ' failed: ' + (r.stderr || r.stdout || 'exit ' + r.status)).trim());
   return (r.stdout || '').trim() || '(no output)';
+}
+
+// Search output is ranked best-first, one memory per `#id [type]` line, so the top of it is the
+// part worth keeping. The tail is counted, not dropped silently.
+function capResults(out) {
+  if (out.length <= MAX_RESULT_CHARS) return out;
+  const cut = out.lastIndexOf('\n#', MAX_RESULT_CHARS);
+  const head = out.slice(0, cut > 0 ? cut : MAX_RESULT_CHARS);
+  const more = (out.slice(head.length).match(/^#g?\d+ \[/gm) || []).length;
+  return head + `\n… ${more} more matches not shown (output capped at ${MAX_RESULT_CHARS} characters); narrow the query to see them.`;
+}
+
+// Arguments come from a model and reach the engine as argv, so each tool's declared inputSchema is
+// enforced here rather than trusted. Returns the first problem, or nothing.
+function invalid(schema, a) {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return 'arguments must be an object';
+  for (const k of schema.required || []) if (a[k] == null) return `missing required argument "${k}"`;
+  for (const [k, p] of Object.entries(schema.properties || {})) {
+    const v = a[k];
+    if (v == null) continue;
+    if (p.type === 'number' ? !Number.isFinite(v) : typeof v !== p.type) return `"${k}" must be a ${p.type}`;
+    if (p.enum && !p.enum.includes(v)) return `"${k}" must be one of: ${p.enum.join(', ')}`;
+    if ((p.minimum != null && v < p.minimum) || (p.maximum != null && v > p.maximum)) {
+      return `"${k}" must be from ${p.minimum} to ${p.maximum}`;
+    }
+    // The engine reads an argv element that IS a flag name (`--provenance`, `--project`) as that
+    // flag, and that is how `text: "--provenance"` once relabelled a model's write. A sentence with
+    // a space can never equal a flag, so only a bare dash-led token is refused. Passing `--` would
+    // be the textbook fix, but an older installed engine would take `--` as the memory's type.
+    if (p.type === 'string' && /^-\S*$/.test(v)) return `"${k}" must not look like a command-line flag`;
+  }
+  return null;
 }
 
 // One place per tool: name, what the model reads to decide, the schema, and the verb mapping.
@@ -55,7 +95,7 @@ const TOOLS = [
       },
       required: ['query'],
     },
-    run: (a) => engine(['search', ...(a.full ? ['--full'] : []), String(a.query)]),
+    run: (a) => capResults(engine(['search', ...(a.full ? ['--full'] : []), String(a.query)])),
   },
   {
     name: 'memory_add',
@@ -128,24 +168,31 @@ const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
 
 function handle(msg) {
   const { id, method, params } = msg;
-  const isRequest = id !== undefined && id !== null;
+  // No id = a notification. JSON-RPC forbids answering one, and a tools/call sent as one must not
+  // run either: nobody would ever see what it did. initialized, cancelled, … are absorbed here.
+  if (id === undefined || id === null) return;
   switch (method) {
-    case 'initialize':
+    case 'initialize': {
+      const asked = params && params.protocolVersion;
       return send(rpc(id, {
-        protocolVersion: (params && params.protocolVersion) || PROTOCOL_FALLBACK,
+        protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
         capabilities: { tools: {} },
         serverInfo: { name: 'ai-coach', version: VERSION },
         instructions: 'Team memory, debriefs and prompt checks for this machine\'s AI Coach data. '
           + 'Search memory before re-deriving; add one durable fact when you learn one. '
           + 'Publishing (debriefs, seed exports) is deliberately absent — a person fires those.',
       }));
+    }
     case 'tools/list':
       return send(rpc(id, { tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) }));
     case 'tools/call': {
       const tool = TOOLS.find((t) => t.name === (params && params.name));
       if (!tool) return send(rpcErr(id, -32602, 'unknown tool: ' + (params && params.name)));
       try {
-        return send(rpc(id, { content: [{ type: 'text', text: tool.run((params && params.arguments) || {}) }] }));
+        const args = (params && params.arguments) || {};
+        const bad = invalid(tool.inputSchema, args);
+        if (bad) throw new Error('invalid arguments for ' + tool.name + ': ' + bad);
+        return send(rpc(id, { content: [{ type: 'text', text: tool.run(args) }] }));
       } catch (err) {
         // tool failure is a result, not a protocol error — the model should read it
         return send(rpc(id, { content: [{ type: 'text', text: String(err.message || err) }], isError: true }));
@@ -154,8 +201,7 @@ function handle(msg) {
     case 'ping':
       return send(rpc(id, {}));
     default:
-      // notifications (initialized, cancelled, …) are absorbed; unknown REQUESTS get an error
-      if (isRequest) return send(rpcErr(id, -32601, 'method not found: ' + method));
+      return send(rpcErr(id, -32601, 'method not found: ' + method));
   }
 }
 
@@ -163,7 +209,11 @@ readline.createInterface({ input: process.stdin, terminal: false }).on('line', (
   if (!line.trim()) return;
   let msg;
   try { msg = JSON.parse(line); } catch { return send(rpcErr(null, -32700, 'parse error')); }
+  // A batch used to be dropped without a word. MCP 2025-06-18 removed batching, so it is refused
+  // with one Invalid Request error rather than half-supported.
+  if (Array.isArray(msg)) return send(rpcErr(null, -32600, 'batches are not supported (removed from MCP in 2025-06-18); send one message per line'));
+  if (!msg || typeof msg !== 'object') return send(rpcErr(null, -32600, 'invalid request'));
   try { handle(msg); } catch (err) {
-    if (msg && msg.id !== undefined) send(rpcErr(msg.id, -32603, String(err.message || err)));
+    if (msg.id != null) send(rpcErr(msg.id, -32603, String(err.message || err)));
   }
 }).on('close', () => process.exit(0));

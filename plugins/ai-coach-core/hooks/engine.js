@@ -873,6 +873,11 @@ function norm(text) { return String(text).toLowerCase().replace(/\s+/g, ' ').tri
 // `extra.project` / `extra.repo` (imports do, so they never shell out to git per row).
 // No project at all = a global memory: it belongs to you, not to a product.
 function add(type, text, confidence, proj, source, extra) {
+  // Refused here, where every writer routes through: a missing text was stored as "undefined", and
+  // confidence 1000 outranked every real memory in the brief while "abc" stored as 0.
+  if (text == null || !String(text).trim()) throw new Error('add: text is required');
+  const conf = confidence == null ? DEFAULT_CONFIDENCE : Number(confidence);
+  if (!(conf >= 0 && conf <= 1)) throw new RangeError('add: confidence must be a number from 0 to 1, got ' + confidence);
   const x = extra || {};
   const au = x.author !== undefined ? x.author : author();
   const p = x.project !== undefined ? x.project : (proj ? project(proj) : null);
@@ -893,7 +898,7 @@ function add(type, text, confidence, proj, source, extra) {
   target.prepare('INSERT INTO memories(type,text,text_key,confidence,provenance,project,repo,source,author,task,created)'
     + " VALUES(?,?,?,?,?,?,?,?,?,?,COALESCE(?, datetime('now')))")
     .run(TYPES.has(type) ? type : 'note', String(text), norm(text),
-      confidence == null ? DEFAULT_CONFIDENCE : Number(confidence),
+      conf,
       // who actually produced this line. A model-distilled memory must never be able to pass
       // for a human judgment: brief and /recall both show it, and nothing promotes it.
       PROVENANCE.has(x.provenance) ? x.provenance : 'human',
@@ -930,8 +935,12 @@ function hasText(text) { // dedup is on the normalized key: case/whitespace vari
   return [db(), userDb()].some((d) => !!d.prepare('SELECT 1 FROM memories WHERE text_key = ? LIMIT 1').get(k));
 }
 
+// Letters and digits of every script, not just ASCII: an Arabic or Japanese query used to yield no
+// terms at all. memories_fts uses the default unicode61 tokenizer, which indexes the same classes
+// (and folds diacritics), so whatever survives here is a token the index can hold. Each term is
+// quoted as an FTS5 string, and none can contain a quote, so no term is read as query syntax.
 function ftsQuery(q) {
-  const terms = String(q).match(/[A-Za-z0-9_.\-]+/g) || [];
+  const terms = String(q).match(/[\p{L}\p{N}_.\-]+/gu) || [];
   return terms.length ? terms.map((t) => '"' + t + '"').join(' OR ') : null;
 }
 
@@ -2312,6 +2321,9 @@ function seedImport(file, dir) {
 
       const au = canon(r.author);
       const conf = r.confidence == null ? 0.7 : Number(r.confidence);
+      // add() refuses a confidence outside 0–1; inside this transaction that throw would roll back
+      // the whole seed, so the row is skipped and counted like any other malformed line.
+      if (!(conf >= 0 && conf <= 1)) { c.unknown++; continue; }
       const row = find.get(norm(r.text));
       if (row) {
         c.dup++;
@@ -2376,7 +2388,8 @@ function dispatch(cmd, a, flagValue) {
   switch (cmd) {
     case 'init': db(); console.log('project db ready:', path.join(tenantDir(active().project), 'coach.db')); break;
     case 'add': {
-      const rest = []; let proj = null, t = null, prov = process.env.AICOACH_PROVENANCE || null;
+      const envProv = process.env.AICOACH_PROVENANCE || null;
+      const rest = []; let proj = null, t = null, prov = envProv;
       for (let i = 0; i < a.length; i++) {
         if (a[i] === '--project') proj = a[++i];
         else if (a[i] === '--task') t = a[++i];
@@ -2388,6 +2401,10 @@ function dispatch(cmd, a, flagValue) {
       // sets `distilled`.
       // `imported` is refused here: only seedImport may claim a row came from a teammate.
       if (prov !== null && prov !== 'human' && prov !== 'distilled') { console.error('--provenance must be human or distilled'); process.exitCode = 2; break; }
+      // The env is set by the caller that spawned us (the MCP server, for a model); the argv may
+      // carry what that model typed. So a flag may agree with a distilled env, never overrule it —
+      // otherwise `--provenance human` in a tool argument promotes a model's write to a person's.
+      if (envProv === 'distilled' && prov !== 'distilled') { console.error('--provenance cannot override AICOACH_PROVENANCE=distilled'); process.exitCode = 2; break; }
       const extra = {};
       if (t) extra.task = t;
       if (prov) extra.provenance = prov;

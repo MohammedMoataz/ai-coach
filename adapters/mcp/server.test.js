@@ -9,15 +9,29 @@ const os = require('node:os');
 const path = require('node:path');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-coach-mcp-'));
+const ENV = { AICOACH_DB: path.join(tmp, 'm.db'), AICOACH_AUTHOR: 'mcp-tester@example.com', FORCE_COLOR: '0' };
+
+// #44: 400 memories of ~4 KB is ~1.7 MB of `search --full` output, past spawnSync's 1 MB default
+// maxBuffer. Seeded in-process into the tenant the server's engine resolves for cwd=tmp, with the
+// identity passed explicitly so 400 adds do not shell out to git 400 times.
+{
+  Object.assign(process.env, ENV);
+  const e = require(path.join(__dirname, '..', '..', 'plugins', 'ai-coach-core', 'hooks', 'engine.js'));
+  e.useProject(tmp);
+  const id = { project: e.project(tmp), repo: e.repo(tmp), username: 'tester', role: null, task: null };
+  for (let i = 0; i < 400; i++) e.add('note', `ballast memory ${i} ` + 'filler words '.repeat(320), 0.5, null, null, id);
+}
+
 const srv = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
   // AICOACH_ENGINE pins the engine in this checkout: without it the server prefers an installed
   // ~/.ai-coach/bin/engine.js, and the test would grade whatever version happens to be installed.
-  env: { ...process.env, AICOACH_DB: path.join(tmp, 'm.db'), AICOACH_AUTHOR: 'mcp-tester@example.com', FORCE_COLOR: '0',
+  env: { ...process.env, ...ENV,
     AICOACH_ENGINE: path.join(__dirname, '..', '..', 'plugins', 'ai-coach-core', 'hooks', 'engine.js') },
   cwd: tmp, // a non-repo cwd: the engine must still answer, filing under the directory tenant
 });
 
 const pending = new Map();
+const strays = []; // replies nobody asked for — a notification must never get one
 let nextId = 1;
 let buf = '';
 srv.stdout.on('data', (d) => {
@@ -28,7 +42,7 @@ srv.stdout.on('data', (d) => {
     if (!line.trim()) continue;
     const msg = JSON.parse(line);
     const cb = pending.get(msg.id);
-    if (cb) { pending.delete(msg.id); cb(msg); }
+    if (cb) { pending.delete(msg.id); cb(msg); } else strays.push(msg);
   }
 });
 let stderr = '';
@@ -40,6 +54,12 @@ const request = (method, params) => new Promise((resolve, reject) => {
   srv.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
   setTimeout(() => { if (pending.delete(id)) reject(new Error(method + ' timed out')); }, 30000);
 });
+// a raw line whose reply is expected under `replyId` (a batch error carries id null)
+const raw = (line, replyId) => new Promise((resolve, reject) => {
+  pending.set(replyId, resolve);
+  srv.stdin.write(line + '\n');
+  setTimeout(() => { if (pending.delete(replyId)) reject(new Error('raw line timed out')); }, 30000);
+});
 const notify = (method, params) => srv.stdin.write(JSON.stringify({ jsonrpc: '2.0', method, params }) + '\n');
 const text = (r) => r.result.content.map((c) => c.text).join('\n');
 
@@ -50,6 +70,13 @@ const text = (r) => r.result.content.map((c) => c.text).join('\n');
   assert.strictEqual(r.result.serverInfo.name, 'ai-coach', 'names itself');
   assert.ok(r.result.capabilities.tools, 'declares tools capability');
   notify('notifications/initialized');
+
+  // #49: version negotiation — a supported version is answered as-is, an unknown one gets the
+  // latest the server supports, never an echo of whatever the client claimed
+  r = await request('initialize', { protocolVersion: '1999-01-01', capabilities: {}, clientInfo: { name: 'test', version: '0' } });
+  assert.strictEqual(r.result.protocolVersion, '2025-06-18', 'an unsupported version is answered with the latest supported');
+  r = await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '0' } });
+  assert.strictEqual(r.result.protocolVersion, '2024-11-05', 'an older supported version is kept');
 
   // tools/list: the surface is exactly the safe seven — no publish verbs
   r = await request('tools/list', {});
@@ -75,6 +102,44 @@ const text = (r) => r.result.content.map((c) => c.text).join('\n');
   // A model calling memory_add is a model writing memory: it is stored distilled, never as human.
   r = await request('tools/call', { name: 'memory_search', arguments: { query: 'widgets', full: true } });
   assert.ok(text(r).includes('distilled'), 'an MCP write is labelled distilled: ' + text(r));
+
+  // #43: arguments are validated against the declared inputSchema before they reach the engine.
+  // The repro: text "--provenance" + confidence "human" became the flag `--provenance human` and
+  // stored the literal "undefined" as a person's memory.
+  const badAdds = [
+    [{ type: 'learning', text: '--provenance', confidence: 'human' }, 'a flag smuggled through text/confidence'],
+    [{ type: 'learning' }, 'missing text'],
+    [{ text: 'no type given' }, 'missing type'],
+    [{ type: 'learning', text: 'far too sure', confidence: 1000 }, 'confidence above 1'],
+    [{ type: 'learning', text: 'not a number', confidence: 'abc' }, 'non-numeric confidence'],
+    [{ type: 'opinion', text: 'type outside the enum' }, 'type outside the enum'],
+    [{ type: 'learning', text: '--project', confidence: 0.5 }, 'a text that is a bare flag'],
+  ];
+  for (const [args, why] of badAdds) {
+    r = await request('tools/call', { name: 'memory_add', arguments: args });
+    assert.ok(r.result && r.result.isError, why + ' is refused: ' + JSON.stringify(r));
+  }
+  r = await request('tools/call', { name: 'memory_brief', arguments: {} });
+  assert.ok(!/undefined/.test(text(r)), 'no "undefined" memory was stored: ' + text(r));
+  r = await request('tools/call', { name: 'memory_add', arguments: { type: 'note', text: '- a dash-led sentence with spaces' } });
+  assert.ok(!r.result.isError, 'a dash-led sentence is not a flag and is accepted: ' + text(r));
+
+  // #44: a full search past 1 MB answers, bounded, and says more is available
+  r = await request('tools/call', { name: 'memory_search', arguments: { query: 'ballast', full: true } });
+  assert.ok(!r.result.isError, 'a >1 MB full search is not an error: ' + text(r).slice(0, 200));
+  assert.ok(text(r).length < 60000, 'the result is bounded: ' + text(r).length);
+  assert.match(text(r), /more matches not shown/, 'and says more is available');
+
+  // #49: notifications are never answered, and a tool sent as one does not run
+  notify('ping');
+  notify('tools/call', { name: 'memory_add', arguments: { type: 'note', text: 'notification write must not run' } });
+  r = await request('ping', {});
+  assert.deepStrictEqual(strays, [], 'no reply to a notification: ' + JSON.stringify(strays));
+  r = await request('tools/call', { name: 'memory_search', arguments: { query: 'notification write' } });
+  assert.ok(!text(r).includes('must not run'), 'a tools/call notification did not run: ' + text(r));
+  // a batch is answered with one JSON-RPC error, not dropped (batching left MCP in 2025-06-18)
+  r = await raw(JSON.stringify([{ jsonrpc: '2.0', id: 900, method: 'ping' }]), null);
+  assert.strictEqual(r.error && r.error.code, -32600, 'a batch gets an Invalid Request error: ' + JSON.stringify(r));
 
   // whoami answers, attributed to the injected tester identity
   r = await request('tools/call', { name: 'whoami', arguments: {} });
