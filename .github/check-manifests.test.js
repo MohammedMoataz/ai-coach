@@ -140,5 +140,19 @@ const versionOf = (dir, plugin) =>
   assert.ok(r.ok, 'a historical mention is not a dangling link: ' + r.out);
 }
 
+// A skill pointing at a reference or script that is not where it says — the bare
+// `references/rules.md` that only exists in a sibling skill, and a plugin-root path to nothing.
+{
+  const dir = fixture('missing-ref');
+  edit(path.join(dir, 'plugins', 'prompt-coach', 'skills', 'scope', 'SKILL.md'),
+    '`references/coverage.md`', '`references/rules.md`');
+  edit(path.join(dir, 'plugins', 'design-coach', 'skills', 'artifact-style', 'SKILL.md'),
+    '${CLAUDE_PLUGIN_ROOT}/scripts/check-artifact.js', '${CLAUDE_PLUGIN_ROOT}/scripts/check-artefact.js');
+  const r = run(dir);
+  assert.ok(!r.ok, 'a reference to a missing file is caught: ' + r.out);
+  assert.match(r.out, /scope\/SKILL\.md: references\/rules\.md does not exist/, 'the bare one is named: ' + r.out);
+  assert.match(r.out, /check-artefact\.js does not exist/, 'and the plugin-root one: ' + r.out);
+}
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('check-manifests.test.js: ALL PASS');

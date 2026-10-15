@@ -54,5 +54,14 @@ assert.strictEqual(agents.split('<!--').length - 1, 1, 'exactly one comment open
 assert.strictEqual(agents.split('-->').length - 1, 1, 'exactly one comment closer in AGENTS.md');
 assert.ok(agents.indexOf('<!--') < agents.indexOf('-->'), 'and it opens before it closes');
 
+// ---- #48: a bare scripts/ path resolves like a bare references/ path, into the clone ----
+const plain = out('cursor/demo-coach--plain.mdc');
+assert.ok(plain.includes('`$AICOACH_REPO/plugins/demo-coach/skills/plain/scripts/probe.js`'),
+  'a bare scripts/ path is made absolute: ' + plain);
+assert.ok(plain.includes('`$AICOACH_REPO/plugins/demo-coach/skills/plain/references/rules.md`'),
+  'references/ still is');
+assert.ok(plain.includes('"$AICOACH_REPO/plugins/demo-coach/scripts/check.js"'),
+  'and a ${CLAUDE_PLUGIN_ROOT}/scripts/ path is not rewritten twice');
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('build.test.js: ALL PASS');

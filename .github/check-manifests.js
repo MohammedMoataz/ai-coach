@@ -209,6 +209,18 @@ eachSkill((plugin, skill, file, text) => {
   // Every skill has to be reachable by more than its own name.
   check(/use for|use when|use before|use after/i.test(desc),
     `${rel}: description names no trigger — say when to use it, not only what it is`);
+  // Every file a skill tells the model to load or run has to be there. A bare `references/…` or
+  // `scripts/…` resolves from the skill's own directory — which is how two prompt-coach skills
+  // came to cite a rules.md that only a sibling skill has — and `${CLAUDE_PLUGIN_ROOT}/…` from
+  // the plugin's root.
+  const refs = [
+    ...[...text.matchAll(/\$\{CLAUDE_PLUGIN_ROOT\}\/([\w./-]+)/g)].map((m) => [path.join(root, 'plugins', plugin), m[1]]),
+    ...[...text.matchAll(/(?<![\w./$}-])((?:references|scripts)\/[\w./-]*)/g)].map((m) => [path.dirname(file), m[1]]),
+  ];
+  for (const [base, p] of refs) {
+    const target = p.replace(/\.+$/, ''); // a sentence may end on the path
+    check(fs.existsSync(path.join(base, target)), `${rel}: ${target} does not exist (from ${path.relative(root, base).split(path.sep).join('/')})`);
+  }
 });
 
 // ---- the CLI surface is the cross-plugin ABI, and nothing guarded it ----

@@ -28,8 +28,8 @@ const SUBS = [
   // the plugin-inventory command is Claude's; elsewhere the honest equivalent is asking
   [/\brun(?:ning)? `claude plugin list`/g, 'ask the user which AI Coach rule sets they installed'],
   [/`claude plugin list`/g, 'the harness\'s plugin inventory (on Claude Code: `claude plugin list`; elsewhere, ask the user)'],
-  // relative reference loads only resolve inside Claude's skill dir
-  [/(\(|`|\s)references\//g, '$1$AICOACH_REPO/plugins/__PLUGIN__/skills/__SKILL__/references/'],
+  // relative reference loads and script runs only resolve inside Claude's skill dir
+  [/(\(|`|\s)(references|scripts)\//g, '$1$AICOACH_REPO/plugins/__PLUGIN__/skills/__SKILL__/$2/'],
 ];
 
 function frontmatter(text) {

@@ -107,7 +107,7 @@ is not the same as ready: rule 4 has no detector at all.
 ## Sources, and their expiry
 
 Rules 1–3 are the sendable half of `/prompt-coach:prompt rules`; the numbered sources and the date
-each was verified live in `references/rules.md` — read it before defending a rule, not after. Rule 4
+each was verified live in `${CLAUDE_PLUGIN_ROOT}/skills/prompt/references/rules.md` — read it before defending a rule, not after. Rule 4
 comes from this repository's own agent contracts rather than any vendor's guidance.
 
 These are dated bets on current model behavior, not principles. Rule 2's warning about verification

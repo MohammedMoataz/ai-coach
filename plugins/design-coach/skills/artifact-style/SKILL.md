@@ -40,9 +40,9 @@ nothing — never a house style to impose on a project that has one.
    reply. Show the summary line. The lint is Node-only; a harness without Node applies the
    rules below by hand and says so. **Then probe the rendered page once**: the lint cannot
    measure text, so when a browser tool is available (the Playwright MCP, Chrome DevTools),
-   serve the file and evaluate the function `scripts/probe-overflow.js` prints — it lists every
-   HTML box whose text escaped it and, in every diagram (inline svg and host-rendered mermaid
-   alike), each label wider than its node, straddling a node it is not in, or drawn on another
+   serve the file and evaluate the function `node "${CLAUDE_PLUGIN_ROOT}/scripts/probe-overflow.js"`
+   prints — it lists every HTML box whose text escaped it and, in every diagram (inline svg and
+   host-rendered mermaid alike), each label wider than its node, straddling a node it is not in, or drawn on another
    label, with the amount. Probe after the fonts have loaded, with the figures at fit. Fix what
    it lists by the ladder in rule 1 (in an inline svg widen the node or shrink a label ≤ 10 %;
    in mermaid shorten the words — never resize its text), re-probe, and only then publish. No browser: say so, and look at the
