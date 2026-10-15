@@ -80,7 +80,7 @@ behaviour ([pair/SKILL.md:26](../../plugins/pair-coach/skills/pair/SKILL.md)). R
 
 | Event | Script | What it does |
 |---|---|---|
-| `UserPromptSubmit` | `mentions-nudge.js` | Reads only lines the developer added and has not committed (`git diff -U0 HEAD` plus untracked files, [mentions.js:118](../../plugins/pair-coach/scripts/mentions.js)). Names at most five locations ([mentions-nudge.js:15](../../plugins/pair-coach/hooks/mentions-nudge.js)) |
+| `UserPromptSubmit` | `mentions-nudge.js` | Reads only lines the developer added and has not committed (`git diff -U0 HEAD` plus untracked files, [mentions.js:121](../../plugins/pair-coach/scripts/mentions.js)). Names at most five locations ([mentions-nudge.js:15](../../plugins/pair-coach/hooks/mentions-nudge.js)) |
 
 Silent when there are no open threads, outside a git repository, or on any error. It never blocks
 a prompt, writes nothing, and exits at once when `AICOACH_INNER` is set

@@ -82,13 +82,16 @@ function blame(top, file, line) {
 
 // `target` is a directory (sweep its repository) or a file (just that file).
 function scan(target = process.cwd(), { withBlame = true } = {}) {
-  let dir = target, only = null;
-  try { if (fs.statSync(target).isFile()) { dir = path.dirname(target); only = path.resolve(target).toLowerCase(); } } catch { /* git decides */ }
+  let dir = target, file = null;
+  try { if (fs.statSync(target).isFile()) { dir = path.dirname(target); file = path.basename(target); } } catch { /* git decides */ }
   const top = root(dir);
   if (!top) return { error: 'not a git repository', threads: [] };
+  // git names the file relative to the repository, so no two spellings of a path are ever
+  // compared: an 8.3 short temp path on Windows and git's long one never matched as strings.
+  const only = file == null ? null : (tryGit(dir, ['rev-parse', '--show-prefix']) || '').trim() + file;
   const handle = whoami(top);
   const files = (tryGit(top, ['grep', '-l', '-I', '-i', '--untracked', '-e', '@claude', '-e', `@${handle}:`]) || '')
-    .split('\n').filter(Boolean).filter((f) => !only || path.resolve(top, f).toLowerCase() === only);
+    .split('\n').filter(Boolean).filter((f) => only == null || f === only);
   const email = (tryGit(top, ['config', 'user.email']) || '').trim().toLowerCase();
   const threads = [];
   for (const f of files) {

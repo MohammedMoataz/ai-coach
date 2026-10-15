@@ -87,6 +87,16 @@ assert.deepStrictEqual(mixed.asks.map((a) => [a.line, a.mine, a.author]), [[1, f
 const cli = (...a) => JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'mentions.js'), ...a], { encoding: 'utf8' }));
 assert.deepStrictEqual([...new Set(cli('json', path.join(dir, 'old.js')).threads.map((x) => x.file))], ['old.js'], 'a file path narrows the sweep');
 assert.ok(cli('json', dir).threads.some((x) => x.file === 'new.py'), 'a directory sweeps the repo');
+// Windows CI's temp dir is an 8.3 short path (C:\Users\RUNNER~1\...) while git reports the long one,
+// so a file argument must narrow the sweep however the path to it is spelled.
+if (process.platform === 'win32') {
+  const long = path.join(dir, 'old.js');
+  const short = execFileSync('powershell', ['-NoProfile', '-Command',
+    `(New-Object -ComObject Scripting.FileSystemObject).GetFile('${long}').ShortPath`], { encoding: 'utf8' }).trim();
+  if (short && short !== long) {
+    assert.deepStrictEqual([...new Set(cli('json', short).threads.map((x) => x.file))], ['old.js'], 'an 8.3 short path narrows the sweep too');
+  }
+}
 
 // replies addressed to the developer are found even with no @claude left in the file
 fs.writeFileSync(path.join(dir, 'stub.js'), `// @${whoami(dir)}: write the pricing rule\nthrow new Error('todo');\n`);
