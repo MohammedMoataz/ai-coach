@@ -120,10 +120,14 @@ if (action === 'pre-tool') {
     process.exit(0);
   }
   if (harness === 'cursor') {
-    // Cursor honours both the JSON verdict and exit 2; send both, they agree
-    process.stdout.write(JSON.stringify(blocked ? { permission: 'deny', user_message: reason, agent_message: reason }
-      : asked ? { permission: 'ask', user_message: reason } : { permission: 'allow' }) + '\n');
-    process.exit(blocked ? 2 : 0);
+    // Cursor honours both the JSON verdict and exit 2; send both, they agree. preToolUse accepts
+    // "ask" but does not enforce it, so the ask tier denies here, as on Windsurf. The events that
+    // do enforce ask cannot replace it: beforeReadFile is allow/deny only, so the credentials-file
+    // tier would still pass, and wiring both would run the guard twice per shell call.
+    const deny = blocked || asked;
+    process.stdout.write(JSON.stringify(deny ? { permission: 'deny', user_message: reason, agent_message: reason }
+      : { permission: 'allow' }) + '\n');
+    process.exit(deny ? 2 : 0);
   }
   // Windsurf: exit 2 blocks, and there is no ask — a secret-ish payload blocks rather than
   // slipping through, stated in the template. Blackbox claims the Claude contract; pass through.

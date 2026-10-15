@@ -45,9 +45,18 @@ assert.ok(/FAIL/.test(digest), 'cursor failure recorded with the FAIL prefix');
 
 // guard through the cursor dialect: JSON verdict AND exit 2, agreeing
 const KEY = 'AKIA' + 'ABCDEFGHIJKLMNOP';
-r = shim('cursor', 'pre-tool', { conversation_id: 'cur-1', workspace_roots: [proj], command: 'export K=' + KEY }, { AICOACH_GUARD: 'on' });
+// the documented preToolUse payload (cursor.com/docs/agent/hooks): tool_name + tool_input
+const cur = (tool_name, tool_input) => ({ conversation_id: 'cur-1', workspace_roots: [proj], hook_event_name: 'preToolUse', tool_name, tool_input, tool_use_id: 't1' });
+r = shim('cursor', 'pre-tool', cur('Shell', { command: 'export K=' + KEY, working_directory: proj }), { AICOACH_GUARD: 'on' });
 assert.strictEqual(r.status, 2, 'cursor deny is exit 2');
 assert.ok(r.stdout.includes('"permission":"deny"'), 'cursor deny is also a JSON verdict: ' + r.stdout);
+// preToolUse accepts "ask" but does not enforce it, so the ask tier has to deny there
+r = shim('cursor', 'pre-tool', cur('Read', { file_path: path.join(proj, '.env') }), { AICOACH_GUARD: 'on' });
+assert.strictEqual(r.status, 2, 'cursor ask tier blocks on preToolUse (exit 2)');
+assert.strictEqual(JSON.parse(r.stdout).permission, 'deny', 'cursor ask tier is a deny verdict: ' + r.stdout);
+// lenient fallback: a top-level command, the beforeShellExecution shape
+r = shim('cursor', 'pre-tool', { conversation_id: 'cur-1', workspace_roots: [proj], command: 'export K=' + KEY }, { AICOACH_GUARD: 'on' });
+assert.strictEqual(r.status, 2, 'cursor top-level command still denies');
 r = shim('cursor', 'pre-tool', { conversation_id: 'cur-1', workspace_roots: [proj], command: 'ls' }, { AICOACH_GUARD: 'on' });
 assert.strictEqual(r.status, 0, 'cursor clean command allowed');
 assert.ok(r.stdout.includes('"permission":"allow"'), 'cursor allow verdict: ' + r.stdout);
