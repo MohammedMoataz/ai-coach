@@ -8,7 +8,7 @@ consequence.
 
 | | |
 |---|---|
-| Version | 1.2.0 |
+| Version | 1.2.1 |
 | Depends on | `ai-coach-core` `^1.6.0` |
 | Source | [`plugins/prompt-coach/`](../../plugins/prompt-coach/) |
 
@@ -220,11 +220,6 @@ None. The skills write no file and no row. The data `prompt-stats` reads is kept
 
 ## Limits and known issues
 
-- `dispatch` and `scope` cite `references/rules.md`, but neither skill has that file. It lives at
-  `skills/prompt/references/rules.md`
-  ([dispatch/SKILL.md:110](../../plugins/prompt-coach/skills/dispatch/SKILL.md),
-  [scope/SKILL.md:59](../../plugins/prompt-coach/skills/scope/SKILL.md)). Tracked in
-  [#48](https://github.com/MohammedMoataz/ai-coach/issues/48).
 - `multi-ask` needs both over 600 characters and more than six conjunctions, so it misses a short
   prompt that carries many outcomes. `prompt` and `scope` both say to read the draft rather than
   trust the flag.
@@ -232,7 +227,7 @@ None. The skills write no file and no row. The data `prompt-stats` reads is kept
   that already reversed or are model-dependent.
 - Lift is correlation over your own sessions, and is blank until clean prompts have a bad session to
   compare against.
-- Windsurf does not record prompt signals: [#37](https://github.com/MohammedMoataz/ai-coach/issues/37).
+- Prompt signals are recorded under Windsurf too since v1.18.0 (#37).
 
 ## Source map
 

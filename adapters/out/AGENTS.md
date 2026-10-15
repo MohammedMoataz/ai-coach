@@ -104,6 +104,15 @@ Claude Code injects this automatically; in this harness it is your first move.
   Who is on this project and whom you trust, and which repositories belong to one product. Use when the user explicitly asks ("/roster", "add me to the team", "trust this teammate", "group these repos", "declare the project"), or when /ai-coach:wrap chains it to close an identity gap; never proactively. Not for searching memory (see recall).
   Full instructions: `$AICOACH_REPO/plugins/memory-coach/skills/roster/SKILL.md`
 
+### pair-coach
+
+- **mentions** — `[path]`
+  Answers the open @claude comment threads in the code, inline: a question gets a reply under it, an instruction gets done plus a one-line reply, an unclear one gets a question back, each addressed to the developer by their own git name. Use when the user asks (/pair-coach:mentions, "answer my @claude comments"), or when a pair-coach line in this turn's context reported open threads; never unprompted otherwise. Asks before acting on a line someone else committed.
+  Full instructions: `$AICOACH_REPO/plugins/pair-coach/skills/mentions/SKILL.md`
+- **pair** *(user-fired)* — `<task>`
+  Builds a task with the developer instead of for them - Claude writes the scaffolding, boilerplate and tests, and leaves one to three stubs addressed to the developer where the choice is genuinely theirs (a business rule, a trade-off, domain knowledge), each failing loudly until written. Use when the user types /pair-coach:pair with a task; user-only, never chained.
+  Full instructions: `$AICOACH_REPO/plugins/pair-coach/skills/pair/SKILL.md`
+
 ### prompt-coach
 
 - **dispatch** — `[the draft you are about to send]`
@@ -130,6 +139,12 @@ Claude Code injects this automatically; in this harness it is your first move.
 - **triage** *(user-fired)* — `<ingest|status|update|report> [--source pentest|audit|scan|disclosure] [args]`
   Turn a pentest or security report into tracked findings with owners and status, and produce the team report. Use for "/triage", "we got a pentest report", "security findings status".
   Full instructions: `$AICOACH_REPO/plugins/security-coach/skills/triage/SKILL.md`
+
+### ship-coach
+
+- **commit** *(user-fired)* — `[--branch [name]] [--pr] [--issue N]`
+  Commits the current change with a message drafted on a small model at low effort in this repository's own style, then optionally pushes a branch and opens a PR that closes an issue - after one confirmation of the whole plan. Use when the user types /ship-coach:commit; user-only, because it writes their git history and can publish.
+  Full instructions: `$AICOACH_REPO/plugins/ship-coach/skills/commit/SKILL.md`
 
 ### strategy-coach
 

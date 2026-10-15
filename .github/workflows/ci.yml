@@ -52,6 +52,8 @@ jobs:
       - run: node plugins/ai-coach-core/hooks/hooks.test.js
       - run: node plugins/atlas-coach/tools/ingest.test.js
       - run: node plugins/design-coach/scripts/check-artifact.test.js
+      - run: node plugins/pair-coach/scripts/mentions.test.js
+      - run: node plugins/ship-coach/scripts/context.test.js
       - run: node adapters/mcp/server.test.js
       - run: node adapters/shim.test.js
       - run: node adapters/build.test.js

@@ -7,7 +7,7 @@ it works through hooks, and the other plugins' skills call its engine at `~/.ai-
 
 | | |
 |---|---|
-| Version | 1.9.0 |
+| Version | 1.9.1 |
 | Depends on | none |
 | Source | [`plugins/ai-coach-core/`](../../plugins/ai-coach-core/) |
 
@@ -272,23 +272,11 @@ Everything is described in [engine.md](../engine.md#storage). In short:
 - Claude Code's session name is read from `~/.claude/sessions/*.json`, which is internal to Claude
   Code. When that layout changes, the engine keeps its own name (`engine.js:1299-1331`).
 - Open issues that touch these hooks:
-  - [#45](https://github.com/MohammedMoataz/ai-coach/issues/45): memory search finds nothing for
-    non-Latin text.
   - [#34](https://github.com/MohammedMoataz/ai-coach/issues/34): settings from a web UI (a
     question).
-  - When the same scripts run under other harnesses through `adapters/shim.js`:
-    - [#35](https://github.com/MohammedMoataz/ai-coach/issues/35): the Antigravity guard never
-      sees tool input.
-    - [#36](https://github.com/MohammedMoataz/ai-coach/issues/36): the Windsurf guard's ask and
-      credential-file tiers never fire.
-    - [#37](https://github.com/MohammedMoataz/ai-coach/issues/37): Windsurf prompt signals are
-      never recorded.
-    - [#38](https://github.com/MohammedMoataz/ai-coach/issues/38): Cursor ignores the guard's
-      `ask` verdict.
-    - [#39](https://github.com/MohammedMoataz/ai-coach/issues/39): the shim kills session-end at
-      30 s, against a 45 s distillation call.
-    - [#40](https://github.com/MohammedMoataz/ai-coach/issues/40): the shim relays guard reasons
-      with doubled backslashes.
+- Under other harnesses (`adapters/shim.js`), Cursor's `preToolUse` has no ask, so the guard's
+  ask tier denies there instead. The six shim issues found in the v1.18.0 dogfooding pass
+  (#35–#40) are fixed; see the CHANGELOG.
 
 ## Source map
 

@@ -3,6 +3,78 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.18.0 — A conversation in the code, and one look before it ships (2026-10-15)
+
+**pair-coach 1.0.0 · ship-coach 1.0.0 · ai-coach-core 1.9.1 · prompt-coach 1.2.1 · design-coach 1.0.3 · ai-coach 1.18.0**
+
+Two new coaches, and sixteen fixes from a dogfooding pass that read every adapter against the
+harness's own published contract. Design: `docs/superpowers/specs/2026-10-15-pair-coach-ship-coach-design.md`.
+Every plugin now has a reference page under `docs/` (#51).
+
+### pair-coach — `@claude` in a comment
+
+Write `// @claude why is this a Map?` or `# @claude add a retry here, max 3` where the question
+belongs. `/pair-coach:mentions` answers inline under it, makes the change and says so in one line,
+or asks back when two readings survive — always addressed to you by your own `git config user.name`.
+No name is written into the plugin anywhere: the parser only tells `@claude` from everybody else,
+and a person is addressed with a colon (`@Dana:`) so `@param` and decorators are never people. A
+thread ends when you delete it.
+
+- **A prompt hook that only reads what you wrote.** On every prompt it scans the lines you added
+  and have not committed — `git diff -U0 HEAD` plus untracked files — and, when one holds an open
+  thread, adds one line of context naming where. Silent otherwise; never blocks; fails open.
+- **Someone else's comment is not your instruction.** A `@claude` line a teammate committed — or a
+  dependency, or a branch you pulled — is never surfaced by the hook, and `/mentions` asks before
+  acting on it, naming the author from `git blame`.
+- **`/pair-coach:pair <task>`** (user-only) builds a task and leaves one to three stubs addressed to
+  you where the call is genuinely yours, each failing loudly (`throw`, `raise NotImplementedError`)
+  until written. Reply `@claude check this` under one and `/mentions` reviews it.
+
+`mentions` is model-invocable so the hook's line can lead to it: 467 characters of description,
+about 165 tokens, added to every session.
+
+### ship-coach — `/ship-coach:commit`
+
+Drafts the message on Haiku at low effort (`model: haiku`, `effort: low` in the skill's
+frontmatter), in the style of the repository's last 15 subjects, then shows the whole plan once —
+message, branch, files, push, PR, issue — with Run all, Edit message, Commit only, or Cancel. A new
+branch when you are on the default one; push and PR only with `--pr`; `Fixes #N` from `--issue` or
+the branch name. The issue's board status is left to GitHub's built-in "Pull request linked to
+issue" project workflow. Never force-pushes, amends a pushed commit, or skips hooks; `.env`, keys
+and certificates are asked about before they are staged. User-only, because it writes your history.
+
+A zero-dependency `scripts/context.js` gathers the state in one call and caps the diff at 12 KB —
+an uncapped diff is the one thing that would make a cheap model expensive.
+
+### Hooks outside the engine
+
+pair-coach's prompt hook is the third outside `ai-coach-core`, after design-coach's two. Same terms:
+reads no memory, writes nothing, fails open.
+
+### Fixes — every adapter now reads the payload its harness documents
+
+Several adapters had passed CI against fixtures that matched what the adapter expected rather than
+what the harness sends. Each fix below came with a test built from the harness's published payload,
+and each test failed on the old code first.
+
+- **Shim** (#54). Antigravity's `toolCall.name`/`args`, `CommandLine` and `TargetFile` are mapped,
+  so a credential in an Antigravity command is now blocked (#35). Windsurf's
+  `tool_info.command_line` reaches the guard (#36) and its prompt is recorded (#37). On Cursor the
+  guard's ask tier denies, because `preToolUse` has no ask (#38). The session-end timeout now covers
+  its 45 s model call (#39), and the guard's reason is read from its JSON (#40).
+- **opencode** (#52). Session lifecycle runs through the `event` hook, because the two `session.*`
+  keys it used never fire (#41), and tool arguments are read from the input (#42).
+- **Compiled rules** (#53). The headers carry PowerShell and cmd spellings next to POSIX (#46). The
+  README no longer claims Gemini CLI reads AGENTS.md by default (#47). Frontmatter block scalars are
+  parsed (#50). `dispatch`, `scope` and `artifact-style` cite reference files that exist, and a new
+  checker rule fails on any `${CLAUDE_PLUGIN_ROOT}`, `references/` or `scripts/` path that does not
+  resolve (#48).
+- **Engine and MCP server** (#55). `memory_add` is validated against its own schema at the server,
+  and `add()` refuses a missing text or an out-of-range confidence. A write marked distilled cannot
+  be promoted by a flag (#43). Search output is bounded (#44). Search keeps letters of every script,
+  so Arabic, Japanese and `café` are found (#45). JSON-RPC follows MCP 2025-06-18: version
+  negotiation, notifications never answered, batches refused (#49).
+
 ## v1.17.0 — Summaries you have read, and code that does what the docs say (2026-10-08)
 
 **ai-coach-core 1.9.0 · memory-coach 1.5.0 · security-coach 1.2.1 · ai-coach 1.17.0**

@@ -302,10 +302,8 @@ Open findings do appear in your own session brief as a coach line (`1 security f
 - **Triage reads reports as text.** There is no SARIF parser yet
   ([workflow.md:58-60](../../plugins/security-coach/skills/triage/references/workflow.md)).
 
-No open GitHub issue targets this plugin directly. Its compiled Cursor rules
-(`adapters/out/cursor/security-coach--*.mdc`) invoke the engine through `$AICOACH_REPO`, which
-fails in PowerShell and cmd (#46). Several adapter issues weaken the guard outside Claude Code
-(#35, #36, #38, #40); see [ai-coach-core.md](ai-coach-core.md).
+No open GitHub issue targets this plugin directly. Outside Claude Code the guard runs through
+`adapters/shim.js`; see [ai-coach-core.md](ai-coach-core.md) for how each harness maps it.
 
 ## Source map
 

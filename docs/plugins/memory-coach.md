@@ -219,9 +219,8 @@ reached through `ENGINE` verbs.
 ## Limits and known issues
 
 - Search is keyword (FTS5), not semantic. A miss can mean a different word.
-- Memory search finds nothing for non-Latin text: [#45](https://github.com/MohammedMoataz/ai-coach/issues/45).
-- The MCP `memory_add` path can bypass distilled provenance: [#43](https://github.com/MohammedMoataz/ai-coach/issues/43)
-  (adapter, not these skills).
+- Search keeps letters of every script, but an unbroken CJK run is one token, so a substring of it
+  does not match.
 - Holding a teammate's rows is computed from your trust at read time, so there is no per-row hold
   history.
 - `rekey` deletes the source tenant and cannot be undone.

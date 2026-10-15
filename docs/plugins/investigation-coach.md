@@ -253,9 +253,7 @@ None of its own. The skills read `.ai-coach/project.md` (for `--project` repo li
   ([drawio.md:70-82](../../plugins/investigation-coach/skills/map/references/drawio.md)).
 - **Decisions are inferred.** `decisions.md` entries are reverse-engineered from code and labelled
   `INFERRED`, not taken from meeting minutes.
-- **No open GitHub issue targets this plugin directly.** Its compiled Cursor rules
-  (`adapters/out/cursor/investigation-coach--*.mdc`) invoke the engine through `$AICOACH_REPO`,
-  which fails in PowerShell and cmd (#46).
+- **No open GitHub issue targets this plugin directly.**
 
 ## Source map
 
