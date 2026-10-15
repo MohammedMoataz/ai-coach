@@ -55,7 +55,10 @@ const cc = {
   cwd: String(first(d.cwd, Array.isArray(d.workspace_roots) ? d.workspace_roots[0] : undefined,
     Array.isArray(d.workspacePaths) ? d.workspacePaths[0] : undefined, d.workspaceRoot, d.workspace_root, process.cwd())),
   hook_event_name: ACTIONS[action].event,
-  tool_name: String(first(d.tool_name, d.toolName, d.tool, call.name, '')),
+  // Windsurf has no tool name at all: the action is the name (pre_read_code -> read_code), and an
+  // MCP call names its tool inside tool_info
+  tool_name: String(first(d.tool_name, d.toolName, d.tool, call.name, toolInfo.mcp_tool_name,
+    typeof d.agent_action_name === 'string' ? d.agent_action_name.replace(/^(?:pre|post)_/, '') : undefined, '')),
   tool_input: (() => {
     // start from whichever payload object exists, then normalize the two fields the hooks read —
     // camelCase filePath, Antigravity's PascalCase args and top-level command included
@@ -64,7 +67,7 @@ const cc = {
     const t = { ...src };
     const fp = first(t.file_path, t.filePath, t.AbsolutePath, t.TargetFile, d.file_path, d.filePath);
     if (fp !== undefined) t.file_path = fp;
-    const cmd = first(t.command, t.CommandLine, d.command);
+    const cmd = first(t.command, t.command_line, t.CommandLine, d.command);
     if (cmd !== undefined) t.command = cmd;
     return t;
   })(),
