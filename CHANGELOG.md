@@ -5,9 +5,11 @@ release is named with its number in that release's section.
 
 ## v1.18.0 — A conversation in the code, and one look before it ships (2026-10-15)
 
-**pair-coach 1.0.0 · ship-coach 1.0.0 · ai-coach 1.18.0**
+**pair-coach 1.0.0 · ship-coach 1.0.0 · ai-coach-core 1.9.1 · prompt-coach 1.2.1 · design-coach 1.0.3 · ai-coach 1.18.0**
 
-Two new coaches. Design: `docs/superpowers/specs/2026-10-15-pair-coach-ship-coach-design.md`.
+Two new coaches, and sixteen fixes from a dogfooding pass that read every adapter against the
+harness's own published contract. Design: `docs/superpowers/specs/2026-10-15-pair-coach-ship-coach-design.md`.
+Every plugin now has a reference page under `docs/` (#51).
 
 ### pair-coach — `@claude` in a comment
 
@@ -48,6 +50,30 @@ an uncapped diff is the one thing that would make a cheap model expensive.
 
 pair-coach's prompt hook is the third outside `ai-coach-core`, after design-coach's two. Same terms:
 reads no memory, writes nothing, fails open.
+
+### Fixes — every adapter now reads the payload its harness documents
+
+Several adapters had passed CI against fixtures that matched what the adapter expected rather than
+what the harness sends. Each fix below came with a test built from the harness's published payload,
+and each test failed on the old code first.
+
+- **Shim** (#54). Antigravity's `toolCall.name`/`args`, `CommandLine` and `TargetFile` are mapped,
+  so a credential in an Antigravity command is now blocked (#35). Windsurf's
+  `tool_info.command_line` reaches the guard (#36) and its prompt is recorded (#37). On Cursor the
+  guard's ask tier denies, because `preToolUse` has no ask (#38). The session-end timeout now covers
+  its 45 s model call (#39), and the guard's reason is read from its JSON (#40).
+- **opencode** (#52). Session lifecycle runs through the `event` hook, because the two `session.*`
+  keys it used never fire (#41), and tool arguments are read from the input (#42).
+- **Compiled rules** (#53). The headers carry PowerShell and cmd spellings next to POSIX (#46). The
+  README no longer claims Gemini CLI reads AGENTS.md by default (#47). Frontmatter block scalars are
+  parsed (#50). `dispatch`, `scope` and `artifact-style` cite reference files that exist, and a new
+  checker rule fails on any `${CLAUDE_PLUGIN_ROOT}`, `references/` or `scripts/` path that does not
+  resolve (#48).
+- **Engine and MCP server** (#55). `memory_add` is validated against its own schema at the server,
+  and `add()` refuses a missing text or an out-of-range confidence. A write marked distilled cannot
+  be promoted by a flag (#43). Search output is bounded (#44). Search keeps letters of every script,
+  so Arabic, Japanese and `café` are found (#45). JSON-RPC follows MCP 2025-06-18: version
+  negotiation, notifications never answered, batches refused (#49).
 
 ## v1.17.0 — Summaries you have read, and code that does what the docs say (2026-10-08)
 

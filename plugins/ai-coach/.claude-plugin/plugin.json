@@ -17,7 +17,7 @@
   "dependencies": [
     {
       "name": "ai-coach-core",
-      "version": "^1.9.0"
+      "version": "^1.9.1"
     },
     {
       "name": "memory-coach",
@@ -25,7 +25,7 @@
     },
     {
       "name": "prompt-coach",
-      "version": "^1.2.0"
+      "version": "^1.2.1"
     },
     {
       "name": "security-coach",
@@ -53,7 +53,7 @@
     },
     {
       "name": "design-coach",
-      "version": "^1.0.0"
+      "version": "^1.0.3"
     },
     {
       "name": "pair-coach",

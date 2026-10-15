@@ -9,7 +9,7 @@ before the page goes out. Use it whenever you write or publish an Artifact page.
 
 | | |
 |---|---|
-| Version | 1.0.2 |
+| Version | 1.0.3 |
 | Depends on | `ai-coach-core` `^1.6.0` |
 | Source | [`plugins/design-coach/`](../../plugins/design-coach/) |
 
@@ -23,7 +23,7 @@ before the page goes out. Use it whenever you write or publish an Artifact page.
 | `artifact-lint.js` | hook | `PreToolUse` on `Artifact` | Runs the lint before a publish, and turns errors into an `ask` |
 | `artifact-nudge.js` | hook | `PostToolUse` on `Skill` | After a native artifact skill loads, reminds the model to load `artifact-style` |
 
-These are the only two hooks in the marketplace outside ai-coach-core. Both exit immediately when
+They are two of the three hooks in the marketplace outside ai-coach-core; pair-coach ships the third. Both exit immediately when
 `AICOACH_INNER` is set, and both fail open
 ([hooks/artifact-lint.js:5-7](../../plugins/design-coach/hooks/artifact-lint.js)).
 
@@ -269,16 +269,6 @@ None. It writes only the page you are building. No memory, no engine calls, no f
   browser tool.
 - **Contrast is checked for hex literals only**, and only for the eight token pairs listed above.
 - **Node is required for the lint.** Without it, the skill applies the rules by hand.
-- **#48: the relative `scripts/probe-overflow.js`
-  path.** The compiled Cursor rule
-  [`adapters/out/cursor/design-coach--artifact-style.mdc:50`](../../adapters/out/cursor/design-coach--artifact-style.mdc)
-  leaves `scripts/probe-overflow.js` relative, so it does not resolve outside the skill
-  directory. The proposed fix adds `scripts/` to the `build.js` substitution table. The source
-  has the same shape: [SKILL.md:44](../../plugins/design-coach/skills/artifact-style/SKILL.md)
-  names `scripts/probe-overflow.js` without the `${CLAUDE_PLUGIN_ROOT}` prefix that line 38 gives
-  `check-artifact.js`.
-- **#46**: the same compiled rule calls
-  the lint through `$AICOACH_REPO`, which fails in PowerShell and cmd.
 
 ## Tests
 

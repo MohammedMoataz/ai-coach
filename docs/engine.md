@@ -235,9 +235,10 @@ it passes a quarter of that, at most 1000 (`session-start.js:44-46`).
 
 `search(q, opts)` (`engine.js:966-1011`):
 
-- The query is tokenized to `[A-Za-z0-9_.\-]+` terms, quoted, and joined with `OR`
-  (`engine.js:933-936`). **Non-Latin text produces no terms, so it finds nothing** (see
-  [#45](https://github.com/MohammedMoataz/ai-coach/issues/45)).
+- The query is tokenized to `[\p{L}\p{N}_.\-]+` terms (letters and digits of every script),
+  quoted, and joined with `OR` (`engine.js:942-945`). The FTS table's default `unicode61`
+  tokenizer folds diacritics, so `café` and `cafe` match each other. An unbroken CJK run is one
+  token, so a substring of it does not match; that would need a trigram tokenizer.
 - Scopes searched: this tenant plus `user.db`, or every registered project plus `user.db` with
   `--all`.
 - Filters: `--task`, `--author` (email), `--role` and `--user` (the author's *current* role and
@@ -561,15 +562,6 @@ Every verb in `dispatch()` (`engine.js:2375-2829`):
 
 ## Known issues
 
-- [#45](https://github.com/MohammedMoataz/ai-coach/issues/45): Memory search finds nothing for
-  non-Latin text (Arabic, CJK, accents). `ftsQuery` keeps only `[A-Za-z0-9_.\-]+`
-  (`engine.js:933-936`).
-- [#43](https://github.com/MohammedMoataz/ai-coach/issues/43): MCP `memory_add` passes unvalidated
-  arguments to `engine add`. A `text` of `--provenance` makes the engine parse a flag that overrides
-  `AICOACH_PROVENANCE=distilled` (`engine.js:2384`). Confidence is not range-checked in the engine
-  either (`engine.js:896`).
-- [#44](https://github.com/MohammedMoataz/ai-coach/issues/44): MCP `memory_search` with
-  `full: true` fails with ENOBUFS once `search --full` output passes 1 MB.
 - [#34](https://github.com/MohammedMoataz/ai-coach/issues/34): open question about managing
   settings from a web UI.
 
