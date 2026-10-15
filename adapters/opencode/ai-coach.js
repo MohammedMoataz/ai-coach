@@ -43,8 +43,18 @@ export const AiCoach = async ({ directory }) => {
   };
 
   return {
-    'session.created': async (input) => {
-      try { ensureSession(input?.session?.id || input?.sessionID); } catch { /* never break the session */ }
+    // Session lifecycle is not a hook key in opencode: it arrives through the one `event` hook,
+    // shaped as the SDK's Event union. session.created carries the Session as properties.info;
+    // session.idle carries properties.sessionID. opencode has no session-end event, so idle is
+    // the closest signal; session-end is idempotent on the engine side, so repeats cost nothing.
+    event: async ({ event } = {}) => {
+      try {
+        if (event?.type === 'session.created') ensureSession(event.properties?.info?.id);
+        else if (event?.type === 'session.idle') {
+          const id = event.properties?.sessionID;
+          if (id) engine(['session-end', id, ''], directory);
+        }
+      } catch { /* never break the session */ }
     },
 
     'tool.execute.before': async (input, output) => {
@@ -77,18 +87,10 @@ export const AiCoach = async ({ directory }) => {
       try {
         const id = input?.sessionID || 'opencode';
         ensureSession(id);
-        const target = output?.args?.filePath || output?.args?.file_path || output?.args?.command || output?.title || '';
+        // args ride on the input here (unlike tool.execute.before); the output is { title, output, metadata }
+        const target = input?.args?.filePath || input?.args?.file_path || input?.args?.command || output?.title || '';
         engine(['observe', id, input?.tool || '', String(target).slice(0, 200), ''], directory);
       } catch { /* recording must never break the session */ }
-    },
-
-    'session.idle': async (input) => {
-      // opencode has no session-end event; idle is the closest signal. session-end is idempotent
-      // on the engine side, so firing it more than once costs nothing.
-      try {
-        const id = input?.sessionID || input?.session?.id;
-        if (id) engine(['session-end', id, ''], directory);
-      } catch { /* never break the session */ }
     },
   };
 };
