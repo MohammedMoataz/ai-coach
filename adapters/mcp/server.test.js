@@ -31,6 +31,7 @@ const srv = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
 });
 
 const pending = new Map();
+const strays = []; // replies nobody asked for — a notification must never get one
 let nextId = 1;
 let buf = '';
 srv.stdout.on('data', (d) => {
@@ -41,7 +42,7 @@ srv.stdout.on('data', (d) => {
     if (!line.trim()) continue;
     const msg = JSON.parse(line);
     const cb = pending.get(msg.id);
-    if (cb) { pending.delete(msg.id); cb(msg); }
+    if (cb) { pending.delete(msg.id); cb(msg); } else strays.push(msg);
   }
 });
 let stderr = '';
@@ -53,6 +54,12 @@ const request = (method, params) => new Promise((resolve, reject) => {
   srv.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
   setTimeout(() => { if (pending.delete(id)) reject(new Error(method + ' timed out')); }, 30000);
 });
+// a raw line whose reply is expected under `replyId` (a batch error carries id null)
+const raw = (line, replyId) => new Promise((resolve, reject) => {
+  pending.set(replyId, resolve);
+  srv.stdin.write(line + '\n');
+  setTimeout(() => { if (pending.delete(replyId)) reject(new Error('raw line timed out')); }, 30000);
+});
 const notify = (method, params) => srv.stdin.write(JSON.stringify({ jsonrpc: '2.0', method, params }) + '\n');
 const text = (r) => r.result.content.map((c) => c.text).join('\n');
 
@@ -63,6 +70,13 @@ const text = (r) => r.result.content.map((c) => c.text).join('\n');
   assert.strictEqual(r.result.serverInfo.name, 'ai-coach', 'names itself');
   assert.ok(r.result.capabilities.tools, 'declares tools capability');
   notify('notifications/initialized');
+
+  // #49: version negotiation — a supported version is answered as-is, an unknown one gets the
+  // latest the server supports, never an echo of whatever the client claimed
+  r = await request('initialize', { protocolVersion: '1999-01-01', capabilities: {}, clientInfo: { name: 'test', version: '0' } });
+  assert.strictEqual(r.result.protocolVersion, '2025-06-18', 'an unsupported version is answered with the latest supported');
+  r = await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '0' } });
+  assert.strictEqual(r.result.protocolVersion, '2024-11-05', 'an older supported version is kept');
 
   // tools/list: the surface is exactly the safe seven — no publish verbs
   r = await request('tools/list', {});
@@ -115,6 +129,17 @@ const text = (r) => r.result.content.map((c) => c.text).join('\n');
   assert.ok(!r.result.isError, 'a >1 MB full search is not an error: ' + text(r).slice(0, 200));
   assert.ok(text(r).length < 60000, 'the result is bounded: ' + text(r).length);
   assert.match(text(r), /more matches not shown/, 'and says more is available');
+
+  // #49: notifications are never answered, and a tool sent as one does not run
+  notify('ping');
+  notify('tools/call', { name: 'memory_add', arguments: { type: 'note', text: 'notification write must not run' } });
+  r = await request('ping', {});
+  assert.deepStrictEqual(strays, [], 'no reply to a notification: ' + JSON.stringify(strays));
+  r = await request('tools/call', { name: 'memory_search', arguments: { query: 'notification write' } });
+  assert.ok(!text(r).includes('must not run'), 'a tools/call notification did not run: ' + text(r));
+  // a batch is answered with one JSON-RPC error, not dropped (batching left MCP in 2025-06-18)
+  r = await raw(JSON.stringify([{ jsonrpc: '2.0', id: 900, method: 'ping' }]), null);
+  assert.strictEqual(r.error && r.error.code, -32600, 'a batch gets an Invalid Request error: ' + JSON.stringify(r));
 
   // whoami answers, attributed to the injected tester identity
   r = await request('tools/call', { name: 'whoami', arguments: {} });

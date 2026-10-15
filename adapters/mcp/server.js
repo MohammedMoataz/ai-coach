@@ -21,7 +21,10 @@ const fs = require('node:fs');
 const readline = require('node:readline');
 const { spawnSync } = require('node:child_process');
 
-const PROTOCOL_FALLBACK = '2025-06-18';
+// Newest first; the newest is what an unknown client version is answered with. 2025-03-26 is not
+// claimed on purpose: it obliged a server to accept JSON-RPC batches, which this one refuses
+// (2025-06-18 removed batching again).
+const PROTOCOL_VERSIONS = ['2025-06-18', '2024-11-05'];
 const VERSION = '1.0.0';
 // spawnSync's default maxBuffer is 1 MB, and `search --full` over a large memory passes it (ENOBUFS).
 // ponytail: still a ceiling — past 64 MB of matches the call fails; an engine-side --limit is the upgrade.
@@ -165,17 +168,21 @@ const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
 
 function handle(msg) {
   const { id, method, params } = msg;
-  const isRequest = id !== undefined && id !== null;
+  // No id = a notification. JSON-RPC forbids answering one, and a tools/call sent as one must not
+  // run either: nobody would ever see what it did. initialized, cancelled, … are absorbed here.
+  if (id === undefined || id === null) return;
   switch (method) {
-    case 'initialize':
+    case 'initialize': {
+      const asked = params && params.protocolVersion;
       return send(rpc(id, {
-        protocolVersion: (params && params.protocolVersion) || PROTOCOL_FALLBACK,
+        protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
         capabilities: { tools: {} },
         serverInfo: { name: 'ai-coach', version: VERSION },
         instructions: 'Team memory, debriefs and prompt checks for this machine\'s AI Coach data. '
           + 'Search memory before re-deriving; add one durable fact when you learn one. '
           + 'Publishing (debriefs, seed exports) is deliberately absent — a person fires those.',
       }));
+    }
     case 'tools/list':
       return send(rpc(id, { tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) }));
     case 'tools/call': {
@@ -194,8 +201,7 @@ function handle(msg) {
     case 'ping':
       return send(rpc(id, {}));
     default:
-      // notifications (initialized, cancelled, …) are absorbed; unknown REQUESTS get an error
-      if (isRequest) return send(rpcErr(id, -32601, 'method not found: ' + method));
+      return send(rpcErr(id, -32601, 'method not found: ' + method));
   }
 }
 
@@ -203,7 +209,11 @@ readline.createInterface({ input: process.stdin, terminal: false }).on('line', (
   if (!line.trim()) return;
   let msg;
   try { msg = JSON.parse(line); } catch { return send(rpcErr(null, -32700, 'parse error')); }
+  // A batch used to be dropped without a word. MCP 2025-06-18 removed batching, so it is refused
+  // with one Invalid Request error rather than half-supported.
+  if (Array.isArray(msg)) return send(rpcErr(null, -32600, 'batches are not supported (removed from MCP in 2025-06-18); send one message per line'));
+  if (!msg || typeof msg !== 'object') return send(rpcErr(null, -32600, 'invalid request'));
   try { handle(msg); } catch (err) {
-    if (msg && msg.id !== undefined) send(rpcErr(msg.id, -32603, String(err.message || err)));
+    if (msg.id != null) send(rpcErr(msg.id, -32603, String(err.message || err)));
   }
 }).on('close', () => process.exit(0));
