@@ -46,39 +46,47 @@ try { d = JSON.parse(raw || '{}'); } catch { /* lenient: an unparseable event st
 
 // ---- foreign fields -> the Claude Code shape the hooks parse ----------------------------------
 // Documented names first (Cursor: conversation_id/workspace_roots; Windsurf: trajectory_id/
-// tool_info; Antigravity: camelCase), then the generic fallbacks.
-const toolInfo = d.tool_info || d.toolInput || d.tool_input || {};
+// tool_info; Antigravity: toolCall {name, args} with PascalCase args, conversationId,
+// workspacePaths), then the generic fallbacks.
+const call = (d.toolCall && typeof d.toolCall === 'object') ? d.toolCall : {};
+const toolInfo = d.tool_info || d.toolInput || d.tool_input || call.args || {};
 const cc = {
   session_id: String(first(d.session_id, d.conversation_id, d.trajectory_id, d.sessionId, d.conversationId, 'unknown-' + harness)),
-  cwd: String(first(d.cwd, Array.isArray(d.workspace_roots) ? d.workspace_roots[0] : undefined, d.workspaceRoot, d.workspace_root, process.cwd())),
+  cwd: String(first(d.cwd, Array.isArray(d.workspace_roots) ? d.workspace_roots[0] : undefined,
+    Array.isArray(d.workspacePaths) ? d.workspacePaths[0] : undefined, d.workspaceRoot, d.workspace_root, process.cwd())),
   hook_event_name: ACTIONS[action].event,
-  tool_name: String(first(d.tool_name, d.toolName, d.tool,
-    // shell-specific events (beforeShellExecution / pre_run_command) carry a command, not a tool
-    (first(d.command, toolInfo.command) !== undefined ? 'Bash' : undefined), '')),
+  // Windsurf has no tool name at all: the action is the name (pre_read_code -> read_code), and an
+  // MCP call names its tool inside tool_info
+  tool_name: String(first(d.tool_name, d.toolName, d.tool, call.name, toolInfo.mcp_tool_name,
+    typeof d.agent_action_name === 'string' ? d.agent_action_name.replace(/^(?:pre|post)_/, '') : undefined, '')),
   tool_input: (() => {
     // start from whichever payload object exists, then normalize the two fields the hooks read —
-    // camelCase filePath and top-level command included, whatever the harness called them
+    // camelCase filePath, Antigravity's PascalCase args and top-level command included
     const src = (typeof d.tool_input === 'object' && d.tool_input) || (typeof d.toolInput === 'object' && d.toolInput)
       || (typeof toolInfo === 'object' && toolInfo) || {};
     const t = { ...src };
-    const fp = first(t.file_path, t.filePath, d.file_path, d.filePath);
+    const fp = first(t.file_path, t.filePath, t.AbsolutePath, t.TargetFile, d.file_path, d.filePath);
     if (fp !== undefined) t.file_path = fp;
-    const cmd = first(t.command, d.command);
+    const cmd = first(t.command, t.command_line, t.CommandLine, d.command);
     if (cmd !== undefined) t.command = cmd;
     return t;
   })(),
   tool_response: first(d.tool_response, d.toolResponse, d.output, toolInfo.output, ''),
-  prompt: String(first(d.prompt, d.user_prompt, d.userPrompt, d.text, '')),
+  prompt: String(first(d.prompt, d.user_prompt, d.userPrompt, d.text, toolInfo.user_prompt, '')),
   source: String(first(d.source, '')),
 };
 
-// The guard's tiers are tool-aware — the ask tier fires only where a payload leaves the machine
-// (Bash, WebFetch) or a credentials file is read (Read) — and foreign names like `run_command`
-// or `pre_read_code` match none of that. Normalize for the guard only; observations keep the
-// harness's own names, because the digest reading `write_code` is more honest than a guess.
-if (action === 'pre-tool') {
-  if (cc.tool_input.command !== undefined) cc.tool_name = 'Bash';
-  else if (/read/i.test(cc.tool_name)) cc.tool_name = 'Read';
+// A call that carries a command is a shell call, whatever the harness named it (`run_command`,
+// `Shell`, or nothing at all): observe.js records Bash by its command and anything else by its
+// file, so a shell call under a foreign name was recorded with neither.
+// The guard's tiers are tool-aware too — the ask tier fires only where a payload leaves the
+// machine (Bash, WebFetch) or a credentials file is read (Read) — and foreign names like
+// `view_file` or `read_code` match none of that. Normalize the rest for the guard only;
+// observations keep the harness's own names, because the digest reading `write_code` is more
+// honest than a guess.
+if (cc.tool_input.command !== undefined) cc.tool_name = 'Bash';
+else if (action === 'pre-tool') {
+  if (/read|view/i.test(cc.tool_name)) cc.tool_name = 'Read';
   else if (/write|edit/i.test(cc.tool_name)) cc.tool_name = 'Write';
   else if (/fetch|url|browse/i.test(cc.tool_name)) cc.tool_name = 'WebFetch';
 }
@@ -94,14 +102,19 @@ if (ACTIONS[action].script === 'observe.js' || ACTIONS[action].script === 'spotl
     { encoding: 'utf8', timeout: 15000, env: process.env });
 }
 const r = spawnSync(process.execPath, [path.join(hookDir, ACTIONS[action].script)], {
-  input: JSON.stringify(cc), encoding: 'utf8', timeout: 30000,
+  // session-end.js gives its model call 45 s; 55 s leaves room for the rest and stays inside the
+  // 60 s every template grants session-end
+  input: JSON.stringify(cc), encoding: 'utf8', timeout: action === 'session-end' ? 55000 : 30000,
   env: { ...process.env, AICOACH_HARNESS: harness },
 });
 const out = r.stdout || '';
 const blocked = r.status === 2;
-// guard's ask tier surfaces as Claude's permissionDecision JSON on stdout
-const asked = /"permissionDecision"\s*:\s*"ask"/.test(out);
-const reason = (r.stderr || '').trim() || (asked ? (out.match(/"permissionDecisionReason"\s*:\s*"([^"]*)"/) || [])[1] || 'flagged by the AI Coach guard' : '');
+// guard's ask tier surfaces as Claude's permissionDecision JSON on stdout — parsed, not
+// regex-matched, so the reason arrives decoded rather than with its JSON escapes doubled
+let hso = {};
+try { hso = JSON.parse(out).hookSpecificOutput || {}; } catch { /* not a verdict */ }
+const asked = hso.permissionDecision === 'ask';
+const reason = (r.stderr || '').trim() || (asked ? String(hso.permissionDecisionReason || 'flagged by the AI Coach guard') : '');
 
 // ---- the verdict, in the harness's own dialect --------------------------------------------------
 if (action === 'pre-tool') {
@@ -112,10 +125,14 @@ if (action === 'pre-tool') {
     process.exit(0);
   }
   if (harness === 'cursor') {
-    // Cursor honours both the JSON verdict and exit 2; send both, they agree
-    process.stdout.write(JSON.stringify(blocked ? { permission: 'deny', user_message: reason, agent_message: reason }
-      : asked ? { permission: 'ask', user_message: reason } : { permission: 'allow' }) + '\n');
-    process.exit(blocked ? 2 : 0);
+    // Cursor honours both the JSON verdict and exit 2; send both, they agree. preToolUse accepts
+    // "ask" but does not enforce it, so the ask tier denies here, as on Windsurf. The events that
+    // do enforce ask cannot replace it: beforeReadFile is allow/deny only, so the credentials-file
+    // tier would still pass, and wiring both would run the guard twice per shell call.
+    const deny = blocked || asked;
+    process.stdout.write(JSON.stringify(deny ? { permission: 'deny', user_message: reason, agent_message: reason }
+      : { permission: 'allow' }) + '\n');
+    process.exit(deny ? 2 : 0);
   }
   // Windsurf: exit 2 blocks, and there is no ask — a secret-ish payload blocks rather than
   // slipping through, stated in the template. Blackbox claims the Claude contract; pass through.

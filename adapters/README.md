@@ -17,7 +17,7 @@ welcome.
 | The 26 workflows (skills) | native | `.mdc` rules | rules dir | rules dir | AGENTS.md | AGENTS.md | AGENTS.md index |
 | Observation / failure recording | automatic | **shim** | **shim** (no failure event) | **shim** | **plugin** | **shim** † | — |
 | Prompt signals | automatic | **shim** | **shim** | — (no prompt event) | — | **shim** † | — |
-| Secrets guard (blocking, opt-in) | hook | **shim** — deny + ask | **shim** — deny only, no ask tier | **shim** — deny + ask | **plugin** — deny only | **shim** † | — |
+| Secrets guard (blocking, opt-in) | hook | **shim** — deny only (`preToolUse` does not enforce ask) | **shim** — deny only, no ask tier | **shim** — deny + ask | **plugin** — deny only | **shim** † | — |
 | Session-end distillation | automatic | **shim** | — (no end event) | **shim** (Stop) | — (idle stamps the end; no distillation) | **shim** † | — |
 | Session-start memory brief | injected | recorded, brief by convention | by convention | by convention | by convention | by convention | `memory_brief` tool |
 | User-only skills | machine-enforced | convention, labelled | convention, labelled | convention, labelled | convention, labelled | convention, labelled | — |
@@ -29,7 +29,7 @@ Treat it as the least-verified row here.
 **How the shim works.** `adapters/shim.js` translates each harness's event JSON into the
 Claude-Code shape and runs the *same tested hook scripts* this repo already ships — guard.js,
 observe.js, session-start.js — then answers in the harness's own dialect: Cursor gets a JSON
-verdict plus exit 2, Windsurf gets exit codes (and having no ask tier, a secret-*ish* payload
+verdict plus exit 2, Windsurf gets exit codes (and with no enforced ask on either, a secret-*ish* payload
 blocks rather than slipping through), Antigravity gets a camelCase `decision` with the ask tier
 intact. One shim, four dialects, zero duplicated logic. opencode is the exception: a native
 plugin (`adapters/opencode/ai-coach.js`), because its surface is JS events, not shell commands.
@@ -151,7 +151,8 @@ Each template carries `/absolute/path/to/ai-coach` — replace it with your clon
 
 **Cursor** — copy `adapters/cursor/hooks.json` into the project's `.cursor/hooks.json` (or merge
 into `~/.cursor/hooks.json` for everywhere). Richest surface outside Claude Code: session
-start/end, prompt signals, observations, failures, and the guard with its ask tier.
+start/end, prompt signals, observations, failures, and the guard. `preToolUse` does not enforce
+"ask", so with the guard armed a secret-ish payload or a credentials-file read blocks outright.
 
 **Windsurf** — copy `adapters/windsurf/hooks.json` into `.windsurf/hooks.json` (or
 `~/.codeium/windsurf/hooks.json`). Twelve events but no session-start/end and no failure event,
