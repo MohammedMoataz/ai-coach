@@ -76,6 +76,27 @@ const text = (r) => r.result.content.map((c) => c.text).join('\n');
   r = await request('tools/call', { name: 'memory_search', arguments: { query: 'widgets', full: true } });
   assert.ok(text(r).includes('distilled'), 'an MCP write is labelled distilled: ' + text(r));
 
+  // #43: arguments are validated against the declared inputSchema before they reach the engine.
+  // The repro: text "--provenance" + confidence "human" became the flag `--provenance human` and
+  // stored the literal "undefined" as a person's memory.
+  const badAdds = [
+    [{ type: 'learning', text: '--provenance', confidence: 'human' }, 'a flag smuggled through text/confidence'],
+    [{ type: 'learning' }, 'missing text'],
+    [{ text: 'no type given' }, 'missing type'],
+    [{ type: 'learning', text: 'far too sure', confidence: 1000 }, 'confidence above 1'],
+    [{ type: 'learning', text: 'not a number', confidence: 'abc' }, 'non-numeric confidence'],
+    [{ type: 'opinion', text: 'type outside the enum' }, 'type outside the enum'],
+    [{ type: 'learning', text: '--project', confidence: 0.5 }, 'a text that is a bare flag'],
+  ];
+  for (const [args, why] of badAdds) {
+    r = await request('tools/call', { name: 'memory_add', arguments: args });
+    assert.ok(r.result && r.result.isError, why + ' is refused: ' + JSON.stringify(r));
+  }
+  r = await request('tools/call', { name: 'memory_brief', arguments: {} });
+  assert.ok(!/undefined/.test(text(r)), 'no "undefined" memory was stored: ' + text(r));
+  r = await request('tools/call', { name: 'memory_add', arguments: { type: 'note', text: '- a dash-led sentence with spaces' } });
+  assert.ok(!r.result.isError, 'a dash-led sentence is not a flag and is accepted: ' + text(r));
+
   // whoami answers, attributed to the injected tester identity
   r = await request('tools/call', { name: 'whoami', arguments: {} });
   assert.ok(text(r).includes('mcp-tester@example.com'), 'whoami reflects identity: ' + text(r));

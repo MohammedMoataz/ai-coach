@@ -1703,4 +1703,48 @@ assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows t
   assert.match(cliHit.stdout, /الخادم/, 'the CLI finds Arabic too: ' + cliHit.stdout + cliHit.stderr);
 }
 
+// ---------- #43: add refuses a promoted provenance and an out-of-range confidence ----------
+{
+  // AICOACH_PROVENANCE=distilled is how the MCP server says "a model is writing this". A flag in
+  // the same argv used to win over it, so a model that got `--provenance human` into its arguments
+  // stored its own text as a person's decision. A flag may agree with the env, never promote it.
+  const promoted = spawnEngine(['add', 'learning', 'flag tries to promote a model write', '--provenance', 'human'],
+    { AICOACH_PROVENANCE: 'distilled' });
+  assert.notStrictEqual(promoted.status, 0, 'distilled env + --provenance human is refused: ' + promoted.stdout);
+  assert.ok(!/added/.test(promoted.stdout), 'nothing was added: ' + promoted.stdout);
+  assert.match(promoted.stderr, /distilled/, 'the refusal says why: ' + promoted.stderr);
+  const agreeing = spawnEngine(['add', 'learning', 'flag agrees with the env', '--provenance', 'distilled'],
+    { AICOACH_PROVENANCE: 'distilled' });
+  assert.strictEqual(agreeing.status, 0, 'a flag that agrees with the env is fine: ' + agreeing.stderr);
+
+  // confidence is a probability; 1000 outranked every real memory in the brief, "abc" stored 0
+  for (const bad of [1000, -0.1, 'abc', NaN]) {
+    assert.throws(() => e.add('note', 'outofrange confidence ' + bad, bad), /confidence/,
+      'confidence ' + bad + ' is refused');
+  }
+  e.add('note', 'confidence zero is allowed', 0);
+  e.add('note', 'confidence one is allowed', 1);
+  assert.strictEqual(e.search('outofrange', { full: true }).length, 0, 'no bad row was stored');
+  const cliConf = spawnEngine(['add', 'learning', 'cli confidence too high', '1000']);
+  assert.notStrictEqual(cliConf.status, 0, 'the CLI refuses confidence 1000');
+  // a missing text used to be stored as the literal string "undefined"
+  assert.throws(() => e.add('learning', undefined), /text/, 'add without text is refused');
+  assert.notStrictEqual(spawnEngine(['add', 'learning']).status, 0, 'the CLI refuses add without text');
+
+  // a teammate's seed goes through add() too: a bad confidence skips that row, counted, and the
+  // rest of the import still lands
+  const cProj = path.join(tmp, 'confseedproj');
+  e.useProject(cProj);
+  const cSeed = path.join(tmp, 'conf-seed.jsonl');
+  fs.writeFileSync(cSeed, [
+    JSON.stringify({ kind: 'meta', seed: 2, by: 'erin@example.com' }),
+    JSON.stringify({ kind: 'memory', type: 'note', text: 'zircon seed row claims confidence 1000', confidence: 1000 }),
+    JSON.stringify({ kind: 'memory', type: 'note', text: 'zircon seed row with a sane confidence', confidence: 0.8 }),
+  ].join('\n') + '\n');
+  const ci = e.seedImport(cSeed, cProj);
+  assert.strictEqual(ci.unknown, 1, 'the out-of-range row is counted, not imported');
+  assert.strictEqual(e.search('zircon', { full: true }).map((r) => r.text).join('|'),
+    'zircon seed row with a sane confidence', 'the sane row still imported');
+}
+
 console.log('engine.test.js: ALL PASS');

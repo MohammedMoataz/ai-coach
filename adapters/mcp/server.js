@@ -42,6 +42,28 @@ function engine(args, env) {
   return (r.stdout || '').trim() || '(no output)';
 }
 
+// Arguments come from a model and reach the engine as argv, so each tool's declared inputSchema is
+// enforced here rather than trusted. Returns the first problem, or nothing.
+function invalid(schema, a) {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return 'arguments must be an object';
+  for (const k of schema.required || []) if (a[k] == null) return `missing required argument "${k}"`;
+  for (const [k, p] of Object.entries(schema.properties || {})) {
+    const v = a[k];
+    if (v == null) continue;
+    if (p.type === 'number' ? !Number.isFinite(v) : typeof v !== p.type) return `"${k}" must be a ${p.type}`;
+    if (p.enum && !p.enum.includes(v)) return `"${k}" must be one of: ${p.enum.join(', ')}`;
+    if ((p.minimum != null && v < p.minimum) || (p.maximum != null && v > p.maximum)) {
+      return `"${k}" must be from ${p.minimum} to ${p.maximum}`;
+    }
+    // The engine reads an argv element that IS a flag name (`--provenance`, `--project`) as that
+    // flag, and that is how `text: "--provenance"` once relabelled a model's write. A sentence with
+    // a space can never equal a flag, so only a bare dash-led token is refused. Passing `--` would
+    // be the textbook fix, but an older installed engine would take `--` as the memory's type.
+    if (p.type === 'string' && /^-\S*$/.test(v)) return `"${k}" must not look like a command-line flag`;
+  }
+  return null;
+}
+
 // One place per tool: name, what the model reads to decide, the schema, and the verb mapping.
 const TOOLS = [
   {
@@ -145,7 +167,10 @@ function handle(msg) {
       const tool = TOOLS.find((t) => t.name === (params && params.name));
       if (!tool) return send(rpcErr(id, -32602, 'unknown tool: ' + (params && params.name)));
       try {
-        return send(rpc(id, { content: [{ type: 'text', text: tool.run((params && params.arguments) || {}) }] }));
+        const args = (params && params.arguments) || {};
+        const bad = invalid(tool.inputSchema, args);
+        if (bad) throw new Error('invalid arguments for ' + tool.name + ': ' + bad);
+        return send(rpc(id, { content: [{ type: 'text', text: tool.run(args) }] }));
       } catch (err) {
         // tool failure is a result, not a protocol error — the model should read it
         return send(rpc(id, { content: [{ type: 'text', text: String(err.message || err) }], isError: true }));
