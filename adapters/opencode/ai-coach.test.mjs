@@ -24,12 +24,22 @@ delete process.env.AICOACH_REPO;
 const { AiCoach } = await import('./ai-coach.js');
 const handlers = await AiCoach({ directory: tmp });
 
+const digestOf = (id) => spawnSync(process.execPath, [process.env.AICOACH_ENGINE, 'session-digest', id],
+  { encoding: 'utf8', env: process.env, timeout: 15000 }).stdout || '';
+
 // observation round-trip through session.created + tool.execute.after
 await handlers['session.created']({ session: { id: 'oc-1' } });
-await handlers['tool.execute.after']({ tool: 'edit', sessionID: 'oc-1' }, { args: { filePath: path.join(tmp, 'x.rs') } });
-const digest = spawnSync(process.execPath, [process.env.AICOACH_ENGINE, 'session-digest', 'oc-1'],
-  { encoding: 'utf8', env: process.env, timeout: 15000 }).stdout || '';
-assert.ok(digest.includes('x.rs'), 'edit recorded through the plugin: ' + digest.slice(0, 200));
+// Fixtures follow @opencode-ai/plugin 1.19.0 Hooks["tool.execute.after"]: args ride on the INPUT,
+// the output is { title, output, metadata }. The title is what the tool shows, not what it touched.
+await handlers['tool.execute.after'](
+  { tool: 'edit', sessionID: 'oc-1', callID: 'c1', args: { filePath: path.join(tmp, 'x.rs') } },
+  { title: 'edit src', output: '', metadata: {} });
+await handlers['tool.execute.after'](
+  { tool: 'bash', sessionID: 'oc-1', callID: 'c2', args: { command: 'cargo test --workspace' } },
+  { title: 'Run tests', output: 'ok', metadata: {} });
+const digest = digestOf('oc-1');
+assert.ok(digest.includes('x.rs'), 'edit records the file from input.args: ' + digest.slice(0, 400));
+assert.ok(digest.includes('cargo test --workspace'), 'bash records the command from input.args: ' + digest.slice(0, 400));
 
 // guard: silent when unarmed, silent when armed but AICOACH_REPO unset, throws when both are set
 const KEY = 'AKIA' + 'ABCDEFGHIJKLMNOP';

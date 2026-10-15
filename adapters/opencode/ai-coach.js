@@ -77,7 +77,8 @@ export const AiCoach = async ({ directory }) => {
       try {
         const id = input?.sessionID || 'opencode';
         ensureSession(id);
-        const target = output?.args?.filePath || output?.args?.file_path || output?.args?.command || output?.title || '';
+        // args ride on the input here (unlike tool.execute.before); the output is { title, output, metadata }
+        const target = input?.args?.filePath || input?.args?.file_path || input?.args?.command || output?.title || '';
         engine(['observe', id, input?.tool || '', String(target).slice(0, 200), ''], directory);
       } catch { /* recording must never break the session */ }
     },
