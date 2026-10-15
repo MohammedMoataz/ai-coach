@@ -1676,4 +1676,31 @@ assert.strictEqual(e.REKEY_TABLES[0], 'authors', 'parents move before the rows t
   assert.strictEqual(bad.ok, false, 'failing custom command degrades quietly');
 }
 
+// ---------- #45: search finds text in any script, not only ASCII ----------
+// ftsQuery kept [A-Za-z0-9_.-] only, so an Arabic or Japanese query produced no terms and every
+// search path (/recall, MCP memory_search, the CLI) answered "no matches". The FTS5 table uses the
+// default unicode61 tokenizer, which already indexes letters of every script and folds diacritics.
+{
+  const uniProj = path.join(tmp, 'uniproj');
+  fs.mkdirSync(uniProj, { recursive: true });
+  e.useProject(uniProj);
+  e.add('learning', 'نشر الخادم يتطلب موافقة يدوية', 0.8, uniProj);
+  e.add('learning', '日本語 の設定ファイル は UTF-8 で保存する', 0.8, uniProj);
+  e.add('learning', 'Le café du coin ferme à midi', 0.8, uniProj);
+  const found = (q) => e.search(q, { full: true }).map((r) => r.text).join(' | ');
+  assert.match(found('الخادم'), /موافقة يدوية/, 'an Arabic word finds the Arabic memory');
+  assert.match(found('日本語'), /設定ファイル/, 'a Japanese word finds the Japanese memory');
+  assert.match(found('café'), /du coin/, 'an accented word finds the accented memory');
+  assert.match(found('cafe'), /du coin/, 'unicode61 folds diacritics, so the unaccented spelling matches too');
+  // The honest limit: unicode61 splits on whitespace and punctuation only. CJK is written without
+  // spaces, so an unbroken run of kanji/kana is ONE token, and a query for a piece of that run does
+  // not match. "日本語" above matches because it stands alone between spaces; "設定ファイル" sits
+  // inside the token "の設定ファイル" and is not found. Substring CJK search would need a trigram
+  // tokenizer and a reindex — a different feature from this fix.
+  assert.strictEqual(found('設定ファイル'), '', 'a CJK substring of a longer run is not a token (documented limit)');
+  // the fresh-process CLI shares the same search: one fix, every caller
+  const cliHit = spawnEngine(['search', 'الخادم', '--dir', uniProj]);
+  assert.match(cliHit.stdout, /الخادم/, 'the CLI finds Arabic too: ' + cliHit.stdout + cliHit.stderr);
+}
+
 console.log('engine.test.js: ALL PASS');

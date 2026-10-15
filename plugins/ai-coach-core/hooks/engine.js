@@ -930,8 +930,12 @@ function hasText(text) { // dedup is on the normalized key: case/whitespace vari
   return [db(), userDb()].some((d) => !!d.prepare('SELECT 1 FROM memories WHERE text_key = ? LIMIT 1').get(k));
 }
 
+// Letters and digits of every script, not just ASCII: an Arabic or Japanese query used to yield no
+// terms at all. memories_fts uses the default unicode61 tokenizer, which indexes the same classes
+// (and folds diacritics), so whatever survives here is a token the index can hold. Each term is
+// quoted as an FTS5 string, and none can contain a quote, so no term is read as query syntax.
 function ftsQuery(q) {
-  const terms = String(q).match(/[A-Za-z0-9_.\-]+/g) || [];
+  const terms = String(q).match(/[\p{L}\p{N}_.\-]+/gu) || [];
   return terms.length ? terms.map((t) => '"' + t + '"').join(' OR ') : null;
 }
 
