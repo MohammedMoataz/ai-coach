@@ -2,7 +2,7 @@
 'use strict';
 // Compile the 26 SKILL.md sources into what other harnesses can read: one .mdc rule per skill
 // for Cursor, and one AGENTS.md index for everything that speaks that standard (Codex, opencode,
-// Gemini CLI, Copilot, Zed, …). The skill prose is the product; only the packaging is Claude's,
+// Copilot, Zed, …; Gemini CLI once its context.fileName lists AGENTS.md). The skill prose is the product; only the packaging is Claude's,
 // so this is a mechanical transform with a short substitution table — never a rewrite.
 //
 // Outputs are CHECKED IN under adapters/out/ and CI rebuilds them and diffs (the draw.io drift

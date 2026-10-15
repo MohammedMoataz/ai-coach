@@ -110,16 +110,29 @@ and CI fails if they drift from the sources. Do not hand-edit the outputs.
 **Cursor**: copy the rules into your project —
 
 ```bash
+mkdir -p your-project/.cursor/rules
 cp ai-coach/adapters/out/cursor/*.mdc your-project/.cursor/rules/
 ```
 
 Each is an agent-requested rule: Cursor attaches it when its description matches what you are
 doing. Rules that are user-only in the original say so at the top and are honoured by convention.
 
-**Codex / opencode / Gemini CLI / Copilot / Zed** (anything that reads the
+**Codex / opencode / Copilot / Zed** (anything that reads the
 [AGENTS.md standard](https://agents.md)): append or link `adapters/out/AGENTS.md` into your
 project's `AGENTS.md`. It is an index — descriptions plus pointers into the clone — not a dump,
 so it costs little context and the full instructions load only when followed.
+
+**Gemini CLI** reads only `GEMINI.md` by default
+([its docs](https://geminicli.com/docs/cli/gemini-md/)). Do the same `AGENTS.md` step, then tell
+it to read that file too, in `your-project/.gemini/settings.json` (or `~/.gemini/settings.json`):
+
+```json
+{
+  "context": {
+    "fileName": ["AGENTS.md", "GEMINI.md"]
+  }
+}
+```
 
 **The model pipeline**: the engine's two internal LLM calls default to `claude -p`. On a machine
 without it, set `AICOACH_LLM_CMD` to any command that reads a prompt on stdin and prints the
