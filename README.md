@@ -468,6 +468,11 @@ Releases are git tags, one per plugin version: `{plugin}--v{version}`. The perfo
 the [changelog](CHANGELOG.md) are medians of repeated fresh-process runs on the machine that wrote
 the release, stated with their spread — measured, or not printed.
 
+## Documentation
+
+[`docs/`](docs/README.md) is the reference manual: one page per plugin, and one for the engine
+with every CLI verb, the data model and the settings.
+
 ## License
 
 MIT
