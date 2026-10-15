@@ -9,10 +9,23 @@ const os = require('node:os');
 const path = require('node:path');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-coach-mcp-'));
+const ENV = { AICOACH_DB: path.join(tmp, 'm.db'), AICOACH_AUTHOR: 'mcp-tester@example.com', FORCE_COLOR: '0' };
+
+// #44: 400 memories of ~4 KB is ~1.7 MB of `search --full` output, past spawnSync's 1 MB default
+// maxBuffer. Seeded in-process into the tenant the server's engine resolves for cwd=tmp, with the
+// identity passed explicitly so 400 adds do not shell out to git 400 times.
+{
+  Object.assign(process.env, ENV);
+  const e = require(path.join(__dirname, '..', '..', 'plugins', 'ai-coach-core', 'hooks', 'engine.js'));
+  e.useProject(tmp);
+  const id = { project: e.project(tmp), repo: e.repo(tmp), username: 'tester', role: null, task: null };
+  for (let i = 0; i < 400; i++) e.add('note', `ballast memory ${i} ` + 'filler words '.repeat(320), 0.5, null, null, id);
+}
+
 const srv = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
   // AICOACH_ENGINE pins the engine in this checkout: without it the server prefers an installed
   // ~/.ai-coach/bin/engine.js, and the test would grade whatever version happens to be installed.
-  env: { ...process.env, AICOACH_DB: path.join(tmp, 'm.db'), AICOACH_AUTHOR: 'mcp-tester@example.com', FORCE_COLOR: '0',
+  env: { ...process.env, ...ENV,
     AICOACH_ENGINE: path.join(__dirname, '..', '..', 'plugins', 'ai-coach-core', 'hooks', 'engine.js') },
   cwd: tmp, // a non-repo cwd: the engine must still answer, filing under the directory tenant
 });
@@ -96,6 +109,12 @@ const text = (r) => r.result.content.map((c) => c.text).join('\n');
   assert.ok(!/undefined/.test(text(r)), 'no "undefined" memory was stored: ' + text(r));
   r = await request('tools/call', { name: 'memory_add', arguments: { type: 'note', text: '- a dash-led sentence with spaces' } });
   assert.ok(!r.result.isError, 'a dash-led sentence is not a flag and is accepted: ' + text(r));
+
+  // #44: a full search past 1 MB answers, bounded, and says more is available
+  r = await request('tools/call', { name: 'memory_search', arguments: { query: 'ballast', full: true } });
+  assert.ok(!r.result.isError, 'a >1 MB full search is not an error: ' + text(r).slice(0, 200));
+  assert.ok(text(r).length < 60000, 'the result is bounded: ' + text(r).length);
+  assert.match(text(r), /more matches not shown/, 'and says more is available');
 
   // whoami answers, attributed to the injected tester identity
   r = await request('tools/call', { name: 'whoami', arguments: {} });

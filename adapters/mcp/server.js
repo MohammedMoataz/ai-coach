@@ -23,6 +23,11 @@ const { spawnSync } = require('node:child_process');
 
 const PROTOCOL_FALLBACK = '2025-06-18';
 const VERSION = '1.0.0';
+// spawnSync's default maxBuffer is 1 MB, and `search --full` over a large memory passes it (ENOBUFS).
+// ponytail: still a ceiling — past 64 MB of matches the call fails; an engine-side --limit is the upgrade.
+const MAX_BUFFER = 64 * 1024 * 1024;
+// What a model is handed from one search. Ranked output is cut at a memory boundary, never mid-hit.
+const MAX_RESULT_CHARS = 50000;
 
 function enginePath() {
   if (process.env.AICOACH_ENGINE) return process.env.AICOACH_ENGINE;
@@ -34,12 +39,22 @@ function enginePath() {
 
 function engine(args, env) {
   const r = spawnSync(process.execPath, [enginePath(), ...args], {
-    encoding: 'utf8', timeout: 30000, cwd: process.cwd(),
+    encoding: 'utf8', timeout: 30000, cwd: process.cwd(), maxBuffer: MAX_BUFFER,
     env: env ? { ...process.env, ...env } : process.env,
   });
   if (r.error) throw new Error('engine did not run: ' + r.error.message);
   if (r.status !== 0) throw new Error(('engine ' + args[0] + ' failed: ' + (r.stderr || r.stdout || 'exit ' + r.status)).trim());
   return (r.stdout || '').trim() || '(no output)';
+}
+
+// Search output is ranked best-first, one memory per `#id [type]` line, so the top of it is the
+// part worth keeping. The tail is counted, not dropped silently.
+function capResults(out) {
+  if (out.length <= MAX_RESULT_CHARS) return out;
+  const cut = out.lastIndexOf('\n#', MAX_RESULT_CHARS);
+  const head = out.slice(0, cut > 0 ? cut : MAX_RESULT_CHARS);
+  const more = (out.slice(head.length).match(/^#g?\d+ \[/gm) || []).length;
+  return head + `\n… ${more} more matches not shown (output capped at ${MAX_RESULT_CHARS} characters); narrow the query to see them.`;
 }
 
 // Arguments come from a model and reach the engine as argv, so each tool's declared inputSchema is
@@ -77,7 +92,7 @@ const TOOLS = [
       },
       required: ['query'],
     },
-    run: (a) => engine(['search', ...(a.full ? ['--full'] : []), String(a.query)]),
+    run: (a) => capResults(engine(['search', ...(a.full ? ['--full'] : []), String(a.query)])),
   },
   {
     name: 'memory_add',
