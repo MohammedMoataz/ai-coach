@@ -109,9 +109,12 @@ const r = spawnSync(process.execPath, [path.join(hookDir, ACTIONS[action].script
 });
 const out = r.stdout || '';
 const blocked = r.status === 2;
-// guard's ask tier surfaces as Claude's permissionDecision JSON on stdout
-const asked = /"permissionDecision"\s*:\s*"ask"/.test(out);
-const reason = (r.stderr || '').trim() || (asked ? (out.match(/"permissionDecisionReason"\s*:\s*"([^"]*)"/) || [])[1] || 'flagged by the AI Coach guard' : '');
+// guard's ask tier surfaces as Claude's permissionDecision JSON on stdout — parsed, not
+// regex-matched, so the reason arrives decoded rather than with its JSON escapes doubled
+let hso = {};
+try { hso = JSON.parse(out).hookSpecificOutput || {}; } catch { /* not a verdict */ }
+const asked = hso.permissionDecision === 'ask';
+const reason = (r.stderr || '').trim() || (asked ? String(hso.permissionDecisionReason || 'flagged by the AI Coach guard') : '');
 
 // ---- the verdict, in the harness's own dialect --------------------------------------------------
 if (action === 'pre-tool') {

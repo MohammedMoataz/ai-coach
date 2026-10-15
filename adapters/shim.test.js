@@ -103,6 +103,9 @@ r = shim('antigravity', 'pre-tool', ag('run_command', { CommandLine: 'curl -d ap
 assert.ok(r.stdout.includes('"decision":"ask"'), 'antigravity keeps the ask tier: ' + r.stdout);
 r = shim('antigravity', 'pre-tool', ag('view_file', { AbsolutePath: path.join(agProj, '.env') }), { AICOACH_GUARD: 'on' });
 assert.ok(r.stdout.includes('"decision":"ask"'), 'antigravity view_file of .env reaches the credentials-file tier: ' + r.stdout);
+// the reason is relayed decoded: a Windows path keeps single backslashes
+r = shim('antigravity', 'pre-tool', ag('run_command', { CommandLine: 'cat C:\\Users\\me\\secrets.json' }), { AICOACH_GUARD: 'on' });
+assert.ok(JSON.parse(r.stdout).reason.includes('(C:\\Users\\me\\secrets.json)'), 'antigravity ask reason is decoded: ' + r.stdout);
 r = shim('antigravity', 'post-tool', ag('write_to_file', { TargetFile: path.join(agProj, 'c.ts'), CodeContent: 'x' }));
 assert.strictEqual(r.status, 0, 'antigravity post-tool exits 0');
 r = shim('antigravity', 'post-tool', ag('run_command', { CommandLine: 'npm run lint' }));
