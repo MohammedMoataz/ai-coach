@@ -46,24 +46,25 @@ try { d = JSON.parse(raw || '{}'); } catch { /* lenient: an unparseable event st
 
 // ---- foreign fields -> the Claude Code shape the hooks parse ----------------------------------
 // Documented names first (Cursor: conversation_id/workspace_roots; Windsurf: trajectory_id/
-// tool_info; Antigravity: camelCase), then the generic fallbacks.
-const toolInfo = d.tool_info || d.toolInput || d.tool_input || {};
+// tool_info; Antigravity: toolCall {name, args} with PascalCase args, conversationId,
+// workspacePaths), then the generic fallbacks.
+const call = (d.toolCall && typeof d.toolCall === 'object') ? d.toolCall : {};
+const toolInfo = d.tool_info || d.toolInput || d.tool_input || call.args || {};
 const cc = {
   session_id: String(first(d.session_id, d.conversation_id, d.trajectory_id, d.sessionId, d.conversationId, 'unknown-' + harness)),
-  cwd: String(first(d.cwd, Array.isArray(d.workspace_roots) ? d.workspace_roots[0] : undefined, d.workspaceRoot, d.workspace_root, process.cwd())),
+  cwd: String(first(d.cwd, Array.isArray(d.workspace_roots) ? d.workspace_roots[0] : undefined,
+    Array.isArray(d.workspacePaths) ? d.workspacePaths[0] : undefined, d.workspaceRoot, d.workspace_root, process.cwd())),
   hook_event_name: ACTIONS[action].event,
-  tool_name: String(first(d.tool_name, d.toolName, d.tool,
-    // shell-specific events (beforeShellExecution / pre_run_command) carry a command, not a tool
-    (first(d.command, toolInfo.command) !== undefined ? 'Bash' : undefined), '')),
+  tool_name: String(first(d.tool_name, d.toolName, d.tool, call.name, '')),
   tool_input: (() => {
     // start from whichever payload object exists, then normalize the two fields the hooks read —
-    // camelCase filePath and top-level command included, whatever the harness called them
+    // camelCase filePath, Antigravity's PascalCase args and top-level command included
     const src = (typeof d.tool_input === 'object' && d.tool_input) || (typeof d.toolInput === 'object' && d.toolInput)
       || (typeof toolInfo === 'object' && toolInfo) || {};
     const t = { ...src };
-    const fp = first(t.file_path, t.filePath, d.file_path, d.filePath);
+    const fp = first(t.file_path, t.filePath, t.AbsolutePath, t.TargetFile, d.file_path, d.filePath);
     if (fp !== undefined) t.file_path = fp;
-    const cmd = first(t.command, d.command);
+    const cmd = first(t.command, t.CommandLine, d.command);
     if (cmd !== undefined) t.command = cmd;
     return t;
   })(),
@@ -72,13 +73,17 @@ const cc = {
   source: String(first(d.source, '')),
 };
 
-// The guard's tiers are tool-aware — the ask tier fires only where a payload leaves the machine
-// (Bash, WebFetch) or a credentials file is read (Read) — and foreign names like `run_command`
-// or `pre_read_code` match none of that. Normalize for the guard only; observations keep the
-// harness's own names, because the digest reading `write_code` is more honest than a guess.
-if (action === 'pre-tool') {
-  if (cc.tool_input.command !== undefined) cc.tool_name = 'Bash';
-  else if (/read/i.test(cc.tool_name)) cc.tool_name = 'Read';
+// A call that carries a command is a shell call, whatever the harness named it (`run_command`,
+// `Shell`, or nothing at all): observe.js records Bash by its command and anything else by its
+// file, so a shell call under a foreign name was recorded with neither.
+// The guard's tiers are tool-aware too — the ask tier fires only where a payload leaves the
+// machine (Bash, WebFetch) or a credentials file is read (Read) — and foreign names like
+// `view_file` or `read_code` match none of that. Normalize the rest for the guard only;
+// observations keep the harness's own names, because the digest reading `write_code` is more
+// honest than a guess.
+if (cc.tool_input.command !== undefined) cc.tool_name = 'Bash';
+else if (action === 'pre-tool') {
+  if (/read|view/i.test(cc.tool_name)) cc.tool_name = 'Read';
   else if (/write|edit/i.test(cc.tool_name)) cc.tool_name = 'Write';
   else if (/fetch|url|browse/i.test(cc.tool_name)) cc.tool_name = 'WebFetch';
 }
