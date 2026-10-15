@@ -56,7 +56,7 @@ itself at session start — open a new session and try again.
    | Dimension | Answer | Source |
    |---|---|---|
    | Observable finish | `check-manifests.js` exits 0 with the new rule on the fixture | asked |
-   | Constraints | detector ids are an ABI — numbering cannot move | found in `references/rules.md` |
+   | Constraints | detector ids are an ABI — numbering cannot move | found in `${CLAUDE_PLUGIN_ROOT}/skills/prompt/references/rules.md` |
    | Unknowns | whether the walk ever writes a file | `ASSUMED — needs the user` |
 
    An `ASSUMED` row is never quietly promoted to an answered one. It is a decision you made for
