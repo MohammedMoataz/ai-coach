@@ -102,7 +102,9 @@ if (ACTIONS[action].script === 'observe.js' || ACTIONS[action].script === 'spotl
     { encoding: 'utf8', timeout: 15000, env: process.env });
 }
 const r = spawnSync(process.execPath, [path.join(hookDir, ACTIONS[action].script)], {
-  input: JSON.stringify(cc), encoding: 'utf8', timeout: 30000,
+  // session-end.js gives its model call 45 s; 55 s leaves room for the rest and stays inside the
+  // 60 s every template grants session-end
+  input: JSON.stringify(cc), encoding: 'utf8', timeout: action === 'session-end' ? 55000 : 30000,
   env: { ...process.env, AICOACH_HARNESS: harness },
 });
 const out = r.stdout || '';

@@ -122,6 +122,21 @@ assert.strictEqual(r.status, 0, 'blackbox prompt records');
 const stats = engine(['prompt-stats', '--days', '1']);
 assert.ok(/^2 prompts/.test(stats) && /action-no-ref/.test(stats), 'the prompt signal crossed the shim: ' + stats.slice(0, 300));
 
+// ---- session-end outlives a slow model call -------------------------------------------------------
+// session-end.js allows its distillation call 45 s; the shim must not kill it first. A model that
+// answers after 31 s is past the shim's old flat 30 s and well inside the call's own budget.
+// Slow on purpose: this is the only test in the suite that waits.
+fs.writeFileSync(path.join(tmp, 'slow-llm.js'),
+  'setTimeout(() => console.log(JSON.stringify({ summary: "SLOW-LLM-SUMMARY", learnings: [] })), 31000);\n');
+r = shim('antigravity', 'post-tool', ag('view_file', { AbsolutePath: path.join(agProj, 'd.md') })); // the third: distillation needs 3
+r = spawnSync(process.execPath, [path.join(__dirname, 'shim.js'), 'antigravity', 'session-end'], {
+  input: JSON.stringify({ conversationId: 'ag-1', workspacePaths: [agProj], transcriptPath: '', modelName: 'gemini' }),
+  encoding: 'utf8', timeout: 90000,
+  env: { ...env, AICOACH_LEARN: 'on', AICOACH_LLM_CMD: 'node "' + path.join(tmp, 'slow-llm.js') + '"' },
+});
+assert.strictEqual(r.status, 0, 'antigravity session-end exits 0');
+assert.ok(engine(['summaries', '--json'], agProj).includes('SLOW-LLM-SUMMARY'), 'a 31 s model call survived the shim');
+
 // ---- resilience: garbage, empty, and a wiring mistake never break a session ----------------------
 r = shim('cursor', 'post-tool', {});
 assert.strictEqual(r.status, 0, 'empty event exits 0');
