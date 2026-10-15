@@ -1,6 +1,6 @@
 # pair-coach and ship-coach — design
 
-Date: 2026-10-15 · Status: approved in conversation, awaiting spec review · Release target: v1.18.0
+Date: 2026-10-15 · Status: implemented; amended after live runs (see Amendments) · Release target: v1.18.0
 
 Two new plugins. **pair-coach** lets a developer and Claude talk through the code itself: a
 developer writes `@claude` in a comment, Claude answers or acts in place, and Claude can hand
@@ -68,9 +68,9 @@ Touches neither memory nor the engine. Depends on `ai-coach-core` like every coa
 - In `.md` and `.mdx` files only `<!--` counts, so documentation and code fences that show the
   syntax (including this plugin's own SKILL.md files) never match.
 - A **thread** is a run of adjacent comment lines containing at least one addressed line.
-- An **addressed line** starts, after the comment token, with `@name`: either `@claude` or any other
-  handle. A reply line is `@name: text`. Continuation lines are indented comment lines with no
-  address.
+- An **addressed line** starts, after the comment token, with `@claude` (colon optional) or with
+  `@name:` — a person **with** a colon, so `@param`, `@returns` and decorators are never people.
+  Continuation lines are comment lines with no address.
 - **State** comes from the last addressed line in the thread:
   - `@claude …` → **open**, Claude's turn.
   - any other `@name` → **waiting**, that person's turn (an answer, a question back, or a stub).
@@ -105,11 +105,14 @@ Its description says when it may fire: on the user's request, or after the nudge
 threads; never unprompted otherwise. Steps:
 
 1. `node scripts/mentions.js json` sweeps the tree with `git grep` (tracked and untracked,
-   gitignored skipped) and returns `{file, line, state, prefix, indent, committed, author, text}`
-   per thread.
-2. Keep the open threads. Committed threads whose `git blame` author is not the current developer go
-   into one multi-select question ("act on these?"); unselected ones are left untouched. This is the
-   prompt-injection boundary: text someone else committed is not an instruction from this user.
+   gitignored skipped), or one file when given a file, and returns
+   `{file, line, start, end, state, prefix, indent, text, asks}` per thread; `asks` lists every
+   `@claude` line with its own `mine` and `author`.
+2. Keep the open threads. Every `@claude` **line** whose `git blame` author is not the current
+   developer goes into one multi-select question ("act on these?"); unselected lines are left
+   untouched, and the developer's own lines in the same thread are still handled. With no question
+   tool (headless), foreign lines are skipped and reported. This is the prompt-injection boundary:
+   text someone else committed is not an instruction from this user.
 3. For each kept thread, decide:
    - **question** → append the answer as reply lines, as long as it needs to be;
    - **instruction** → make the change, then append `@<handle>: done — <what, where>`;
@@ -154,7 +157,9 @@ and an uncapped diff defeats the low-budget model. It prints:
 - what will be staged: the staged set if anything is staged, otherwise all changes;
 - diff stat, then the diff capped at about 12 KB with a truncation marker;
 - the last 15 commit subjects, which is where the house style is read from;
-- an issue guess from the branch name (`fix/36-windsurf` → 36), overridden by `--issue`.
+- an issue guess from the branch name (`fix/36-windsurf` → 36), overridden by `--issue`;
+- the repository root, and two scratch file paths for the message and PR body, in the OS temp
+  directory so they can never be staged.
 
 Sequence:
 
@@ -174,7 +179,9 @@ Sequence:
    configures it once in the project's Workflows settings.
 
 Never: force-push, amend a pushed commit, `--no-verify`. A failing pre-commit hook is shown and the
-run stops. Files matching `.env*`, `*.pem`, `id_*` stop the plan and ask before staging.
+run stops. Files matching `.env*`, `*.pem` or an SSH key name (`id_rsa`, `id_ed25519`, …) stop the
+plan and ask before staging. With no question tool (headless) the plan is printed and nothing runs.
+Every command runs in the repository the context printed, one at a time, never chained.
 
 Commit attribution follows the session's own Claude Code attribution setting; the skill adds no
 trailer of its own.
@@ -215,6 +222,23 @@ Both plugins enter `.claude-plugin/marketplace.json` and the `ai-coach` bundle's
 v1.18.0, with a CHANGELOG section and its bolded ship line
 (`**pair-coach 1.0.0 · ship-coach 1.0.0 · ai-coach 1.18.0**`). Each gets a page in `docs/plugins/`
 once PR #51 has merged.
+
+## Amendments after live runs (2026-10-15)
+
+Headless `claude -p` runs in a scratch repository, each finding fixed test-first:
+
+- **A mixed thread carried an injection.** A developer's `@claude` line written directly under a
+  teammate's committed one formed one thread, and blaming only the last line marked the whole
+  thread as the developer's. Authorship is now per `@claude` line.
+- **A file argument failed.** `mentions.js json store.js` reported "not a git repository"; a file
+  path now narrows the sweep to that file.
+- **No question tool.** Both skills now say what a headless run does: mentions skips foreign lines;
+  commit prints the plan and stops.
+- **The commit turn guessed the repository** from the plugin's own path and tried to `cd` there
+  (refused by the permission check; nothing was touched). The context now prints the repository,
+  and the skill pins every command to it, one at a time.
+- **Verified:** with the session started on `--model sonnet`, `/ship-coach:commit` ran entirely on
+  `claude-haiku-5-5` (every assistant message, and `modelUsage`); plan /usr/bin/bash.0095, execution /usr/bin/bash.014.
 
 ## Rejected
 

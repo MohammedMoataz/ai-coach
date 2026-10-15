@@ -3,6 +3,52 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.18.0 — A conversation in the code, and one look before it ships (2026-10-15)
+
+**pair-coach 1.0.0 · ship-coach 1.0.0 · ai-coach 1.18.0**
+
+Two new coaches. Design: `docs/superpowers/specs/2026-10-15-pair-coach-ship-coach-design.md`.
+
+### pair-coach — `@claude` in a comment
+
+Write `// @claude why is this a Map?` or `# @claude add a retry here, max 3` where the question
+belongs. `/pair-coach:mentions` answers inline under it, makes the change and says so in one line,
+or asks back when two readings survive — always addressed to you by your own `git config user.name`.
+No name is written into the plugin anywhere: the parser only tells `@claude` from everybody else,
+and a person is addressed with a colon (`@Dana:`) so `@param` and decorators are never people. A
+thread ends when you delete it.
+
+- **A prompt hook that only reads what you wrote.** On every prompt it scans the lines you added
+  and have not committed — `git diff -U0 HEAD` plus untracked files — and, when one holds an open
+  thread, adds one line of context naming where. Silent otherwise; never blocks; fails open.
+- **Someone else's comment is not your instruction.** A `@claude` line a teammate committed — or a
+  dependency, or a branch you pulled — is never surfaced by the hook, and `/mentions` asks before
+  acting on it, naming the author from `git blame`.
+- **`/pair-coach:pair <task>`** (user-only) builds a task and leaves one to three stubs addressed to
+  you where the call is genuinely yours, each failing loudly (`throw`, `raise NotImplementedError`)
+  until written. Reply `@claude check this` under one and `/mentions` reviews it.
+
+`mentions` is model-invocable so the hook's line can lead to it: 467 characters of description,
+about 165 tokens, added to every session.
+
+### ship-coach — `/ship-coach:commit`
+
+Drafts the message on Haiku at low effort (`model: haiku`, `effort: low` in the skill's
+frontmatter), in the style of the repository's last 15 subjects, then shows the whole plan once —
+message, branch, files, push, PR, issue — with Run all, Edit message, Commit only, or Cancel. A new
+branch when you are on the default one; push and PR only with `--pr`; `Fixes #N` from `--issue` or
+the branch name. The issue's board status is left to GitHub's built-in "Pull request linked to
+issue" project workflow. Never force-pushes, amends a pushed commit, or skips hooks; `.env`, keys
+and certificates are asked about before they are staged. User-only, because it writes your history.
+
+A zero-dependency `scripts/context.js` gathers the state in one call and caps the diff at 12 KB —
+an uncapped diff is the one thing that would make a cheap model expensive.
+
+### Hooks outside the engine
+
+pair-coach's prompt hook is the third outside `ai-coach-core`, after design-coach's two. Same terms:
+reads no memory, writes nothing, fails open.
+
 ## v1.17.0 — Summaries you have read, and code that does what the docs say (2026-10-08)
 
 **ai-coach-core 1.9.0 · memory-coach 1.5.0 · security-coach 1.2.1 · ai-coach 1.17.0**

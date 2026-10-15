@@ -36,12 +36,14 @@ Plugins are loaded at session start. After `claude plugin update`, **restart the
 
 ## Before you push
 
-Four commands. All four run in CI on Windows and Ubuntu across four Node versions.
+The suites run in CI on Windows and Ubuntu across four Node versions, and the checker runs there too.
 
 ```bash
 node plugins/ai-coach-core/hooks/engine.test.js
 node plugins/ai-coach-core/hooks/hooks.test.js
 node plugins/atlas-coach/tools/ingest.test.js
+node plugins/pair-coach/scripts/mentions.test.js
+node plugins/ship-coach/scripts/context.test.js
 node .github/check-manifests.test.js
 node .github/check-manifests.js
 ```
