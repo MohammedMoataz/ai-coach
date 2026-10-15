@@ -54,6 +54,7 @@ jobs:
       - run: node plugins/design-coach/scripts/check-artifact.test.js
       - run: node adapters/mcp/server.test.js
       - run: node adapters/shim.test.js
+      - run: node adapters/build.test.js
       - run: node adapters/opencode/ai-coach.test.mjs
 
   manifests:
