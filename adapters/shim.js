@@ -72,7 +72,7 @@ const cc = {
     return t;
   })(),
   tool_response: first(d.tool_response, d.toolResponse, d.output, toolInfo.output, ''),
-  prompt: String(first(d.prompt, d.user_prompt, d.userPrompt, d.text, '')),
+  prompt: String(first(d.prompt, d.user_prompt, d.userPrompt, d.text, toolInfo.user_prompt, '')),
   source: String(first(d.source, '')),
 };
 
