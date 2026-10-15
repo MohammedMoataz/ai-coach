@@ -1,0 +1,13 @@
+{
+  "name": "ship-coach",
+  "displayName": "Ship Coach",
+  "version": "1.0.0",
+  "description": "From a finished change to a commit, a branch and a PR that closes its issue, with the message drafted on a small model at low effort in your repository's own style and one look at the whole plan before anything runs. Never force-pushes, never skips hooks. Ships one user-only skill and one zero-dependency context script. Touches neither memory nor the engine.",
+  "author": { "name": "Mohammed Moataz", "email": "imohammedmoataz@gmail.com" },
+  "homepage": "https://github.com/MohammedMoataz/ai-coach",
+  "license": "MIT",
+  "keywords": ["git", "commit", "pull-request", "github", "workflow"],
+  "dependencies": [
+    { "name": "ai-coach-core", "version": "^1.9.0" }
+  ]
+}
