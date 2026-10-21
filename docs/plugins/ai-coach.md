@@ -7,8 +7,8 @@ ships the three commands that chain skills across plugins: `/ai-coach:start` for
 
 | | |
 |---|---|
-| Version | 1.18.0 |
-| Depends on | `ai-coach-core` `^1.9.1`, `memory-coach` `^1.5.0`, `prompt-coach` `^1.2.1`, `security-coach` `^1.2.0`, `harness-coach` `^1.1.0`, `investigation-coach` `^1.5.0`, `atlas-coach` `^1.2.0`, `strategy-coach` `^1.5.0`, `analysis-coach` `^1.1.0`, `design-coach` `^1.0.3`, `pair-coach` `^1.0.0`, `ship-coach` `^1.0.0` |
+| Version | 1.19.0 |
+| Depends on | `ai-coach-core` `^1.9.1`, `memory-coach` `^1.5.0`, `prompt-coach` `^1.2.1`, `security-coach` `^1.2.0`, `harness-coach` `^1.1.0`, `investigation-coach` `^1.6.0`, `atlas-coach` `^1.2.0`, `strategy-coach` `^1.5.0`, `analysis-coach` `^1.1.0`, `design-coach` `^1.0.3`, `pair-coach` `^1.0.0`, `ship-coach` `^1.0.0` |
 | Source | [`plugins/ai-coach/`](../../plugins/ai-coach/) |
 
 ## Installing the bundle

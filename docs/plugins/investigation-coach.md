@@ -8,7 +8,7 @@ yourself need the shape of an unfamiliar repo without reading all of it in your 
 
 | | |
 |---|---|
-| Version | 1.5.1 |
+| Version | 1.6.0 |
 | Depends on | `ai-coach-core` `^1.6.0` |
 | Source | [`plugins/investigation-coach/`](../../plugins/investigation-coach/) |
 
@@ -19,6 +19,7 @@ yourself need the shape of an unfamiliar repo without reading all of it in your 
 | `onboard` | skill | `/investigation-coach:onboard`. Model-invocable so `/ai-coach:start --run` can chain it | Writes evidence-cited onboarding docs into `docs/onboarding/`. `--tour` also runs `map` and `study` |
 | `map` | skill | `/investigation-coach:map`. Model-invocable so `onboard --tour` and `/ai-coach:start --run` can chain it | Traces the architecture and renders it as an artifact page, mermaid, one note per component, a canvas, and optionally draw.io |
 | `study` | skill | `/investigation-coach:study`. Model-invocable for the same chaining | Writes explanation (the why, not the how-to) into `docs/study/` |
+| `investigate` | command | `/investigation-coach:investigate [--project] [--feature <name>] [--full] [--diagrams drawio]`. User-only (`disable-model-invocation: true`) | The name for `onboard --tour`: onboard, then map, then study. It forwards every flag to the tour and leaves the sequence to it |
 | `scout` | agent | Dispatched by all three skills, one per area | Read-only repo sweep in an isolated context. Returns a brief of at most 500 words, every claim cited |
 
 None of the skills sets `disable-model-invocation`, but each description says it runs only when you
@@ -109,8 +110,9 @@ from `.ai-coach/team.md` or is omitted, never invented
 `--tour` runs `onboard`, then invokes `investigation-coach:map` and `investigation-coach:study`
 **through the Skill tool**, so each step reuses what the previous one wrote
 ([onboard/SKILL.md:90-106](../../plugins/investigation-coach/skills/onboard/SKILL.md)). This is
-the one place that owns the sequence. `/ai-coach:start --run` chains here rather than calling the
-three skills itself.
+the one place that owns the sequence. `/ai-coach:start --run` and `/investigation-coach:investigate`
+chain here rather than calling the three skills themselves
+([commands/investigate.md](../../plugins/investigation-coach/commands/investigate.md)).
 
 - **Flags are forwarded only where they are accepted.** `map` takes `--project`,
   `--feature <name>` and `--diagrams drawio`. `study` takes `--project` and `--full` only. A
@@ -258,6 +260,7 @@ None of its own. The skills read `.ai-coach/project.md` (for `--project` repo li
 ## Source map
 
 - [`../../plugins/investigation-coach/.claude-plugin/plugin.json`](../../plugins/investigation-coach/.claude-plugin/plugin.json): manifest, version and dependency
+- [`../../plugins/investigation-coach/commands/investigate.md`](../../plugins/investigation-coach/commands/investigate.md): `/investigate`, the user-only name for `onboard --tour`
 - [`../../plugins/investigation-coach/agents/scout.md`](../../plugins/investigation-coach/agents/scout.md): the read-only sweep agent and its output contract
 - [`../../plugins/investigation-coach/skills/onboard/SKILL.md`](../../plugins/investigation-coach/skills/onboard/SKILL.md): onboarding docs and the `--tour` sequence
 - [`../../plugins/investigation-coach/skills/onboard/references/formats.md`](../../plugins/investigation-coach/skills/onboard/references/formats.md): marker rule, index/start-here/stack/decisions/patterns shapes, the eight-section feature format

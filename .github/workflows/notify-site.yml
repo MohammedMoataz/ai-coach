@@ -9,7 +9,7 @@ on:
       - .claude-plugin/marketplace.json
       - plugins/*/skills/**/SKILL.md
       - plugins/*/agents/*.md
-      - plugins/ai-coach/commands/*.md
+      - plugins/*/commands/*.md
   workflow_dispatch:
 
 # The dispatch authenticates with its own token, scoped to the site repo only; this workflow's
