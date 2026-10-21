@@ -15,6 +15,9 @@ of three code-reading skills before starting, stops wherever you ask, and names 
 because its output is current. The command is user-only, so the always-on context cost does not
 move.
 
+`onboard --tour` now forwards `--full` to `map` as well as `study`. `map` always accepted it, but the tour
+dropped it, so a full tour drew a surface-layer map.
+
 The site-rebuild workflow now fires on a command in any plugin, not only the bundle's.
 
 ## v1.18.0 — A conversation in the code, and one look before it ships (2026-10-15)

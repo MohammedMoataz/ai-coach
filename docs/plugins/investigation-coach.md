@@ -115,7 +115,7 @@ chain here rather than calling the three skills themselves
 ([commands/investigate.md](../../plugins/investigation-coach/commands/investigate.md)).
 
 - **Flags are forwarded only where they are accepted.** `map` takes `--project`,
-  `--feature <name>` and `--diagrams drawio`. `study` takes `--project` and `--full` only. A
+  `--full`, `--feature <name>` and `--diagrams drawio`. `study` takes `--project` and `--full` only. A
   `--feature <name>` reaches `study` as its `<area>` argument when the name matches a discovered
   area, and not at all otherwise. Handing a skill a flag it does not define is "undefined
   behaviour, not a no-op".
