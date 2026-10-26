@@ -61,7 +61,7 @@ with verified per-harness install snippets: [`adapters/README.md`](adapters/READ
 | **prompt-coach** | Skills only: `prompt`, `scope`, `prompt-stats`, `dispatch` — the prompt you are about to send, the big scope you have not shaped yet, and the habits that cost you. Writes nothing, ever. |
 | **security-coach** | `scan`, `audit` (`--triage` chains them), `triage` — plus the `examiner` agent: suspected injection content is read in a quarantined context with no shell and no network. |
 | **harness-coach** | Skills only: `partners`, `context` — what is installed next to the coach, and what is filling this session. |
-| **investigation-coach** | `onboard` (`--tour` really does run all three now), `map`, `study` — plus the `scout` agent, which does their repo sweeps in an isolated context, every claim `file:line`-cited. `map` writes one note per component, so the vault's graph view is the architecture. |
+| **investigation-coach** | `onboard` (`--tour` really does run all three now), `map`, `study`, and the `/investigation-coach:investigate` command that types `--tour` for you — plus the `scout` agent, which does their repo sweeps in an isolated context, every claim `file:line`-cited. `map` writes one note per component, so the vault's graph view is the architecture. |
 | **atlas-coach** | Everything outside the repo: `research`, `ingest`, `market`, `translate` — plus three agents: `researcher`, `verifier`, and `reader`, which keeps a 200-page PDF out of your context. |
 | **strategy-coach** | Skills only: `blueprint` (which scaffolds the docs vault), `feature` — document the business, then specify what comes next. Inward by design; looking outward is atlas-coach. |
 | **analysis-coach** | `elicit`, `insight`, `story` — the business-analyst half — plus the `critic` agent: fresh-context review that has not seen the reasoning it grades. |
@@ -156,6 +156,7 @@ that arrived some other way.
 `/security-coach:audit` ·
 `/security-coach:triage` · `/harness-coach:partners` · `/harness-coach:context` ·
 `/investigation-coach:onboard` · `/investigation-coach:map` · `/investigation-coach:study` ·
+`/investigation-coach:investigate` ·
 `/atlas-coach:research` · `/atlas-coach:ingest` · `/atlas-coach:market` ·
 `/atlas-coach:translate` · `/strategy-coach:blueprint` · `/strategy-coach:feature` ·
 `/analysis-coach:elicit` · `/analysis-coach:insight` · `/analysis-coach:story` ·
@@ -222,7 +223,7 @@ still being argued about; `/strategy-coach:feature` reads its output once they a
 `/security-coach:audit --triage` records confirmed findings in the tracking table with
 `--source audit`, because a scanner hit and a pentester's finding are not worth the same. It
 follows triage's own ingest steps inline rather than invoking it — triage is user-only.
-`/investigation-coach:onboard --tour` runs onboard, then map, then study — the later two read what
+`/investigation-coach:investigate` (or `onboard --tour`) runs onboard, then map, then study — the later two read what
 the first wrote instead of sweeping the repo again. `/prompt-coach:scope` is the front of that same
 chain: it shapes a big ask, gates it, and then names whichever skill should own the writing —
 `/strategy-coach:feature` for a spec somebody commits, `/analysis-coach:elicit` when the

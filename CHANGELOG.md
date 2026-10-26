@@ -3,6 +3,23 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.19.0 — The investigation, by name (2026-10-22)
+
+**investigation-coach 1.6.0 · ai-coach 1.19.0**
+
+`/investigation-coach:investigate` runs onboard, then map, then study. It is a name for
+`/investigation-coach:onboard --tour`, which already owned that sequence: the command forwards
+`--project`, `--feature <name>`, `--full` and `--diagrams drawio` to the tour and lets the tour
+decide which flags each later skill accepts. The tour's gates are unchanged — it states the cost
+of three code-reading skills before starting, stops wherever you ask, and names any step it skips
+because its output is current. The command is user-only, so the always-on context cost does not
+move.
+
+`onboard --tour` now forwards `--full` to `map` as well as `study`. `map` always accepted it, but the tour
+dropped it, so a full tour drew a surface-layer map.
+
+The site-rebuild workflow now fires on a command in any plugin, not only the bundle's.
+
 ## v1.18.0 — A conversation in the code, and one look before it ships (2026-10-15)
 
 **pair-coach 1.0.0 · ship-coach 1.0.0 · ai-coach-core 1.9.1 · prompt-coach 1.2.1 · design-coach 1.0.3 · ai-coach 1.18.0**
