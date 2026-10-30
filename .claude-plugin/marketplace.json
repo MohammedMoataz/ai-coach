@@ -7,7 +7,7 @@
     "url": "https://github.com/MohammedMoataz"
   },
   "description": "AI Coach — harness your team. A coach for using Claude Code well, one focus per release.",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "plugins": [
     {
       "name": "ai-coach-core",
@@ -130,7 +130,7 @@
     {
       "name": "pair-coach",
       "source": "./plugins/pair-coach",
-      "description": "Talk to Claude through the code: write // @claude to ask or instruct, get the answer or the change inline, addressed to you by your own git name; /pair hands you the few lines that are genuinely your call — /mentions, /pair.",
+      "description": "Talk to Claude through the code: write // @coach to ask or instruct, get the answer or the change inline, addressed to you by your own git name; /pair hands you the few lines that are genuinely your call — /mentions, /pair.",
       "category": "productivity",
       "tags": [
         "pair-programming",

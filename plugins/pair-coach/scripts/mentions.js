@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
-// The one parser for @claude comment threads, shared by the nudge hook and the mentions skill.
-//   node mentions.js json  [dir]   every thread in files that mention @claude or the developer
+// The one parser for @coach comment threads, shared by the nudge hook and the mentions skill.
+//   node mentions.js json  [dir]   every thread in files that mention @coach or the developer
 //   node mentions.js list  [dir]   the same, one line each
-//   node mentions.js added [dir]   open threads whose @claude line the developer added (uncommitted)
+//   node mentions.js added [dir]   open threads whose @coach line the developer added (uncommitted)
 //   node mentions.js whoami [dir]  the handle Claude writes replies to
-// No name is hardcoded anywhere: the parser only needs to tell @claude from everybody else, and the
+// No name is hardcoded anywhere: the parser only needs to tell @coach from everybody else, and the
 // handle Claude replies to is read from the developer's own git config at runtime.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -19,9 +19,9 @@ const tryGit = (cwd, args) => { try { return git(cwd, args); } catch { return nu
 // comment counts, so prose and code fences that show the syntax (this plugin's own docs) never match.
 const CODE_COMMENT = /^(\s*)(\/\/+|#+|--|\/\*+|\*|<!--)\s?(.*)$/;
 const MD_COMMENT = /^(\s*)(<!--)\s?(.*)$/;
-// Claude is addressed with or without a colon; a person only WITH one, so doc tags (@param, @returns) and
+// The coach is addressed with or without a colon; a person only WITH one, so doc tags (@param, @returns) and
 // decorators are never mistaken for someone being addressed.
-const TO_CLAUDE = /^@claude\b:?\s*/i;
+const TO_COACH = /^@coach\b:?\s*/i;
 const TO_PERSON = /^@([^\s:@]+):\s*/;
 
 function parse(text, file = '') {
@@ -35,10 +35,10 @@ function parse(text, file = '') {
       const last = addressed[addressed.length - 1];
       threads.push({
         file, start: run[0].n, end: run[run.length - 1].n, line: last.n,
-        state: last.to === 'claude' ? 'open' : 'waiting', with: last.to,
+        state: last.to === 'coach' ? 'open' : 'waiting', with: last.to,
         prefix: run[0].prefix, indent: run[0].indent,
         text: run.map((l) => l.body).join('\n'),
-        asks: run.filter((l) => l.to === 'claude').map((l) => ({ line: l.n })),
+        asks: run.filter((l) => l.to === 'coach').map((l) => ({ line: l.n })),
       });
     }
     run = [];
@@ -47,7 +47,7 @@ function parse(text, file = '') {
     const m = raw.match(md ? MD_COMMENT : CODE_COMMENT);
     if (!m) return flush();
     const body = m[3].replace(/\s*(\*\/|-->)\s*$/, '');
-    const to = TO_CLAUDE.test(body) ? 'claude' : ((body.match(TO_PERSON) || [])[1] || null);
+    const to = TO_COACH.test(body) ? 'coach' : ((body.match(TO_PERSON) || [])[1] || null);
     run.push({ n: i + 1, indent: m[1], prefix: m[2], body, to });
   });
   flush();
@@ -90,7 +90,7 @@ function scan(target = process.cwd(), { withBlame = true } = {}) {
   // compared: an 8.3 short temp path on Windows and git's long one never matched as strings.
   const only = file == null ? null : (tryGit(dir, ['rev-parse', '--show-prefix']) || '').trim() + file;
   const handle = whoami(top);
-  const files = (tryGit(top, ['grep', '-l', '-I', '-i', '--untracked', '-e', '@claude', '-e', `@${handle}:`]) || '')
+  const files = (tryGit(top, ['grep', '-l', '-I', '-i', '--untracked', '-e', '@coach', '-e', `@${handle}:`]) || '')
     .split('\n').filter(Boolean).filter((f) => only == null || f === only);
   const email = (tryGit(top, ['config', 'user.email']) || '').trim().toLowerCase();
   const threads = [];
@@ -98,7 +98,7 @@ function scan(target = process.cwd(), { withBlame = true } = {}) {
     const text = readText(path.join(top, f));
     if (text == null) continue;
     for (const t of parse(text, f)) {
-      // Every @claude line in the thread, not just the last: a developer's question written under a
+      // Every @coach line in the thread, not just the last: a developer's question written under a
       // teammate's committed instruction would otherwise carry that instruction in as theirs. Per
       // line, so the developer's own line can still be answered while the other one waits for a yes.
       if (withBlame && t.state === 'open') {
@@ -146,7 +146,7 @@ function added(dir = process.cwd()) {
   const out = [];
   for (const [f, set] of addedLines(top)) {
     const text = readText(path.join(top, f));
-    if (text == null || !/@claude/i.test(text)) continue;
+    if (text == null || !/@coach/i.test(text)) continue;
     for (const t of parse(text, f)) {
       if (t.state === 'open' && (set === 'all' || set.has(t.line))) out.push(t);
     }
@@ -164,7 +164,7 @@ if (require.main === module) {
   else if (cmd === 'list') {
     const r = scan(dir);
     if (r.error) { console.log(r.error); process.exit(0); }
-    if (!r.threads.length) console.log(`no @claude threads (replies go to @${r.handle})`);
+    if (!r.threads.length) console.log(`no @coach threads (replies go to @${r.handle})`);
     for (const t of r.threads) {
       const who = t.state === 'open' ? (t.mine ? 'open' : `open, committed by ${t.author}`) : `waiting on @${t.with}`;
       console.log(`${t.file}:${t.line}  ${who}  ${t.text.split('\n')[0].slice(0, 80)}`);

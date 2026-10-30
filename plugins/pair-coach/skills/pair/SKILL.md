@@ -48,7 +48,7 @@ developer is going to be anyway.
 
 ## After they write it
 
-The developer fills the body in, then either deletes the thread, or replies `@claude check this`
+The developer fills the body in, then either deletes the thread, or replies `@coach check this`
 under it — which reopens it, and `/pair-coach:mentions` reviews what they wrote.
 
 ## Related

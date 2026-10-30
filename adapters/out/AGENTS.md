@@ -107,7 +107,7 @@ Claude Code injects this automatically; in this harness it is your first move.
 ### pair-coach
 
 - **mentions** — `[path]`
-  Answers the open @claude comment threads in the code, inline: a question gets a reply under it, an instruction gets done plus a one-line reply, an unclear one gets a question back, each addressed to the developer by their own git name. Use when the user asks (/pair-coach:mentions, "answer my @claude comments"), or when a pair-coach line in this turn's context reported open threads; never unprompted otherwise. Asks before acting on a line someone else committed.
+  Answers the open @coach comment threads in the code, inline: a question gets a reply under it, an instruction gets done plus a one-line reply, an unclear one gets a question back, each addressed to the developer by their own git name. Use when the user asks (/pair-coach:mentions, "answer my @coach comments"), or when a pair-coach line in this turn's context reported open threads; never unprompted otherwise. Asks before acting on a line someone else committed.
   Full instructions: `$AICOACH_REPO/plugins/pair-coach/skills/mentions/SKILL.md`
 - **pair** *(user-fired)* — `<task>`
   Builds a task with the developer instead of for them - Claude writes the scaffolding, boilerplate and tests, and leaves one to three stubs addressed to the developer where the choice is genuinely theirs (a business rule, a trade-off, domain knowledge), each failing loudly until written. Use when the user types /pair-coach:pair with a task; user-only, never chained.

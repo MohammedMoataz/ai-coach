@@ -28,7 +28,7 @@ the code is right and the page is a bug: [open an issue](https://github.com/Moha
 | [strategy-coach](plugins/strategy-coach.md) | Document the business as an Obsidian vault, and specify features. |
 | [analysis-coach](plugins/analysis-coach.md) | Requirements elicitation, data analysis with critique, executive write-ups. |
 | [design-coach](plugins/design-coach.md) | Checkable design rules and a lint for published artifact pages. |
-| [pair-coach](plugins/pair-coach.md) | Talk to Claude through `@claude` comments in the code, and pair on a task. |
+| [pair-coach](plugins/pair-coach.md) | Talk to Claude through `@coach` comments in the code, and pair on a task. |
 | [ship-coach](plugins/ship-coach.md) | Commit, branch and PR with a small-model message and one confirmation. |
 
 ## Elsewhere
