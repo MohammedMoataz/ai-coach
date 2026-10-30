@@ -1,8 +1,8 @@
 {
   "name": "pair-coach",
   "displayName": "Pair Coach",
-  "version": "1.0.0",
-  "description": "Talk to Claude through the code itself: write a // @claude comment to ask a question or give an instruction, and Claude answers inline, makes the change, or asks you back, addressed to you by your own git name. /pair-coach:pair builds a task and hands you the few lines that are genuinely your call, as stubs that fail loudly until you write them. Ships two skills, one zero-dependency parser, and one prompt hook that only reads lines you wrote. Touches neither memory nor the engine.",
+  "version": "1.1.0",
+  "description": "Talk to Claude through the code itself: write a // @coach comment to ask a question or give an instruction, and Claude answers inline, makes the change, or asks you back, addressed to you by your own git name. /pair-coach:pair builds a task and hands you the few lines that are genuinely your call, as stubs that fail loudly until you write them. Ships two skills, one zero-dependency parser, and one prompt hook that only reads lines you wrote. Touches neither memory nor the engine.",
   "author": { "name": "Mohammed Moataz", "email": "imohammedmoataz@gmail.com" },
   "homepage": "https://github.com/MohammedMoataz/ai-coach",
   "license": "MIT",

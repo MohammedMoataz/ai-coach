@@ -3,6 +3,17 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.20.0 — `@coach`, not `@claude` (2026-10-31)
+
+**pair-coach 1.1.0 · ai-coach 1.20.0**
+
+pair-coach threads are now addressed to `@coach`: `// @coach why is this a Map?`, with or without
+a colon, exactly as `@claude` was. **`@claude` is no longer read** — an open thread written with it
+is neither nudged nor answered until its marker is changed to `@coach`. People are still addressed
+as `@Name:`, and the `with` field in `mentions.js json` now reads `"coach"` on an open
+thread. The prompt hook's line, both skills, ship-coach's pre-commit note and the docs say
+`@coach` throughout.
+
 ## v1.19.0 — The investigation, by name (2026-10-22)
 
 **investigation-coach 1.6.0 · ai-coach 1.19.0**

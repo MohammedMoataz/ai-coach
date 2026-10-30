@@ -99,5 +99,5 @@ once in the project's Workflows settings.
 
 ## Related
 
-- Answer the code's open `@claude` threads before shipping: `/pair-coach:mentions` when pair-coach
+- Answer the code's open `@coach` threads before shipping: `/pair-coach:mentions` when pair-coach
   is installed; it is skipped otherwise.
