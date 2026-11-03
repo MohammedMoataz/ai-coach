@@ -3,6 +3,19 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.21.0 — Matt Pocock's skills as a partner (2026-11-03)
+
+**harness-coach 1.2.0 · ai-coach 1.21.0**
+
+`/harness-coach:partners` lists a tenth partner, **mattpocock-skills**
+(https://github.com/mattpocock/skills): engineering skills for grilling a plan, TDD, diagnosing
+bugs, domain modelling, code review and spec and ticket flows, installed from the official
+marketplace. Its catalog entry states the measured cost, 11 model-invocable skills out of 27 and
+about 570 always-on tokens of descriptions on 1.3.1. It also names the three skills that do a
+coach's job, `handoff`, `research` and `pr`, so you pick one per job. The ask step now fits its
+groups to AskUserQuestion's limit of 2 to 4 options per question, because both existing groups
+were already full and a fifth option would have broken the call.
+
 ## v1.20.1 — Every merge is a release (2026-11-03)
 
 **ai-coach 1.20.1**
