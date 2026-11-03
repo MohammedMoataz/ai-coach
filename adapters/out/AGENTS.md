@@ -74,7 +74,7 @@ Claude Code injects this automatically; in this harness it is your first move.
   What is filling this session's context, what it costs, and whether to clear or compact. Use for "/context", "why is my context full", "should I clear or compact", "what is my context budget", "audit my plugin token cost". Not for searching memory (see memory-coach:recall).
   Full instructions: `$AICOACH_REPO/plugins/harness-coach/skills/context/SKILL.md`
 - **partners** *(user-fired)* — `[partner-name]`
-  Detect which of the nine curated companion tools are already installed, then install only the ones the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
+  Detect which of the ten curated companion tools are already installed, then install only the ones the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
   Full instructions: `$AICOACH_REPO/plugins/harness-coach/skills/partners/SKILL.md`
 
 ### investigation-coach
