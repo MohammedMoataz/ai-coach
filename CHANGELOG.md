@@ -3,6 +3,17 @@
 Releases are git tags, one line per plugin: `{plugin}--v{version}`. Every plugin that changed in a
 release is named with its number in that release's section.
 
+## v1.20.1 — Every merge is a release (2026-11-03)
+
+**ai-coach 1.20.1**
+
+A merge to `main` now publishes itself. The Release workflow reads the marketplace version, pushes
+one annotated tag per plugin on that version's bolded ship line, and creates a GitHub release named
+for the bundle tag with the CHANGELOG section as its notes. Re-running it leaves an existing tag or
+release alone. CI's new `release-bump` job fails a PR into `main` whose version is not ahead of
+`main`'s, so no merge lands without a release to make. Tags stop being a hand step, and GitHub
+Releases, last published at v1.0.0 before this, resume with v1.20.0.
+
 ## v1.20.0 — `@coach`, not `@claude` (2026-10-31)
 
 **pair-coach 1.1.0 · ai-coach 1.20.0**

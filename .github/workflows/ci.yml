@@ -69,8 +69,36 @@ jobs:
       # Manifests, frontmatter, versions, and the ENGINE verbs every skill calls — the checker is
       # the lint, and it has its own test so a broken checker cannot pass by finding nothing.
       - run: node .github/check-manifests.test.js
+      - run: node .github/release.test.js
       - run: node .github/check-manifests.js
       # The compiled adapters (Cursor rules, AGENTS.md) are checked in; rebuild and diff so an
       # edited SKILL.md whose compiled twin was forgotten fails here instead of shipping stale.
       - run: node adapters/build.js
       - run: git diff --exit-code adapters/out
+
+  # Every merge to main is a release (release.yml), so every PR into main has to be one: its
+  # marketplace version must be ahead of main's. check-manifests.js then holds the bundle and
+  # the CHANGELOG to that same number.
+  release-bump:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Version is ahead of main
+        run: |
+          base=$(git show "origin/$GITHUB_BASE_REF:.claude-plugin/marketplace.json" | node -pe 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')
+          head=$(node -pe 'require("./.claude-plugin/marketplace.json").version')
+          node -e '
+            const [a, b] = process.argv.slice(1).map((v) => v.split(".").map(Number));
+            const i = b.findIndex((x, k) => x !== a[k]);
+            if (i < 0 || b[i] < a[i]) {
+              console.error(`marketplace.json is ${process.argv[2]}, main is ${process.argv[1]}: every merge to main is a release, so bump the version and add its CHANGELOG section.`);
+              process.exit(1);
+            }
+            console.log(`release ${process.argv[1]} -> ${process.argv[2]}`);
+          ' "$base" "$head"
