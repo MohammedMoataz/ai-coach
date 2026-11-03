@@ -149,13 +149,12 @@ Commit messages here explain *why*, in prose, not just what changed — read a f
 `git log` before writing one. If a change fixes a bug, say what the root cause was, not only the
 symptom.
 
-Releases are annotated git tags, one per plugin that shipped:
-
-```bash
-git tag -a "prompt-coach--v1.2.0" -m "prompt-coach 1.2.0 — The walk before the work"
-```
-
-Tagging is a maintainer step; you do not need to do it in a PR.
+Every merge to `main` is a release, so every PR into `main` bumps the marketplace version, bumps
+the `ai-coach` bundle to match, and adds that version's CHANGELOG section with its bolded ship
+line. CI's `release-bump` job fails a PR whose version is not ahead of `main`. On merge, the
+Release workflow pushes one annotated tag per plugin on the ship line, `{plugin}--v{version}`, and
+publishes a GitHub release named for the bundle tag with the CHANGELOG section as its notes. You
+do not tag by hand.
 
 ## Reporting things
 

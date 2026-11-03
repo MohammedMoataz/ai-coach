@@ -1,0 +1,57 @@
+name: Release
+
+# Every merge to main is a release. CI's release-bump job makes each PR into main carry a new
+# version and CHANGELOG section, so by the time it lands here there is something to release:
+# the plugin tags its ship line names, and a GitHub release built from that CHANGELOG section.
+# Re-running is safe: a tag or release that already exists is left alone.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The one workflow here that writes: it pushes tags and creates the release, nothing else.
+permissions:
+  contents: write
+
+# Two merges in quick succession release in order, never at once.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - id: meta
+        run: node .github/release.js "$RUNNER_TEMP/notes.md" >> "$GITHUB_OUTPUT"
+      - name: Tag and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          TITLE: ${{ steps.meta.outputs.title }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for tag in $TAGS; do
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+              echo "$tag already exists, left alone"
+              continue
+            fi
+            git tag -a "$tag" -m "${tag%--v*} ${tag##*--v}"
+            git push origin "refs/tags/$tag"
+          done
+          release="ai-coach--v$VERSION"
+          if gh release view "$release" >/dev/null 2>&1; then
+            echo "Release $release already exists; nothing to publish." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh release create "$release" --verify-tag --latest \
+            --title "AI Coach v$VERSION — $TITLE" --notes-file "$RUNNER_TEMP/notes.md"
+          echo "Published $release" >> "$GITHUB_STEP_SUMMARY"
