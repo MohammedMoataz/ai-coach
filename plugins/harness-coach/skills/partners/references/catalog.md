@@ -1,8 +1,8 @@
 # Partner catalog
 
-Nine entries, each: verdict (the whole pitch, caveat attached) · check · install. Adding a partner
-is a markdown edit here — there is deliberately no registry file to parse. Facts dated 2026-08;
-verify install lines against upstream if this file has aged.
+Ten entries, each: verdict (the whole pitch, caveat attached) · check · install. Adding a partner
+is a markdown edit here — there is deliberately no registry file to parse. Facts dated 2026-08
+unless an entry says otherwise; verify install lines against upstream if this file has aged.
 
 ### gh CLI — GitHub from inside the session
 
@@ -104,3 +104,20 @@ verify install lines against upstream if this file has aged.
 - **Install:** `uv tool install specify-cli --from git+https://github.com/github/spec-kit.git`
   (needs `uv`). Use `uv tool install`, not one-shot `uvx` — it doesn't persist, and broken `uvx`
   shims exist in the wild (`where.exe uvx` shows what would actually run).
+
+### mattpocock-skills — engineering skills you adapt, not a process you adopt
+
+- **Verdict:** Matt Pocock's skills for the parts of engineering a model skips: grilling a plan
+  before code, TDD, diagnosing bugs, domain modelling, code review, spec and ticket flows. Small,
+  composable, MIT, and in the official marketplace, so it updates itself. Unlike spec-kit it owns
+  no process; each skill is one move you call when you need it.
+- **Cost:** 27 skills, 11 of them model-invocable, about 570 always-on tokens of descriptions
+  (measured on 1.3.1, 2026-11). Check it with `/harness-coach:context --plugins` after install.
+- **Caveat:** some skills cover the same job as a coach: its `handoff` beside
+  `/memory-coach:handoff`, its `research` beside `/atlas-coach:research`, its `pr` beside
+  `/ship-coach:commit --pr`. Namespaces keep them apart, but pick
+  one per job, or the same ask gets two different answers.
+- **Check:** `claude plugin list` output contains `mattpocock-skills@`
+- **Install:** `claude plugin install mattpocock-skills@claude-plugins-official`, then the user
+  runs `/reload-plugins`. Source: https://github.com/mattpocock/skills. Do not also install it
+  with skills.sh — upstream warns that both together load every skill twice.

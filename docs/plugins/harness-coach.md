@@ -36,9 +36,10 @@ Steps ([partners/SKILL.md:18-41](../../plugins/harness-coach/skills/partners/SKI
    `claude plugin list`, one `claude mcp list`. Not found or a non-zero exit means missing. With a
    partner name as argument, it checks only that one and jumps to step 4.
 2. **Brief.** One table: partner, installed or not, and the verdict line with its caveat.
-3. **Ask.** One `AskUserQuestion` call with two multi-select questions covering only missing
-   entries: "CLI tools" (gh, ast-grep, spec-kit, gsd-browser) and "Integrations" (chrome-devtools,
-   figma, obsidian, miro). draw.io is in neither group, because generating a `.drawio` file needs
+3. **Ask.** One `AskUserQuestion` call with multi-select questions covering only missing entries:
+   "CLI tools" (gh, ast-grep, spec-kit, gsd-browser), "Integrations" (chrome-devtools, figma,
+   obsidian, miro) and "Skill packs" (mattpocock-skills). Groups are merged or split to fit the
+   tool's limit of 2 to 4 options per question. draw.io is in no group, because generating a `.drawio` file needs
    nothing installed. Its editor extension is offered only if the user asks to edit diagrams.
 4. **Install** each pick with its `Install:` line, then re-run the check to verify. Interactive
    steps (`gh auth login`, Figma OAuth, Obsidian settings) are handed to the user as `! <command>`.
@@ -58,7 +59,7 @@ Rules it states ([partners/SKILL.md:43-51](../../plugins/harness-coach/skills/pa
 
 ### `references/catalog.md`
 
-One section per partner, facts dated 2026-08. Adding a partner is a markdown edit there, with no
+One section per partner, facts dated 2026-08 unless an entry says otherwise. Adding a partner is a markdown edit there, with no
 registry file ([catalog.md:3-5](../../plugins/harness-coach/skills/partners/references/catalog.md)).
 The entries:
 
@@ -73,6 +74,7 @@ The entries:
 | ast-grep | `ast-grep --version` | None. |
 | gsd-browser | `gsd-browser --version` | On Windows run natively, never through `wsl.exe`; two repos claim the name. |
 | spec-kit | `specify version` | Needs `uv`; use `uv tool install`, not `uvx`. |
+| mattpocock-skills | `claude plugin list` contains `mattpocock-skills@` | 11 of 27 skills are model-invocable, about 570 always-on tokens; `handoff`, `research` and `pr` overlap memory-coach, atlas-coach and ship-coach. |
 
 Install lines for gh and draw.io's desktop app use `winget`; the catalog says to verify install
 lines against upstream once it has aged.

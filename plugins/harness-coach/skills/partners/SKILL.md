@@ -1,5 +1,5 @@
 ---
-description: Detect which of the nine curated companion tools are already installed, then install only the ones the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
+description: Detect which of the ten curated companion tools are already installed, then install only the ones the user picks. Use for "/partners", "what tools do you recommend", "set up recommended tools".
 argument-hint: "[partner-name]"
 disable-model-invocation: true
 model: haiku
@@ -24,11 +24,13 @@ itself at session start — open a new session and try again.
    argument, check only that one and skip to step 4.
 2. **Brief.** One compact table: partner · installed? · the verdict line. The verdict is the whole
    pitch — no selling, and its caveat (token cost, restart, needs Chrome/uv/OAuth) stays attached.
-3. **Ask.** AskUserQuestion, one call, two multiSelect questions covering only the *missing*
-   entries: "CLI tools" (gh, ast-grep, spec-kit, gsd-browser) and "Integrations" (chrome-devtools,
-   figma, obsidian, miro). Picking none is a fine outcome. The groups are built from the catalog,
-   not from this line — a partner added there and not here is one nobody can reach.
-   **draw.io is deliberately not in either group**: nothing has to be installed to *generate* a
+3. **Ask.** AskUserQuestion, one call, multiSelect questions covering only the *missing* entries:
+   "CLI tools" (gh, ast-grep, spec-kit, gsd-browser), "Integrations" (chrome-devtools, figma,
+   obsidian, miro) and "Skill packs" (mattpocock-skills). AskUserQuestion takes 2 to 4 options per
+   question and at most 4 questions, so merge a group with one missing entry into another that has
+   room, or split one that has more than four. Picking none is a fine outcome. The groups are built
+   from the catalog, not from this line — a partner added there and not here is one nobody can reach.
+   **draw.io is deliberately not in any group**: nothing has to be installed to *generate* a
    `.drawio` file, so it belongs in the brief as already-usable, and only the editor extension is
    ever an install. Offer that one only if the user asks to edit the diagrams.
 4. **Install** each pick with its `Install:` line, then re-run its check to verify. Steps that are
